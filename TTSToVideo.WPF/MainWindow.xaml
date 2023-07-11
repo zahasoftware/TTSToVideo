@@ -5,8 +5,52 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:TTSToVideo"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
+        Title="MainWindow" Height="450" Width="800"
+        d:DataContext="{Binding vmMainWindow}"
+    >
     <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="auto"></RowDefinition>
+            <RowDefinition Height="*"></RowDefinition>
+        </Grid.RowDefinitions>
+        <Ribbon Grid.Row="0" x:Name="RibbonWin"  SelectedIndex="0" SelectionChanged="RibbonWin_SelectionChanged" >
+            <!-- Help Pane, located at the right-hand side -->
+            <!--<Ribbon.HelpPaneContent>
+                <RibbonButton SmallImageSource="Images\help.png" />
+            </Ribbon.HelpPaneContent>-->
+            <!-- Quick Access Toolbar - located at the upper-left corner -->
+            <!--<Ribbon.QuickAccessToolBar>
+                <RibbonQuickAccessToolBar>
+                    <RibbonButton x:Name ="Save" SmallImageSource="Images\save.png" />
+                    <RibbonSplitButton x:Name ="Undo" SmallImageSource="Images\undo.png">
+                        <RibbonSplitMenuItem Header="Undo 1" />
+                        <RibbonSplitMenuItem Header="Undo 2" />
+                        <RibbonSplitMenuItem Header="Undo 3" />
+                    </RibbonSplitButton>
+                    <RibbonSplitButton x:Name="Redo" SmallImageSource="Images\redo.png" >
+                        <RibbonSplitMenuItem Header="Redo 1" />
+                        <RibbonSplitMenuItem Header="Redo 2" />
+                    </RibbonSplitButton>
+                </RibbonQuickAccessToolBar>
+            </Ribbon.QuickAccessToolBar>-->
+            <!-- Application Menu, located at the left-hand side (down arrow) -->
+            <Ribbon.ApplicationMenu>
+                <RibbonApplicationMenu KeyTip="F">
+                    <RibbonApplicationMenuItem Header="Options"  />
+                    <RibbonApplicationMenuItem Header="Exit" />
+                </RibbonApplicationMenu>
+            </Ribbon.ApplicationMenu>
+
+            <!-- Ribbon Tab #1: Home -->
+            <RibbonTab Name="Tab1" Header="Home" KeyTip="H" >
+                <!-- Home  group-->
+                <RibbonGroup Header="Home">
+                    <RibbonButton Label="Process" Command="{Binding MainPage.ProcessCommand}" ></RibbonButton>
+                </RibbonGroup>
+            </RibbonTab>
+            <!-- Ribbon Tab #2: -->
+        </Ribbon>
+        <Frame Grid.Row="1" x:Name="mainFrame" NavigationUIVisibility="Hidden"/>
 
     </Grid>
 </Window>

@@ -3,18 +3,54 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.5.33424.131
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TTSToVideo.WPF", "TTSToVideo.WPF\TTSToVideo.WPF.csproj", "{8389E605-E9BD-4768-9616-38F478330086}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TTSToVideo.WPF", "TTSToVideo.WPF\TTSToVideo.WPF.csproj", "{8389E605-E9BD-4768-9616-38F478330086}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NetXP.ImageGeneratorAI.LeonardoAI", "..\..\NetXP\NetXP.ImageGeneratorAI.LeonardoAI\NetXP.ImageGeneratorAI.LeonardoAI.csproj", "{FB1E56BE-766E-4731-BAB8-F641D7395DF8}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NetXP", "..\..\NetXP\NetXP\NetXP.csproj", "{DBD63AB4-036D-437C-AD1E-4345A00A7471}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NetXP.TTS.OpenTTS", "..\..\NetXP\NetXP.TTS.OpenTTS\NetXP.TTS.OpenTTS.csproj", "{57EAA71D-9880-41A4-B903-20034F7A9D80}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
+		Staging|Any CPU = Staging|Any CPU
+		Testing|Any CPU = Testing|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{8389E605-E9BD-4768-9616-38F478330086}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{8389E605-E9BD-4768-9616-38F478330086}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8389E605-E9BD-4768-9616-38F478330086}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8389E605-E9BD-4768-9616-38F478330086}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8389E605-E9BD-4768-9616-38F478330086}.Staging|Any CPU.ActiveCfg = Release|Any CPU
+		{8389E605-E9BD-4768-9616-38F478330086}.Staging|Any CPU.Build.0 = Release|Any CPU
+		{8389E605-E9BD-4768-9616-38F478330086}.Testing|Any CPU.ActiveCfg = Release|Any CPU
+		{8389E605-E9BD-4768-9616-38F478330086}.Testing|Any CPU.Build.0 = Release|Any CPU
+		{FB1E56BE-766E-4731-BAB8-F641D7395DF8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FB1E56BE-766E-4731-BAB8-F641D7395DF8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FB1E56BE-766E-4731-BAB8-F641D7395DF8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FB1E56BE-766E-4731-BAB8-F641D7395DF8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FB1E56BE-766E-4731-BAB8-F641D7395DF8}.Staging|Any CPU.ActiveCfg = Debug|Any CPU
+		{FB1E56BE-766E-4731-BAB8-F641D7395DF8}.Staging|Any CPU.Build.0 = Debug|Any CPU
+		{FB1E56BE-766E-4731-BAB8-F641D7395DF8}.Testing|Any CPU.ActiveCfg = Debug|Any CPU
+		{FB1E56BE-766E-4731-BAB8-F641D7395DF8}.Testing|Any CPU.Build.0 = Debug|Any CPU
+		{DBD63AB4-036D-437C-AD1E-4345A00A7471}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DBD63AB4-036D-437C-AD1E-4345A00A7471}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DBD63AB4-036D-437C-AD1E-4345A00A7471}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DBD63AB4-036D-437C-AD1E-4345A00A7471}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DBD63AB4-036D-437C-AD1E-4345A00A7471}.Staging|Any CPU.ActiveCfg = Staging|Any CPU
+		{DBD63AB4-036D-437C-AD1E-4345A00A7471}.Staging|Any CPU.Build.0 = Staging|Any CPU
+		{DBD63AB4-036D-437C-AD1E-4345A00A7471}.Testing|Any CPU.ActiveCfg = Testing|Any CPU
+		{DBD63AB4-036D-437C-AD1E-4345A00A7471}.Testing|Any CPU.Build.0 = Testing|Any CPU
+		{57EAA71D-9880-41A4-B903-20034F7A9D80}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{57EAA71D-9880-41A4-B903-20034F7A9D80}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{57EAA71D-9880-41A4-B903-20034F7A9D80}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{57EAA71D-9880-41A4-B903-20034F7A9D80}.Release|Any CPU.Build.0 = Release|Any CPU
+		{57EAA71D-9880-41A4-B903-20034F7A9D80}.Staging|Any CPU.ActiveCfg = Debug|Any CPU
+		{57EAA71D-9880-41A4-B903-20034F7A9D80}.Staging|Any CPU.Build.0 = Debug|Any CPU
+		{57EAA71D-9880-41A4-B903-20034F7A9D80}.Testing|Any CPU.ActiveCfg = Debug|Any CPU
+		{57EAA71D-9880-41A4-B903-20034F7A9D80}.Testing|Any CPU.Build.0 = Debug|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
