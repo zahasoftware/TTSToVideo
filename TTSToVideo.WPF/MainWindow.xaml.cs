@@ -24,7 +24,8 @@ namespace TTSToVideo
     /// </summary>
     public partial class MainWindow : Window, IMainWindow
     {
-        IMainPage mainPage;
+        public IMainPage mainPage;
+        public IVMMainWindow ViewModel { get; }
 
         public MainWindow(IMainPage mainPage, IVMMainWindow vmMainWindow)
         {
@@ -34,7 +35,22 @@ namespace TTSToVideo
             this.mainFrame.Navigate(mainPage);
 
             this.DataContext = vmMainWindow;
+            this.ViewModel = vmMainWindow;
+
+            double screenWidth = SystemParameters.PrimaryScreenWidth;
+            double screenHeight = SystemParameters.PrimaryScreenHeight;
+
+            double targetWidth = screenWidth * 0.6;
+            double targetHeight = screenHeight * 0.6;
+
+            Width = targetWidth;
+            Height = targetHeight;
+
+            // Center the window on the screen
+            Left = (screenWidth - targetWidth) / 2;
+            Top = (screenHeight - targetHeight) / 2;
         }
+
 
         private void RibbonWin_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {

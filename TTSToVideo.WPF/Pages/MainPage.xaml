@@ -10,16 +10,26 @@
 
     <Grid>
         <Grid.RowDefinitions>
+            <RowDefinition Height="auto"></RowDefinition>
             <RowDefinition Height="*"></RowDefinition>
+            <RowDefinition Height="auto"></RowDefinition>
             <RowDefinition Height="*"></RowDefinition>
         </Grid.RowDefinitions>
-        <TextBox Height="100" Grid.Row="0"
-                 TextWrapping="Wrap" 
-                 AcceptsReturn="True" 
-                 VerticalScrollBarVisibility="Visible" 
-                 Text="{Binding Text, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-        />
-        <DataGrid Grid.Row="1" >
+        <Label Grid.Row="0">Prompt</Label>
+        <TextBox  Grid.Row="1"
+                     TextWrapping="Wrap" 
+                     AcceptsReturn="True" 
+                     VerticalScrollBarVisibility="Visible" 
+                     Text="{Binding Text, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+        <StackPanel Grid.Row="2" >
+            <Label DockPanel.Dock="Top">Negative Prompt</Label>
+            <TextBox DockPanel.Dock="Bottom" VerticalAlignment="Stretch"
+                     TextWrapping="Wrap" 
+                     AcceptsReturn="True" 
+                     VerticalScrollBarVisibility="Visible" 
+                     Text="{Binding NegativePrompt, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+        </StackPanel>
+        <DataGrid Grid.Row="3" >
             <DataGrid.Columns>
                 <DataGridTextColumn Header="Pictures" />
             </DataGrid.Columns>

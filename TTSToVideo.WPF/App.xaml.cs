@@ -1,11 +1,13 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using NetXP.Exceptions;
 using NetXP.ImageGeneratorAI;
 using NetXP.TTS;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Data;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
@@ -21,6 +23,8 @@ namespace TTSToVideo
     /// </summary>
     public partial class App : Application
     {
+        private IMainWindow mw;
+
         protected override void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);
@@ -50,18 +54,37 @@ namespace TTSToVideo
             //MvvM
             services.AddSingleton<IVMMainPage, VMMainPage>();
             services.AddSingleton<IVMMainWindow, VMMainWindow>();
+            services.AddSingleton<IVMConfiguration, VMConfiguration>();
 
-            services.AddOptions<TTSOptions>().Configure((o) => { configuration.GetSection("TTSOptions").Bind(o); });
-            services.AddOptions<ImageGeneratorAIOptions>().Configure((o) => 
-            { 
+            services.AddOptions<TTSOptions>().Configure((o) =>
+            {
+                configuration.GetSection("TTSOptions").Bind(o);
+            });
+
+            services.AddOptions<ImageGeneratorAIOptions>().Configure((o) =>
+            {
                 configuration.GetSection("ImageGeneratorAIOptions").Bind(o);
                 o.Token = configuration.GetSection("LeonardoAIToken").Value;
             });
 
             var serviceProvider = services.BuildServiceProvider();
 
-            var mainWindow = serviceProvider.GetRequiredService<IMainWindow>();
-            mainWindow.Show();
+            this.mw = serviceProvider.GetRequiredService<IMainWindow>();
+            mw.Show();
+        }
+
+        private void Application_DispatcherUnhandledException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
+        {
+            if (e.Exception is CustomApplicationException)
+            {
+                this.mw.ViewModel.Message = e.Exception.Message;
+            }
+            else
+            {
+                MessageBox.Show($"{e.Exception.Message} , See detail in Exception.txt");
+                File.WriteAllText("Exception.txt", e.Exception.ToString());
+            }
+            e.Handled = true;
         }
     }
 }

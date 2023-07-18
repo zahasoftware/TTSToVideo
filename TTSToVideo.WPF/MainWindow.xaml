@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
         xmlns:local="clr-namespace:TTSToVideo"
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800"
@@ -12,6 +13,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="auto"></RowDefinition>
             <RowDefinition Height="*"></RowDefinition>
+            <RowDefinition Height="auto"></RowDefinition>
         </Grid.RowDefinitions>
         <Ribbon Grid.Row="0" x:Name="RibbonWin"  SelectedIndex="0" SelectionChanged="RibbonWin_SelectionChanged" >
             <!-- Help Pane, located at the right-hand side -->
@@ -45,12 +47,36 @@
             <RibbonTab Name="Tab1" Header="Home" KeyTip="H" >
                 <!-- Home  group-->
                 <RibbonGroup Header="Home">
+                    <!--<RibbonTextBox Label="Project Name" Text="{Binding MainPage.ProjectName,Mode=, UpdateSourceTrigger=PropertyChanged}"></RibbonTextBox>-->
+                    <ComboBox   IsEditable="true"
+                                IsTextSearchEnabled="true"
+                                ItemsSource="{Binding MainPage.ProjectsNames,Mode=TwoWay}"
+                                Text="{Binding MainPage.ProjectName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                SelectedItem="{Binding MainPage.ProjectNameSelected}"
+                                Width="200">
+                        <i:Interaction.Triggers>
+                            <i:EventTrigger EventName="SelectionChanged">
+                                <i:InvokeCommandAction Command="{Binding MainPage.ProjectNameSelectionChangedCommand}"                            
+                                                       CommandParameter="{Binding SelectedItem, RelativeSource={RelativeSource AncestorType={x:Type ComboBox}}}" />
+                            </i:EventTrigger>
+                        </i:Interaction.Triggers>
+                    </ComboBox>
+                    <Separator Height="50"></Separator>
                     <RibbonButton Label="Process" Command="{Binding MainPage.ProcessCommand}" ></RibbonButton>
+                    <!--<RibbonComboBox IsEditable="True" IsReadOnly="False" Label="Recent Projects" >
+                        <RibbonGallery SelectedItem="{Binding MainPage.ProjectNameSelected,Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
+                            <RibbonGalleryCategory ItemsSource="{Binding MainPage.ProjectsNames}"></RibbonGalleryCategory>
+                        </RibbonGallery>
+                    </RibbonComboBox>-->
                 </RibbonGroup>
             </RibbonTab>
             <!-- Ribbon Tab #2: -->
         </Ribbon>
         <Frame Grid.Row="1" x:Name="mainFrame" NavigationUIVisibility="Hidden"/>
-
+        <StatusBar Grid.Row="2" DockPanel.Dock="Bottom">
+            <StatusBarItem>
+                <Label Content="{Binding Message}"></Label>
+            </StatusBarItem>
+        </StatusBar>
     </Grid>
 </Window>

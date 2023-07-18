@@ -9,5 +9,6 @@ namespace TTSToVideo.WPF.ViewModel
     public interface IVMMainWindow
     {
         IVMMainPage MainPage { get; set; }
+        string Message { get; set; }
     }
 }
