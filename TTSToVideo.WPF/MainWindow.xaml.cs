@@ -15,6 +15,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using TTSToVideo.WPF;
+using TTSToVideo.WPF.Pages;
 using TTSToVideo.WPF.ViewModel;
 
 namespace TTSToVideo
@@ -25,9 +26,14 @@ namespace TTSToVideo
     public partial class MainWindow : Window, IMainWindow
     {
         public IMainPage mainPage;
+        private readonly IPage<ConfigurationPage> confPage;
+
         public IVMMainWindow ViewModel { get; }
 
-        public MainWindow(IMainPage mainPage, IVMMainWindow vmMainWindow)
+        public MainWindow(
+              IMainPage mainPage
+            , IPage<ConfigurationPage> confPage
+            , IVMMainWindow vmMainWindow)
         {
             InitializeComponent();
 
@@ -35,6 +41,7 @@ namespace TTSToVideo
             this.mainFrame.Navigate(mainPage);
 
             this.DataContext = vmMainWindow;
+            this.confPage = confPage;
             this.ViewModel = vmMainWindow;
 
             double screenWidth = SystemParameters.PrimaryScreenWidth;
@@ -60,13 +67,13 @@ namespace TTSToVideo
                 if (selectedTab != null)
                 {
                     // Perform actions based on the selected tab
-                    if (selectedTab.Name == "Tab1")
+                    if (selectedTab.Name == "tabHome")
                     {
                         this.mainFrame.Navigate(mainPage);
                     }
-                    else if (selectedTab.Name == "SettingsTab")
+                    else if (selectedTab.Name == "tabConfiguration")
                     {
-                        // Handle Settings tab selection
+                        this.mainFrame.Navigate(confPage);
                     }
                     // Add more conditions for other tabs as needed
                 }

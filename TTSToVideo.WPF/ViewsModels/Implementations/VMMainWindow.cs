@@ -14,6 +14,7 @@ namespace TTSToVideo.WPF.ViewModel.Implementations
         public VMMainWindow(IVMMainPage mainPage)
         {
             MainPage = mainPage;
+            this.VMConf = mainPage.VMConf;
 
             WeakReferenceMessenger.Default.Register<Message>(this, (o, a) =>
             {
@@ -23,5 +24,6 @@ namespace TTSToVideo.WPF.ViewModel.Implementations
 
         public IVMMainPage MainPage { get; set; }
         public string Message { get => message; set => SetProperty(ref message, value, true); }
+        public IVMConfiguration VMConf { get; set; }
     }
 }

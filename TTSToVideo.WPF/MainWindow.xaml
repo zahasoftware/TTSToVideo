@@ -7,7 +7,7 @@
         xmlns:local="clr-namespace:TTSToVideo"
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800"
-        d:DataContext="{Binding vmMainWindow}"
+        d:DataContext="{Binding ViewModel}"
     >
     <Grid>
         <Grid.RowDefinitions>
@@ -44,7 +44,7 @@
             </Ribbon.ApplicationMenu>
 
             <!-- Ribbon Tab #1: Home -->
-            <RibbonTab Name="Tab1" Header="Home" KeyTip="H" >
+            <RibbonTab Name="tabHome" Header="Home" KeyTip="H" >
                 <!-- Home  group-->
                 <RibbonGroup Header="Home">
                     <!--<RibbonTextBox Label="Project Name" Text="{Binding MainPage.ProjectName,Mode=, UpdateSourceTrigger=PropertyChanged}"></RibbonTextBox>-->
@@ -69,6 +69,9 @@
                         </RibbonGallery>
                     </RibbonComboBox>-->
                 </RibbonGroup>
+            </RibbonTab>
+            <RibbonTab Name="tabConfiguration" Header="Configuration" KeyTip="C" >
+                <RibbonButton Label="Save" Command="{Binding VMConf.SaveCommand}" ></RibbonButton>
             </RibbonTab>
             <!-- Ribbon Tab #2: -->
         </Ribbon>

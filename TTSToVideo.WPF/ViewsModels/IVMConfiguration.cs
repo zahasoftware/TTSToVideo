@@ -5,13 +5,15 @@ using System.ComponentModel;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using TTSToVideo.WPF.Models;
 
 namespace TTSToVideo.WPF.ViewModel
 {
     public interface IVMConfiguration : INotifyPropertyChanged
     {
-        public string ProjectBaseDir { get; set; }
-        public string ProjectBaseDirPrefix { get; set; }
-        void Init();
+        MConfiguration Model { get; set; }
+        Task Init();
+        AsyncRelayCommand SaveCommand { get; set; }
+
     }
 }

@@ -2,6 +2,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using NetXP.Exceptions;
 using NetXP.ImageGeneratorAI;
+using NetXP.Processes;
 using NetXP.TTS;
 using System;
 using System.Collections.Generic;
@@ -13,6 +14,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Navigation;
 using TTSToVideo.WPF;
+using TTSToVideo.WPF.Pages;
 using TTSToVideo.WPF.ViewModel;
 using TTSToVideo.WPF.ViewModel.Implementations;
 
@@ -31,6 +33,7 @@ namespace TTSToVideo
 
             var services = new ServiceCollection();
 
+            //Net Core
             var configuration = new ConfigurationBuilder()
                 .SetBasePath(AppDomain.CurrentDomain.BaseDirectory)
                 .AddJsonFile("appsettings.json")
@@ -39,22 +42,6 @@ namespace TTSToVideo
 
             services.AddSingleton<IConfiguration>(configuration);
             services.AddHttpClient();
-
-            //Windows
-            services.AddSingleton<IMainWindow, MainWindow>();
-            services.AddSingleton<IMainPage, MainPage>();
-
-            //Framework NetXP
-            services.AddSingleton<IImageGeneratorAI, NetXP.ImageGeneratorAI.LeonardoAI.ImageGeneratorAILeonardoAI>();
-            services.AddSingleton<ITTS, NetXP.TTS.OpenTTS.TTSOpenTTS>();
-
-            //DAO
-            services.AddSingleton<ITTS, NetXP.TTS.OpenTTS.TTSOpenTTS>();
-
-            //MvvM
-            services.AddSingleton<IVMMainPage, VMMainPage>();
-            services.AddSingleton<IVMMainWindow, VMMainWindow>();
-            services.AddSingleton<IVMConfiguration, VMConfiguration>();
 
             services.AddOptions<TTSOptions>().Configure((o) =>
             {
@@ -66,6 +53,24 @@ namespace TTSToVideo
                 configuration.GetSection("ImageGeneratorAIOptions").Bind(o);
                 o.Token = configuration.GetSection("LeonardoAIToken").Value;
             });
+
+            //Framework NetXP
+            services.AddSingleton<IImageGeneratorAI, NetXP.ImageGeneratorAI.LeonardoAI.ImageGeneratorAILeonardoAI>();
+            services.AddSingleton<ITTS, NetXP.TTS.OpenTTS.TTSOpenTTS>();
+            services.AddSingleton<IIOTerminal, NetXP.Processes.Implementations.IOTerminal>();
+
+            //DAO
+            services.AddSingleton<ITTS, NetXP.TTS.OpenTTS.TTSOpenTTS>();
+
+            //MvvM
+            services.AddSingleton<IVMMainPage, VMMainPage>();
+            services.AddSingleton<IVMMainWindow, VMMainWindow>();
+            services.AddSingleton<IVMConfiguration, VMConfiguration>();
+
+            //Views
+            services.AddSingleton<IMainWindow, MainWindow>();
+            services.AddSingleton<IMainPage, TTSToVideoPage>();
+            services.AddSingleton<IPage<ConfigurationPage>, ConfigurationPage>();
 
             var serviceProvider = services.BuildServiceProvider();
 

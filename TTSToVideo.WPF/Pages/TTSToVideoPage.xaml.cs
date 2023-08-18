@@ -19,12 +19,22 @@ namespace TTSToVideo.WPF
     /// <summary>
     /// Interaction logic for MainPage.xaml
     /// </summary>
-    public partial class MainPage : Page, IMainPage
+    public partial class TTSToVideoPage : Page, IMainPage
     {
-        public MainPage(IVMMainPage mainPage)
+        public TTSToVideoPage(IVMMainPage MainPageViewModel)
         {
             InitializeComponent();
-            this.DataContext = mainPage;
+            this.DataContext = MainPageViewModel;
+            this.MainPageViewModel = MainPageViewModel;
+
+            this.Loaded += MainPage_Loaded;
+        }
+
+        public IVMMainPage MainPageViewModel { get; }
+
+        private void MainPage_Loaded(object sender, RoutedEventArgs e)
+        {
+            this.MainPageViewModel.Init();
         }
     }
 }
