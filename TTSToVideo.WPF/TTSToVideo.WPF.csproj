@@ -25,12 +25,13 @@
     <PackageReference Include="NAudio" Version="2.1.0" />
     <PackageReference Include="NAudio.Core" Version="2.1.0" />
     <PackageReference Include="NAudio.Extras" Version="2.1.0" />
+    <PackageReference Include="NAudio.Lame" Version="2.1.0" />
     <PackageReference Include="Xabe.FFmpeg" Version="5.2.6" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\NetXP\NetXP.ImageGeneratorAI.LeonardoAI\NetXP.ImageGeneratorAI.LeonardoAI.csproj" />
-    <ProjectReference Include="..\..\..\NetXP\NetXP.TTS.OpenTTS\NetXP.TTS.OpenTTS.csproj" />
+    <ProjectReference Include="..\..\..\NetXP\NetXP.TTS.ElevenLabs\NetXP.TTSs.ElevenLabs.csproj" />
     <ProjectReference Include="..\..\..\NetXP\NetXP\NetXP.csproj" />
   </ItemGroup>
 

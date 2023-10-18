@@ -69,7 +69,5 @@ namespace TTSToVideo.WPF.ViewModel.Implementations
             await File.WriteAllTextAsync("Configuration.json", json);
         }
 
-
-
     }
 }

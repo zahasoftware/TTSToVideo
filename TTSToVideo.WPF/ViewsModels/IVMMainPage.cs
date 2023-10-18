@@ -13,6 +13,7 @@ namespace TTSToVideo.WPF.ViewModel
     {
         IVMConfiguration VMConf { get; }
         AsyncRelayCommand ProcessCommand { get; set; }
+        AsyncRelayCommand CancelCommand { get; set; }
         AsyncRelayCommand OpenExplorerCommand { get; set; }
         AsyncRelayCommand OpenVideoCommand { get; set; }
         AsyncRelayCommand<string> ProjectNameSelectionChangedCommand { get; set; }

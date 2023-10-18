@@ -59,10 +59,14 @@
                                 <i:InvokeCommandAction Command="{Binding MainPage.ProjectNameSelectionChangedCommand}"                            
                                                        CommandParameter="{Binding SelectedItem, RelativeSource={RelativeSource AncestorType={x:Type ComboBox}}}" />
                             </i:EventTrigger>
+                            <i:EventTrigger EventName="">
+                            </i:EventTrigger>
                         </i:Interaction.Triggers>
                     </ComboBox>
                     <Separator Height="50"></Separator>
                     <RibbonButton Label="Process" Command="{Binding MainPage.ProcessCommand}" ></RibbonButton>
+                    <Separator Height="50"></Separator>
+                    <RibbonButton Label="Cancel"  Command="{Binding MainPage.CancelCommand}" ></RibbonButton>
                     <!--<RibbonComboBox IsEditable="True" IsReadOnly="False" Label="Recent Projects" >
                         <RibbonGallery SelectedItem="{Binding MainPage.ProjectNameSelected,Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
                             <RibbonGalleryCategory ItemsSource="{Binding MainPage.ProjectsNames}"></RibbonGalleryCategory>

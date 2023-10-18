@@ -8,6 +8,6 @@ namespace TTSToVideo.WPF.Helpers
 {
     internal static class Constants
     {
-        public const int MAX_PATH = 255 - 4;//-4 Extension
+        public const int MAX_PATH = 255 - 4 - 50;//-4 Extension
     }
 }

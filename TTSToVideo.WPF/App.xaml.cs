@@ -4,6 +4,7 @@ using NetXP.Exceptions;
 using NetXP.ImageGeneratorAI;
 using NetXP.Processes;
 using NetXP.TTS;
+using NetXP.TTSs.ElevenLabs;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
@@ -43,9 +44,10 @@ namespace TTSToVideo
             services.AddSingleton<IConfiguration>(configuration);
             services.AddHttpClient();
 
-            services.AddOptions<TTSOptions>().Configure((o) =>
+            services.AddOptions<TTSElevenlabsOptions>().Configure((o) =>
             {
                 configuration.GetSection("TTSOptions").Bind(o);
+                o.APIKey = configuration.GetSection("ElevenLabsToken").Value;
             });
 
             services.AddOptions<ImageGeneratorAIOptions>().Configure((o) =>
@@ -56,11 +58,8 @@ namespace TTSToVideo
 
             //Framework NetXP
             services.AddSingleton<IImageGeneratorAI, NetXP.ImageGeneratorAI.LeonardoAI.ImageGeneratorAILeonardoAI>();
-            services.AddSingleton<ITTS, NetXP.TTS.OpenTTS.TTSOpenTTS>();
+            services.AddSingleton<ITTS, NetXP.TTSs.ElevenLabs.TTSEvenLabs>();
             services.AddSingleton<IIOTerminal, NetXP.Processes.Implementations.IOTerminal>();
-
-            //DAO
-            services.AddSingleton<ITTS, NetXP.TTS.OpenTTS.TTSOpenTTS>();
 
             //MvvM
             services.AddSingleton<IVMMainPage, VMMainPage>();
@@ -89,6 +88,7 @@ namespace TTSToVideo
                 MessageBox.Show($"{e.Exception.Message} , See detail in Exception.txt");
                 File.WriteAllText("Exception.txt", e.Exception.ToString());
             }
+
             e.Handled = true;
         }
     }
