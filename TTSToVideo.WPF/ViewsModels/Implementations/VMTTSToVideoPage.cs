@@ -1,7 +1,7 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+﻿using AutoMapper;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
-using Microsoft.VisualBasic.Devices;
 using NAudio.Wave;
 using NetXP.Exceptions;
 using NetXP.ImageGeneratorAI;
@@ -9,12 +9,14 @@ using NetXP.Processes;
 using NetXP.Processes.Implementations;
 using NetXP.TTS;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Data;
 using System.Diagnostics;
+using System.Drawing;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -26,69 +28,120 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using System.Windows.Controls;
+using System.Windows.Forms;
+using System.Windows.Forms.VisualStyles;
+using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 using TTSToVideo.WPF.Helpers;
-using Xabe.FFmpeg;
-using static System.Net.Mime.MediaTypeNames;
-using static System.Runtime.InteropServices.JavaScript.JSType;
+using TTSToVideo.WPF.Models;
+
+
 
 namespace TTSToVideo.WPF.ViewModel.Implementations
 {
 
-    public class VMMainPage : ObservableRecipient, IVMMainPage
+    public class VMTTSToVideoPage : ObservableRecipient, IVMTTSToVideoPage
     {
         private readonly IImageGeneratorAI imageGeneratorAI;
         private readonly ITTS tts;
         public IVMConfiguration VMConf { get; }
         public IIOTerminal Terminal { get; }
+        public IMapper Mapper { get; }
         public AsyncRelayCommand ProcessCommand { get; set; }
+        public AsyncRelayCommand SaveCommand { get; set; }
         public AsyncRelayCommand CancelCommand { get; set; }
         public AsyncRelayCommand OpenExplorerCommand { get; set; }
         public AsyncRelayCommand OpenVideoCommand { get; set; }
+        public AsyncRelayCommand UploadImageCommand { get; set; }
+        public AsyncRelayCommand GeneratePortraitImageCommand { get; set; }
         public AsyncRelayCommand<string> ProjectNameSelectionChangedCommand { get; set; }
 
-        public string _prompt;
-        public string Prompt { get => _prompt; set => SetProperty(ref _prompt, value, true); }
+        private MTTSToVideo model;
+        private bool fileAlreadyExists;
 
-        public string _negativePrompt;
-        public string NegativePrompt { get => _negativePrompt; set => SetProperty(ref _negativePrompt, value, true); }
+        public MTTSToVideo Model { get => model; set => SetProperty(ref model, value); }
 
-        public string _projectName;
-        public string ProjectName { get => _projectName; set => SetProperty(ref _projectName, value); }
-
-        private string projectNameSelected;
-        public string ProjectNameSelected { get => projectNameSelected; set => SetProperty(ref projectNameSelected, value); }
-
-        public ObservableCollection<string> _projectsNames;
-        public ObservableCollection<string> ProjectsNames { get => _projectsNames; set => SetProperty(ref _projectsNames, value, true); }
         public int WidthResolution { get; private set; } = 512;
         public int HeightResolution { get; private set; } = 904;
         public string FinalProjectVideoPathWithVoice { get; private set; }
         public CancellationTokenSource CancellationTokenSource { get; private set; }
 
-        public VMMainPage(IImageGeneratorAI imageGeneratorAI,
+        public VMTTSToVideoPage(IImageGeneratorAI imageGeneratorAI,
                           ITTS tts,
                           IVMConfiguration configuration,
-                          IIOTerminal terminal
+                          IIOTerminal terminal,
+                          IMapper mapper
         )
         {
             ProcessCommand = new AsyncRelayCommand(ProcessCommandExecute);
+            SaveCommand = new AsyncRelayCommand(SaveCommandExecute);
             CancelCommand = new AsyncRelayCommand(CancelCommandExecute);
             OpenExplorerCommand = new AsyncRelayCommand(OpenExplorer);
             OpenVideoCommand = new AsyncRelayCommand(OpenVideo);
+            UploadImageCommand = new AsyncRelayCommand(UploadImageCommandExecute);
+            GeneratePortraitImageCommand = new AsyncRelayCommand(GeneratePortraitImageCommandExecute);
             ProjectNameSelectionChangedCommand = new AsyncRelayCommand<string>(ProjectNameSelectionChangedCommandExecute);
             this.imageGeneratorAI = imageGeneratorAI;
             this.tts = tts;
             this.VMConf = configuration;
             this.Terminal = terminal;
-            this.Prompt = "";
+            Mapper = mapper;
+            this.Model = new MTTSToVideo
+            {
+                Prompt = ""
+            };
+        }
 
+        private Task SaveCommandExecute()
+        {
+            throw new NotImplementedException();
+        }
+
+        private async Task GeneratePortraitImageCommandExecute()
+        {
+            this.CancellationTokenSource = new CancellationTokenSource();
+            var token = CancellationTokenSource.Token;
+
+            var projectFullPath = this.GetProjectPath(this.Model.ProjectName);
+            int countImageMain = 1;
+
+            var statement = new Statement { Text = this.Model.PortraitText };
+            await GenerateImage(projectFullPath, countImageMain, statement, token);
+
+            this.Model.PortraitImagePath = Path.GetFileName(statement.Images.First().Path);
+
+            var fullPath = this.GetProjectPath(this.Model.ProjectName);
+            await this.SaveModel(fullPath);
+        }
+
+        private async Task UploadImageCommandExecute()
+        {
+            var openFileDialog = new System.Windows.Forms.OpenFileDialog
+            {
+                Filter = "Image Files|*.jpg;*.png;*.gif;*.bmp;*.jpeg"
+            };
+
+            if (openFileDialog.ShowDialog() == DialogResult.OK)
+            {
+                var fullProjectPath = this.GetProjectPath(this.Model.ProjectName);
+                var imageName = Path.GetFileName(openFileDialog.FileName);
+                if (!File.Exists(openFileDialog.FileName))
+                {
+                    File.Copy(openFileDialog.FileName, Path.Combine(fullProjectPath, imageName), true);
+                }
+                this.Model.PortraitImagePath = imageName;
+
+                await this.SaveModel(fullProjectPath);
+            }
+
+            await Task.Delay(1);
         }
 
         public async Task Init()
         {
             await this.VMConf.Init();
 
-            this.ProjectsNames = new ObservableCollection<string>();
+            this.VMConf.Model.ProjectsNames = new ObservableCollection<string>();
 
             if (!Directory.Exists(this.VMConf.Model.ProjectBaseDir))
             {
@@ -97,7 +150,7 @@ namespace TTSToVideo.WPF.ViewModel.Implementations
             else
             {
                 var directories = Directory.GetDirectories(this.VMConf.Model.ProjectBaseDir, $"{this.VMConf.Model.ProjectBaseDirPrefix}*");
-                directories.ToList().ForEach(o => this.ProjectsNames.Add(Path.GetFileName(o)));
+                directories.ToList().ForEach(o => this.VMConf.Model.ProjectsNames.Add(Path.GetFileName(o)));
             }
         }
 
@@ -118,7 +171,7 @@ namespace TTSToVideo.WPF.ViewModel.Implementations
             Process.Start(
                 new ProcessStartInfo
                 {
-                    FileName = $"\"{this.GetProjectPath(this.ProjectName)}\"",
+                    FileName = $"\"{this.GetProjectPath(this.Model.ProjectName)}\"",
                     UseShellExecute = true,
                     Verb = "open"
                 });
@@ -127,25 +180,16 @@ namespace TTSToVideo.WPF.ViewModel.Implementations
 
         private async Task ProjectNameSelectionChangedCommandExecute(string? p)
         {
+            this.Model = new MTTSToVideo();
+
             if (p == null)
             {
-                this.Prompt = "";
-                this.NegativePrompt = "";
                 return;
             }
 
             string projectFullPath = GetProjectPath(p);
-            var prompt = Path.Combine(projectFullPath, "Prompt.txt");
-            if (File.Exists(prompt))
-            {
-                this.Prompt = await File.ReadAllTextAsync(prompt);
-            }
 
-            var nprompt = Path.Combine(projectFullPath, "NegativePrompt.txt");
-            if (File.Exists(nprompt))
-            {
-                this.NegativePrompt = await File.ReadAllTextAsync(nprompt);
-            }
+            await this.LoadModel(projectFullPath);
 
             this.FinalProjectVideoPathWithVoice = projectFullPath + "\\" + $"{p}-Final.mp4";
         }
@@ -161,25 +205,21 @@ namespace TTSToVideo.WPF.ViewModel.Implementations
 
                 WeakReferenceMessenger.Default.Send(new Message { Text = "" });
 
-                if (string.IsNullOrEmpty(this.Prompt))
-                {
-                    throw new CustomApplicationException("Text Empty");
-                }
+                string projectFullPath = Validation();
 
-                if (string.IsNullOrEmpty(this.ProjectName))
-                {
-                    throw new CustomApplicationException("Project Name Empty");
-                }
-
-                string projectFullPath = GetProjectPath(this.ProjectName);
-
-                ProjectsNames.Add($"{this.VMConf.Model.ProjectBaseDirPrefix}{this.ProjectName}");
                 Directory.CreateDirectory(projectFullPath);
+                VMConf.Model.ProjectsNames.Add($"{this.VMConf.Model.ProjectBaseDirPrefix}{this.Model.ProjectName}");
 
                 //Split text process text with dot and paragraph
-                string[] paragraphs = Prompt.Split(new string[] { Environment.NewLine + Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
-
+                string[] paragraphs = Model.Prompt.Split(new string[] { Environment.NewLine + Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
                 statements = paragraphs.Select(o => new Statement { Text = o }).ToList();
+
+                var statementPortraitVoice = new Statement()
+                {
+                    Images = new List<StatementImage> { new StatementImage { Path = Path.Combine(projectFullPath, this.Model.PortraitImagePath) } },
+                    Text = this.Model.PortraitVoice,
+                    AudioPath = Path.Combine(projectFullPath, "portrait-voice.wav")
+                };
 
                 /*
                 foreach (var paragraph in paragraphs)
@@ -196,18 +236,22 @@ namespace TTSToVideo.WPF.ViewModel.Implementations
                 }
                 */
 
-                File.WriteAllText(Path.Combine(projectFullPath, $"Prompt.txt"), Prompt);
-                File.WriteAllText(Path.Combine(projectFullPath, $"NegativePrompt.txt"), NegativePrompt);
+                await this.SaveModel(projectFullPath);
 
+                //Getting voices
+                #region Processing Voices
                 var ttsVoices = await tts.GetTTSVoices("", token);
                 ttsVoices = ttsVoices.Where(o => o.Tags.Contains("meditation")).ToList();
                 Random rv = new();
                 int rvn = rv.Next(1, ttsVoices.Count + 1);
                 var ttsVoice = ttsVoices[rvn - 1];
 
-                //Getting the getting voices
-                int ca = 1;
                 bool anyNewFile = false;
+                //Getting portrait voice
+                anyNewFile = await GetVoice(ttsVoice, statementPortraitVoice, token);
+
+                //Getting statement voices
+                int ca = 1;
                 foreach (var statement in statements)
                 {
                     WeakReferenceMessenger.Default.Send(new Message { Text = $"Getting voices {ca}" });
@@ -216,36 +260,29 @@ namespace TTSToVideo.WPF.ViewModel.Implementations
                     audioFileName = Path.Combine(projectFullPath, $"{ca++}.-{CleanFileName(audioFileName)}.wav");
                     statement.AudioPath = audioFileName;
 
-                    if (File.Exists(audioFileName))
-                    {
-                        WaveStream file = AudioHelper.OpenAudio(statement.AudioPath);
-                        statement.AudioDuration = file.TotalTime;
-                    }
-                    else
-                    {
-
-                        anyNewFile = true;
-                        var audio = await tts.Convert(new TTSConvertOption
-                        {
-                            Text = statement.Text,
-                            Voice = ttsVoice
-                        }, token);
-
-                        var buffer = audio.File.GetBuffer();
-
-                        File.WriteAllBytes(audioFileName, buffer);
-
-                        using var audioFile1 = AudioHelper.OpenAudio(statement.AudioPath);
-                        statement.AudioDuration = audioFile1.TotalTime;
-                    }
+                    anyNewFile = await GetVoice(ttsVoice, statement, token);
                 }
 
                 //Concating voices 
+                WeakReferenceMessenger.Default.Send(new Message { Text = "Concatenating voices" });
+
                 var tempVoiceFileA = $"{Path.GetTempFileName()}.mp4";
                 var tempVoiceFileB = $"{Path.GetTempFileName()}.mp4";
 
-                var previous = statements.First().AudioPath;
-                WeakReferenceMessenger.Default.Send(new Message { Text = "Concatenating voices" });
+                var previous = "";
+
+                //Concatenating Portrait with the first audio
+                if (this.Model.PortraitEnabled)
+                {
+                    previous = statementPortraitVoice.AudioPath;
+                    AudioHelper.ConcatenateAudioFiles(tempVoiceFileA, new string[] { previous, statements.First().AudioPath });
+                    File.Copy(tempVoiceFileA, tempVoiceFileB, true);
+                    previous = tempVoiceFileB;
+                }
+                else
+                {
+                    previous = statements.First().AudioPath;
+                }
 
                 foreach (var s in statements.Skip(1))
                 {
@@ -264,8 +301,10 @@ namespace TTSToVideo.WPF.ViewModel.Implementations
 
                 RemoveTempFile(tempVoiceFileA);
                 RemoveTempFile(tempVoiceFileB);
+                #endregion
 
                 //Taking Picture
+                #region Processing Pictures
                 int numImages = 1;
                 int countImageMain = 0;
                 foreach (var statement in statements)
@@ -296,55 +335,16 @@ namespace TTSToVideo.WPF.ViewModel.Implementations
                         }
                     }
 
-                    string[] modelsIds = new string[] {
-                     //"e316348f-7773-490e-adcd-46757c738eb7", //Abosulte Reality v1.6 
-                       "ac614f96-1082-45bf-be9d-757f2d31c174" //DreamShaper v7
-                };
-                    Random r = new();
-                    int rn = r.Next(1, modelsIds.Length + 1);
 
                     if (notExistsOneImage)
                     {
-                        var imageId = await this.imageGeneratorAI.Generate(new OptionsImageGenerator
-                        {
-                            Width = WidthResolution,//512, //832,
-                            Height = HeightResolution,//904, //1472,
-                            ModelId = modelsIds[rn - 1],
-                            NumImages = 1,
-                            Prompt = statement.Text,
-                            NegativePrompt = NegativePrompt
-                        });
-                        statement.ImageId = imageId.Id;
-
-                        ResultImagesGenerated response;
-                        do
-                        {
-                            response = await this.imageGeneratorAI.GetImages(new ResultGenerate { Id = imageId.Id });
-
-                            if (token.IsCancellationRequested)
-                            {
-                                throw new CustomApplicationException("Operantion Cancelled by User");
-                            }
-
-                            if (response == null)
-                            {
-                                await Task.Delay(3000);
-                            }
-
-                        } while (response == null || response.Images.Count == 0);
-
-                        var ci = 1;
-                        foreach (var image in response.Images)
-                        {
-                            var imageFileName = $"{statement.Text.Substring(0, Math.Min(statement.Text.Length, Constants.MAX_PATH))}";
-                            imageFileName = Path.Combine(projectFullPath, $"{countImageMain}.{ci++}.-{CleanFileName(imageFileName)}.jpg");
-
-                            File.WriteAllBytes(imageFileName, image.Image);
-                        }
+                        await GenerateImage(projectFullPath, countImageMain, statement, token);
                     }
                 }
+                #endregion
 
                 //Making Audio
+                #region Processing Audio
                 WeakReferenceMessenger.Default.Send(new Message { Text = $"Making Audio." });
 
                 Random random = new();
@@ -357,7 +357,8 @@ namespace TTSToVideo.WPF.ViewModel.Implementations
                 {
                     desiredDuration += s.AudioDuration;
                 }
-                desiredDuration += new TimeSpan(0, 0, 10);
+                desiredDuration += statementPortraitVoice.AudioDuration;
+                desiredDuration += new TimeSpan(0, 0, 10);//Final duracion
                 using var audioFileReal = AudioHelper.OpenAudio(audioFilePath);
 
                 double cut = audioFileReal.TotalTime.TotalSeconds - 10;
@@ -396,19 +397,32 @@ namespace TTSToVideo.WPF.ViewModel.Implementations
                 RemoveTempFile(tempAudioFileA);
                 RemoveTempFile(tempAudioFileB);
                 RemoveTempFile(tempAudioFileC);
+                #endregion
 
                 //Making the Video
                 #region Making the Video
                 WeakReferenceMessenger.Default.Send(new Message { Text = $"Making Video." });
 
-                var finalProjectVideoPath = GetProjectPath(ProjectName) + "\\" + $"{ProjectName}.mp4";
+                var finalProjectVideoPath = GetProjectPath(Model.ProjectName) + "\\" + $"{Model.ProjectName}.mp4";
 
                 var previousVideo = "";
-
-                string output = "";
-                string error = "";
                 string outputPath = "";
                 string tempFile = "";
+
+                outputPath = statementPortraitVoice.AudioPath + ".mp4";
+                FfmpegOptions ffmpegOptions = new()
+                {
+                    FontStyle = new FfmpegFontStyle
+                    {
+                        Alignment = FfmpegAlignment.TopCenter,
+                        FontSize = 11
+                    }
+                };
+                await CreateVideoWithSubtitle(token, outputPath, statementPortraitVoice, ffmpegOptions);
+
+                tempFile = $"{Path.GetTempFileName()}.mp4";
+                File.Copy(outputPath, tempFile, true);
+                previousVideo = tempFile;
 
                 foreach (var s in statements)
                 {
@@ -417,96 +431,29 @@ namespace TTSToVideo.WPF.ViewModel.Implementations
                         throw new CustomApplicationException("Operantion Cancelled by User");
                     }
 
-                    // Set the paths to the input files
-                    string audioPath = s.AudioPath;
-                    string picturePath = s.Images.First().Path;
-                    //string subtitlePath = "path_to_subtitle_file";
-
-                    string subtitleFilePath = Path.GetTempFileName();
-                    File.WriteAllText(subtitleFilePath, $"1{Environment.NewLine}0:0:0.000 --> {s.AudioDuration:h\\:m\\:s\\.fff}{Environment.NewLine}{s.Text}");
-
-                    // Subtitles to ASS
-                    Process process = new Process();
-                    process.StartInfo.FileName = "ffmpeg";
-                    process.StartInfo.Arguments = $" -i {subtitleFilePath} {subtitleFilePath}.ass";
-
-                    process.StartInfo.CreateNoWindow = true;
-                    process.StartInfo.UseShellExecute = false;
-                    process.StartInfo.RedirectStandardOutput = true;
-                    process.StartInfo.RedirectStandardError = true;
-
-                    process.Start();
-                    await process.WaitForExitAsync(token);
-
-                    error = process.StandardError.ReadToEnd();
-
-                    Console.WriteLine("Output: " + output);
-                    Console.WriteLine("Error: " + error);
-
-                    var subtitleFilePathRare = subtitleFilePath
-                                .Replace("\\", "\\\\\\\\")
-                                .Replace(":", "\\:");
 
                     // Set the output file path
                     outputPath = s.AudioPath + ".mp4";
-
-                    if (!File.Exists(outputPath))
+                    ffmpegOptions = new()
                     {
-                        //subtitlePosition = The first in the top and continue with midle position of subtitle
-                        var subtitlePosition = (statements[0] == s) ? ",Alignment=10" : ",MarginV=30";
-
-                        // Run FFmpeg process
-                        process = new Process();
-                        process.StartInfo.FileName = "ffmpeg";
-                        process.StartInfo.Arguments = $"-loop 1 -y" +
-                                                      $" -i \"{picturePath}\" " +
-                                                      $" -f lavfi " +
-                                                      $" -t \"{s.AudioDuration.TotalSeconds}\" " +
-                                                      $" -i anullsrc=r=44100:cl=stereo " +
-                                                      $"-vf \"subtitles='{subtitleFilePathRare}.ass':force_style='Fontsize=12{subtitlePosition}'\" " +
-                                                      $"-c:v libx264 " +
-                                                      $"-shortest \"{outputPath}\"";
-
-                        process.StartInfo.CreateNoWindow = true;
-                        process.StartInfo.UseShellExecute = false;
-                        process.StartInfo.RedirectStandardOutput = true;
-                        process.StartInfo.RedirectStandardError = true;
-                        process.Start();
-
-                        process.BeginOutputReadLine();
-                        error = process.StandardError.ReadToEnd();
-
-                        if (error.Contains("Error"))
+                        FontStyle = new()
                         {
-                            throw new Exception("Error when try to create video with image", new Exception(error));
+                            Alignment = FfmpegAlignment.TopCenter,
+                            FontSize = 11
                         }
+                    };
+                    await CreateVideoWithSubtitle(token, outputPath, s, ffmpegOptions);
 
-                        await process.WaitForExitAsync(token);
+                    await JoiningVideos(previousVideo, outputPath, finalProjectVideoPath, token);
 
-                        Console.WriteLine("Error: " + error);
-                        File.Delete(subtitleFilePath);
-                    }
-
-                    //Mergins videos to make final Video
-                    if (statements[0] == s)
+                    if (File.Exists(previousVideo))
                     {
-                        tempFile = $"{Path.GetTempFileName()}.mp4";
-                        File.Copy($"{s.AudioPath}.mp4", tempFile, true);
-                        previousVideo = tempFile;
+                        RemoveTempFile(previousVideo);
                     }
-                    else
-                    {
-                        await JoiningVideos(previousVideo, outputPath, finalProjectVideoPath, token);
 
-                        if (File.Exists(previousVideo))
-                        {
-                            RemoveTempFile(previousVideo);
-                        }
-
-                        tempFile = $"{Path.GetTempFileName()}.mp4";
-                        File.Copy(finalProjectVideoPath, tempFile, true);
-                        previousVideo = tempFile;
-                    }
+                    tempFile = $"{Path.GetTempFileName()}.mp4";
+                    File.Copy(finalProjectVideoPath, tempFile, true);
+                    previousVideo = tempFile;
                 }
 
                 tempFile = $"{Path.GetTempFileName()}.mp4";
@@ -518,31 +465,12 @@ namespace TTSToVideo.WPF.ViewModel.Implementations
                 outputPath = $"{lastStatement.AudioPath}-no-text.mp4";
 
                 //Run ffmpeg process
-                var p = new Process();
-                p.StartInfo.FileName = "ffmpeg";
-                p.StartInfo.Arguments = $"-loop 1 -y" +
-                                        $" -i \"{lastImage}\" " +
-                                        $" -f lavfi " +
-                                        $" -t 10 " +
-                                        $" -i anullsrc=r=44100:cl=stereo " +
-                                        $"-c:v libx264 " +
-                                        $"-shortest \"{outputPath}\"";
-
-                p.StartInfo.CreateNoWindow = true;
-                p.StartInfo.UseShellExecute = false;
-                p.StartInfo.RedirectStandardOutput = true;
-                p.StartInfo.RedirectStandardError = true;
-                p.Start();
-
-                p.BeginOutputReadLine();
-                string tmpErrorOut = p.StandardError.ReadToEnd();
-
-                await p.WaitForExitAsync(token);
+                await GenerateVideoWithImage(outputPath, lastImage, token);
 
                 //Adding last image
                 await JoiningVideos(previousVideo, outputPath, finalProjectVideoPath, token);
 
-                var finalProjectVideoPathWithAudio = this.GetProjectPath(ProjectName) + "\\" + $"{ProjectName}-Music-Final.mp4";
+                var finalProjectVideoPathWithAudio = this.GetProjectPath(Model.ProjectName) + "\\" + $"{Model.ProjectName}-Music-Final.mp4";
                 await this.MixAudioWithVideo(finalProjectVideoPath
                                            , outputMusicFile
                                            , finalProjectVideoPathWithAudio
@@ -550,7 +478,7 @@ namespace TTSToVideo.WPF.ViewModel.Implementations
 
                 if (string.IsNullOrEmpty(FinalProjectVideoPathWithVoice))
                 {
-                    this.FinalProjectVideoPathWithVoice = this.GetProjectPath(ProjectName) + "\\" + $"{ProjectName}-Final.mp4";
+                    this.FinalProjectVideoPathWithVoice = this.GetProjectPath(Model.ProjectName) + "\\" + $"{Model.ProjectName}-Final.mp4";
                 }
 
                 await this.MixAudioWithVideo(finalProjectVideoPathWithAudio
@@ -567,16 +495,272 @@ namespace TTSToVideo.WPF.ViewModel.Implementations
                 this.CancellationTokenSource.Dispose();
 
                 if (statements != null)
+                {
                     //Cleaning
                     foreach (var s in statements)
                     {
                         if (s.ImageId != null)
                         {
-                            await this.imageGeneratorAI.Remove(new ResultGenerate { Id = s.ImageId });
+                            await this.imageGeneratorAI.Remove(new ResultGenerate
+                            {
+                                Id = s.ImageId
+                            });
                         }
                     }
+                }
                 WeakReferenceMessenger.Default.Send(new Message { Text = "Process Finished." });
             }
+        }
+
+        private static async Task CreateVideoWithSubtitle(CancellationToken token, string outputPath, Statement s, FfmpegOptions ffmpegOptions)
+        {
+            string subtitleFilePath = Path.GetTempFileName();
+
+            File.WriteAllText(subtitleFilePath, $"1{Environment.NewLine}0:0:0.000 --> {s.AudioDuration:h\\:m\\:s\\.fff}{Environment.NewLine}{s.Text}");
+
+            // Subtitles to ASS
+            Process process = new Process();
+            process.StartInfo.FileName = "ffmpeg";
+            process.StartInfo.Arguments = $" -i {subtitleFilePath} {subtitleFilePath}.ass";
+
+            process.StartInfo.CreateNoWindow = true;
+            process.StartInfo.UseShellExecute = false;
+            process.StartInfo.RedirectStandardOutput = true;
+            process.StartInfo.RedirectStandardError = true;
+
+            process.Start();
+            await process.WaitForExitAsync(token);
+
+            var error = process.StandardError.ReadToEnd();
+
+            Console.WriteLine("Error: " + error);
+
+            var subtitleFilePathRare = subtitleFilePath
+                        .Replace("\\", "\\\\\\\\")
+                        .Replace(":", "\\:");
+
+
+            if (!File.Exists(outputPath))
+            {
+                //Force_Style for ffmpeg
+                var forceStyle = "";
+                var options = new List<string>();
+                if (ffmpegOptions.FontStyle.Alignment != null)
+                {
+                    options.Add($"Alignment={(byte)ffmpegOptions.FontStyle.Alignment.Value}");
+                }
+
+                if (ffmpegOptions.FontStyle.MarginV != null)
+                {
+                    options.Add($"MarginV={(byte)ffmpegOptions.FontStyle.MarginV.Value}");
+                }
+
+                if (ffmpegOptions.FontStyle.FontSize != null)
+                {
+                    options.Add($"Fontsize={(byte)ffmpegOptions.FontStyle.FontSize.Value}");
+                }
+
+
+                forceStyle = string.Join(",", options);
+
+                if (!string.IsNullOrEmpty(forceStyle))
+                {
+                    forceStyle = $":force_style={forceStyle}";
+                }
+
+                string picturePath = s.Images.First().Path;
+
+                // Run FFmpeg process
+                process = new Process();
+                process.StartInfo.FileName = "ffmpeg";
+                process.StartInfo.Arguments = $"-loop 1 -y" +
+                                              $" -i \"{picturePath}\" " +
+                                              $" -f lavfi " +
+                                              $" -t \"{s.AudioDuration.TotalSeconds}\" " +
+                                              $" -i anullsrc=r=44100:cl=stereo " +
+                                              $"-vf \"subtitles='{subtitleFilePathRare}.ass':force_style='{forceStyle}'\" " +
+                                              $"-c:v libx264 " +
+                                              $"-shortest \"{outputPath}\"";
+
+                process.StartInfo.CreateNoWindow = true;
+                process.StartInfo.UseShellExecute = false;
+                process.StartInfo.RedirectStandardOutput = true;
+                process.StartInfo.RedirectStandardError = true;
+                process.Start();
+
+                process.BeginOutputReadLine();
+                error = process.StandardError.ReadToEnd();
+
+                if (error.Contains("Error"))
+                {
+                    throw new Exception("Error when try to create video with image", new Exception(error));
+                }
+
+                await process.WaitForExitAsync(token);
+
+                Console.WriteLine("Error: " + error);
+                File.Delete(subtitleFilePath);
+            }
+        }
+
+        private async Task<bool> GetVoice(TTSVoice ttsVoice, Statement statement, CancellationToken token)
+        {
+            bool isNewFile = false;
+            if (File.Exists(statement.AudioPath))
+            {
+                WaveStream file = AudioHelper.OpenAudio(statement.AudioPath);
+                statement.AudioDuration = file.TotalTime;
+                isNewFile = true;
+            }
+            else
+            {
+                var audio = await tts.Convert(new TTSConvertOption
+                {
+                    Text = statement.Text,
+                    Voice = ttsVoice
+                }, token);
+
+                var buffer = audio.File.GetBuffer();
+
+                File.WriteAllBytes(statement.AudioPath, buffer);
+
+                using var audioFile1 = AudioHelper.OpenAudio(statement.AudioPath);
+                statement.AudioDuration = audioFile1.TotalTime;
+                isNewFile = true;
+            }
+
+            return isNewFile;
+        }
+
+        private static async Task GenerateVideoWithImage(string outputPath, string inputImagePath, CancellationToken token)
+        {
+            var p = new Process();
+            p.StartInfo.FileName = "ffmpeg";
+            p.StartInfo.Arguments = $"-loop 1 -y" +
+                                    $" -i \"{inputImagePath}\" " +
+                                    $" -f lavfi " +
+                                    $" -t 10 " +
+                                    $" -i anullsrc=r=44100:cl=stereo " +
+                                    $"-c:v libx264 " +
+                                    $"-shortest \"{outputPath}\"";
+
+            p.StartInfo.CreateNoWindow = true;
+            p.StartInfo.UseShellExecute = false;
+            p.StartInfo.RedirectStandardOutput = true;
+            p.StartInfo.RedirectStandardError = true;
+            p.Start();
+
+            p.BeginOutputReadLine();
+            string tmpErrorOut = p.StandardError.ReadToEnd();
+
+            await p.WaitForExitAsync(token);
+        }
+
+        private string Validation()
+        {
+            if (string.IsNullOrEmpty(this.Model.Prompt))
+            {
+                throw new CustomApplicationException("Text Empty");
+            }
+
+            if (string.IsNullOrEmpty(this.Model.ProjectName))
+            {
+                throw new CustomApplicationException("Project Name Empty");
+            }
+
+            string projectFullPath = GetProjectPath(this.Model.ProjectName);
+
+            var invalidChars = Path.GetInvalidFileNameChars();
+            var invalidCharsInPath = Model.ProjectName.Where(o => invalidChars.Any(a => a == o));
+            if (invalidCharsInPath.Any())
+            {
+                throw new CustomApplicationException($"There are invalid chars in project name => \"{string.Join(",", invalidCharsInPath)}\"");
+            }
+
+            return projectFullPath;
+        }
+
+        private async Task GenerateImage(string projectFullPath, int countImageMain, Statement statement, CancellationToken token)
+        {
+            string[] modelsIds = new string[] {
+                     //"e316348f-7773-490e-adcd-46757c738eb7", //Abosulte Reality v1.6 
+                       "ac614f96-1082-45bf-be9d-757f2d31c174" //DreamShaper v7
+                };
+            Random r = new();
+            int rn = r.Next(1, modelsIds.Length + 1);
+
+            var imageId = await this.imageGeneratorAI.Generate(new OptionsImageGenerator
+            {
+                Width = WidthResolution,//512, //832,
+                Height = HeightResolution,//904, //1472,
+                ModelId = modelsIds[rn - 1],
+                NumImages = 1,
+                Prompt = statement.Text,
+                NegativePrompt = Model.NegativePrompt
+            });
+            statement.ImageId = imageId.Id;
+
+            ResultImagesGenerated response;
+            do
+            {
+                response = await this.imageGeneratorAI.GetImages(new ResultGenerate { Id = imageId.Id });
+
+                if (token.IsCancellationRequested)
+                {
+                    throw new CustomApplicationException("Operantion Cancelled by User");
+                }
+
+                if (response == null)
+                {
+                    await Task.Delay(3000, token);
+                }
+
+            } while (response == null || response.Images.Count == 0);
+
+            var ci = 1;
+            foreach (var image in response.Images)
+            {
+                var imageFileName = $"{statement.Text.Substring(0, Math.Min(statement.Text.Length, Constants.MAX_PATH))}";
+                imageFileName = Path.Combine(projectFullPath, $"{countImageMain}.{ci++}.-{CleanFileName(imageFileName)}.jpg");
+
+                statement.Images.Add(new StatementImage
+                {
+                    Path = imageFileName,
+                });
+
+                File.WriteAllBytes(imageFileName, image.Image);
+            }
+        }
+
+        private async Task SaveModel(string basePath)
+        {
+            var json = JsonConvert.SerializeObject(this.Model);
+            await File.WriteAllTextAsync(Path.Combine(basePath, "TTSToVideo.json"), json);
+        }
+
+        private async Task LoadModel(string basePath)
+        {
+            var json = await File.ReadAllTextAsync(Path.Combine(basePath, "TTSToVideo.json"));
+            if (json == null)
+            {
+                this.Model = new MTTSToVideo();
+            }
+            else
+            {
+                var model = JsonConvert.DeserializeObject<MTTSToVideo>(json);
+                this.Mapper.Map<MTTSToVideo, MTTSToVideo>(model, this.Model);
+
+                BitmapImage bitmapImage = new();
+                bitmapImage.BeginInit();
+                bitmapImage.UriSource = new Uri(Path.Combine(basePath, this.Model.PortraitImagePath));
+                bitmapImage.EndInit();
+
+                await Dispatcher.CurrentDispatcher.BeginInvoke(DispatcherPriority.Background, () =>
+                {
+                    this.Model.PortraitImage = bitmapImage;
+                });
+            }
+
         }
 
         private async Task CancelCommandExecute()

@@ -11,7 +11,10 @@ namespace TTSToVideo.WPF.ViewModel.Implementations
     public class VMMainWindow : ObservableRecipient, IVMMainWindow
     {
         private string message;
-        public VMMainWindow(IVMMainPage mainPage)
+        private IVMTTSToVideoPage mainPage;
+        private IVMConfiguration _VMConf;
+
+        public VMMainWindow(IVMTTSToVideoPage mainPage)
         {
             MainPage = mainPage;
             this.VMConf = mainPage.VMConf;
@@ -22,8 +25,8 @@ namespace TTSToVideo.WPF.ViewModel.Implementations
             });
         }
 
-        public IVMMainPage MainPage { get; set; }
+        public IVMTTSToVideoPage MainPage { get => mainPage; set => SetProperty(ref mainPage, value); }
         public string Message { get => message; set => SetProperty(ref message, value, true); }
-        public IVMConfiguration VMConf { get; set; }
+        public IVMConfiguration VMConf { get => _VMConf; set => SetProperty(ref _VMConf, value, true); }
     }
 }

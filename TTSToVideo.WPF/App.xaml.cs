@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using AutoMapper;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using NetXP.Exceptions;
 using NetXP.ImageGeneratorAI;
@@ -15,6 +16,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Navigation;
 using TTSToVideo.WPF;
+using TTSToVideo.WPF.Models;
 using TTSToVideo.WPF.Pages;
 using TTSToVideo.WPF.ViewModel;
 using TTSToVideo.WPF.ViewModel.Implementations;
@@ -56,13 +58,23 @@ namespace TTSToVideo
                 o.Token = configuration.GetSection("LeonardoAIToken").Value;
             });
 
+            var mapperConfig = new MapperConfiguration(cfg =>
+            {
+                cfg.CreateMap<MTTSToVideo, MTTSToVideo>()
+                        .ForMember(o => o.ProjectNameSelected, o => o.Ignore());
+            });
+
+            var mapper = mapperConfig.CreateMapper();
+
+            services.AddSingleton<IMapper>(mapper);
+
             //Framework NetXP
             services.AddSingleton<IImageGeneratorAI, NetXP.ImageGeneratorAI.LeonardoAI.ImageGeneratorAILeonardoAI>();
             services.AddSingleton<ITTS, NetXP.TTSs.ElevenLabs.TTSEvenLabs>();
             services.AddSingleton<IIOTerminal, NetXP.Processes.Implementations.IOTerminal>();
 
             //MvvM
-            services.AddSingleton<IVMMainPage, VMMainPage>();
+            services.AddSingleton<IVMTTSToVideoPage, VMTTSToVideoPage>();
             services.AddSingleton<IVMMainWindow, VMMainWindow>();
             services.AddSingleton<IVMConfiguration, VMConfiguration>();
 
@@ -88,8 +100,11 @@ namespace TTSToVideo
                 MessageBox.Show($"{e.Exception.Message} , See detail in Exception.txt");
                 File.WriteAllText("Exception.txt", e.Exception.ToString());
             }
-
+#if DEBUG
+            e.Handled = false;
+#else
             e.Handled = true;
+#endif
         }
     }
 }

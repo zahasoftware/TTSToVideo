@@ -4,11 +4,11 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
-        xmlns:local="clr-namespace:TTSToVideo"
+        xmlns:local="clr-namespace:TTSToVideo" 
+        xmlns:implementations="clr-namespace:TTSToVideo.WPF.ViewModel.Implementations" 
+        d:DataContext="{d:DesignInstance Type=implementations:VMMainWindow}"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800"
-        d:DataContext="{Binding ViewModel}"
-    >
+        Title="MainWindow" Height="450" Width="800" >
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="auto"></RowDefinition>
@@ -50,9 +50,9 @@
                     <!--<RibbonTextBox Label="Project Name" Text="{Binding MainPage.ProjectName,Mode=, UpdateSourceTrigger=PropertyChanged}"></RibbonTextBox>-->
                     <ComboBox   IsEditable="true"
                                 IsTextSearchEnabled="true"
-                                ItemsSource="{Binding MainPage.ProjectsNames,Mode=TwoWay}"
-                                Text="{Binding MainPage.ProjectName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                SelectedItem="{Binding MainPage.ProjectNameSelected}"
+                                ItemsSource="{Binding VMConf.Model.ProjectsNames,Mode=TwoWay}"
+                                Text="{Binding MainPage.Model.ProjectName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                SelectedItem="{Binding MainPage.Model.ProjectNameSelected}"
                                 Width="200">
                         <i:Interaction.Triggers>
                             <i:EventTrigger EventName="SelectionChanged">
@@ -65,6 +65,8 @@
                     </ComboBox>
                     <Separator Height="50"></Separator>
                     <RibbonButton Label="Process" Command="{Binding MainPage.ProcessCommand}" ></RibbonButton>
+                    <Separator Height="50"></Separator>
+                    <RibbonButton Label="Save" Command="{Binding MainPage.SaveCommand}" ></RibbonButton>
                     <Separator Height="50"></Separator>
                     <RibbonButton Label="Cancel"  Command="{Binding MainPage.CancelCommand}" ></RibbonButton>
                     <!--<RibbonComboBox IsEditable="True" IsReadOnly="False" Label="Recent Projects" >

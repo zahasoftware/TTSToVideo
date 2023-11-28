@@ -21,20 +21,21 @@ namespace TTSToVideo.WPF
     /// </summary>
     public partial class TTSToVideoPage : Page, IMainPage
     {
-        public TTSToVideoPage(IVMMainPage MainPageViewModel)
+        public TTSToVideoPage(IVMTTSToVideoPage ttsToVideo)
         {
             InitializeComponent();
-            this.DataContext = MainPageViewModel;
-            this.MainPageViewModel = MainPageViewModel;
+            this.DataContext = ttsToVideo;
+            this.ttsToVideo = ttsToVideo;
 
             this.Loaded += MainPage_Loaded;
         }
 
-        public IVMMainPage MainPageViewModel { get; }
+        public IVMTTSToVideoPage ttsToVideo { get; }
 
         private void MainPage_Loaded(object sender, RoutedEventArgs e)
         {
-            this.MainPageViewModel.Init();
+            this.ttsToVideo.Init();
         }
+
     }
 }
