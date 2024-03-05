@@ -15,15 +15,15 @@ namespace TTSToVideo.WPF.ViewModel.Implementations
 {
     public class VMConfiguration : ObservableRecipient, IVMConfiguration
     {
-        private MConfiguration model;
-        public MConfiguration Model { get => model; set => SetProperty(ref model, value, true); }
+        private ConfigurationModel model;
+        public ConfigurationModel Model { get => model; set => SetProperty(ref model, value, true); }
         public AsyncRelayCommand SaveCommand { get; set; }
         public const string ConfigurationFile = "Configuration.json";
 
         public VMConfiguration()
         {
             SaveCommand = new AsyncRelayCommand(Save);
-            this.Model = new MConfiguration();
+            this.Model = new ConfigurationModel();
 
         }
 
@@ -31,7 +31,7 @@ namespace TTSToVideo.WPF.ViewModel.Implementations
         {
             await CreateConfIfNotExists();
             var json = await File.ReadAllTextAsync(ConfigurationFile);
-            this.Model = JsonConvert.DeserializeObject<MConfiguration>(json);
+            this.Model = JsonConvert.DeserializeObject<ConfigurationModel>(json);
         }
 
         private static async Task CreateConfIfNotExists()
@@ -46,14 +46,9 @@ namespace TTSToVideo.WPF.ViewModel.Implementations
         {
             await this.Load();
 
-            if (string.IsNullOrEmpty(Model.ProjectBaseDirPrefix))
-            {
-                this.Model.ProjectBaseDirPrefix = "P-";
-            }
-
             if (string.IsNullOrEmpty(this.Model.ProjectBaseDir))
             {
-                this.Model.ProjectBaseDir = Directory.GetCurrentDirectory();
+                this.Model.ProjectBaseDir = Path.Combine(Directory.GetCurrentDirectory(), "Projects");
             }
 
             if (string.IsNullOrEmpty(this.Model.MusicDir))

@@ -50,14 +50,15 @@
                     <!--<RibbonTextBox Label="Project Name" Text="{Binding MainPage.ProjectName,Mode=, UpdateSourceTrigger=PropertyChanged}"></RibbonTextBox>-->
                     <ComboBox   IsEditable="true"
                                 IsTextSearchEnabled="true"
-                                ItemsSource="{Binding VMConf.Model.ProjectsNames,Mode=TwoWay}"
+                                ItemsSource="{Binding MainPage.Model.ProjectsNames,Mode=TwoWay}"
+                                DisplayMemberPath="FileName"
                                 Text="{Binding MainPage.Model.ProjectName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                 SelectedItem="{Binding MainPage.Model.ProjectNameSelected}"
                                 Width="200">
                         <i:Interaction.Triggers>
                             <i:EventTrigger EventName="SelectionChanged">
                                 <i:InvokeCommandAction Command="{Binding MainPage.ProjectNameSelectionChangedCommand}"                            
-                                                       CommandParameter="{Binding SelectedItem, RelativeSource={RelativeSource AncestorType={x:Type ComboBox}}}" />
+                                                       CommandParameter="{Binding SelectedItem.ProjectName, RelativeSource={RelativeSource AncestorType={x:Type ComboBox}}}" />
                             </i:EventTrigger>
                             <i:EventTrigger EventName="">
                             </i:EventTrigger>
@@ -68,7 +69,10 @@
                     <Separator Height="50"></Separator>
                     <RibbonButton Label="Save" Command="{Binding MainPage.SaveCommand}" ></RibbonButton>
                     <Separator Height="50"></Separator>
-                    <RibbonButton Label="Cancel"  Command="{Binding MainPage.CancelCommand}" ></RibbonButton>
+                    <RibbonButton Label="Cancel"  
+                                  Command="{Binding MainPage.CancelCommand}" 
+                                  IsEnabled="{Binding MainPage.ProcessCommand.IsRunning}"
+                                  ></RibbonButton>
                     <!--<RibbonComboBox IsEditable="True" IsReadOnly="False" Label="Recent Projects" >
                         <RibbonGallery SelectedItem="{Binding MainPage.ProjectNameSelected,Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
                             <RibbonGalleryCategory ItemsSource="{Binding MainPage.ProjectsNames}"></RibbonGalleryCategory>

@@ -9,5 +9,9 @@ namespace TTSToVideo.WPF.Helpers
     public class FfmpegOptions
     {
         public FfmpegFontStyle FontStyle { get; set; }
+
+        public int WidthResolution { get; set; }
+        public int HeightResolution { get; set; }
+        public object AdditionalArgs { get; internal set; }
     }
 }

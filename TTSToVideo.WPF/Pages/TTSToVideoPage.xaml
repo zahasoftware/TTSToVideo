@@ -34,37 +34,47 @@
             <RowDefinition Height="auto"></RowDefinition>
             <RowDefinition Height="*"></RowDefinition>
         </Grid.RowDefinitions>
-        <StackPanel Grid.Row="0" HorizontalAlignment="Stretch" Orientation="Horizontal">
-            <Label>Portrait Text</Label>
-            <TextBox MinWidth="200"
+        <StackPanel Grid.Row="0" HorizontalAlignment="Stretch" Orientation="Vertical">
+            <StackPanel  Orientation="Horizontal">
+                <Label>Portrait Text</Label>
+                <TextBox IsEnabled="{Binding ElementName=EnablePortrait, Path=IsChecked}" MinWidth="200"
                      TextWrapping="Wrap" 
                      AcceptsReturn="True" 
                      Text="{Binding Model.PortraitText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                      ></TextBox>
-            <Label>Portrait Voice</Label>
-            <TextBox 
+                <Label>Portrait Voice</Label>
+                <TextBox  IsEnabled="{Binding ElementName=EnablePortrait, Path=IsChecked}"
                      TextWrapping="Wrap" 
                      AcceptsReturn="True" 
                      MinWidth="200"
                      Text="{Binding Model.PortraitVoice, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                 ></TextBox>
-            <Label>Text Background Color</Label>
-            <xctk:ColorPicker 
+                <Label>Text Background Color</Label>
+                <xctk:ColorPicker  IsEnabled="{Binding ElementName=EnablePortrait, Path=IsChecked}"
                 Name="ClrPcker_Background" 
                 SelectedColor="{Binding Model.PortraitBackgroundColor}"
             ></xctk:ColorPicker>
-            <Label>Portrait Image</Label>
-            <TextBox 
+                <Label>Portrait Image</Label>
+                <TextBox  
                      TextWrapping="Wrap" 
                      AcceptsReturn="True" 
                      MinWidth="200"
-                     IsEnabled="False"
                      Text="{Binding Model.PortraitImagePath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                 ></TextBox>
-            <Button Content="Upload Image" Command="{Binding UploadImageCommand}" HorizontalAlignment="Center"/>
-
-            <Button  Content="Generate Portrait (IA)" Command="{Binding GeneratePortraitImageCommand}"  />
-            <CheckBox Content="Enable" IsChecked="{Binding Model.PortraitEnabled}" />
+                <Button IsEnabled="{Binding ElementName=EnablePortrait, Path=IsChecked}" 
+                        Content="Upload Image" 
+                        Command="{Binding UploadImageCommand}" 
+                        HorizontalAlignment="Center"/>
+                <Button  IsEnabled="{Binding ElementName=EnablePortrait, Path=IsChecked}" 
+                         Content="Generate Portrait (IA)" 
+                         Command="{Binding GeneratePortraitImageCommand}"  />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal">
+                <CheckBox x:Name="EnablePortrait" 
+                          Content="Enable" 
+                          IsChecked="{Binding Model.PortraitEnabled}" 
+                          />
+            </StackPanel>
         </StackPanel>
         <Label Grid.Row="1">Prompt</Label>
         <TextBox  Grid.Row="2"

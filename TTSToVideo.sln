@@ -13,6 +13,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NetXP.DependencyInjection",
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NetXP.TTSs.ElevenLabs", "..\..\NetXP\NetXP.TTS.ElevenLabs\NetXP.TTSs.ElevenLabs.csproj", "{BC679B08-1D03-4202-A03B-2BD53D8FB584}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Framework", "Framework", "{FB61784D-3AE8-49AB-B7CE-34FAF7AD023B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -64,6 +66,12 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{FB1E56BE-766E-4731-BAB8-F641D7395DF8} = {FB61784D-3AE8-49AB-B7CE-34FAF7AD023B}
+		{DBD63AB4-036D-437C-AD1E-4345A00A7471} = {FB61784D-3AE8-49AB-B7CE-34FAF7AD023B}
+		{E77C443E-3E86-4963-ABBE-9A3B65462DED} = {FB61784D-3AE8-49AB-B7CE-34FAF7AD023B}
+		{BC679B08-1D03-4202-A03B-2BD53D8FB584} = {FB61784D-3AE8-49AB-B7CE-34FAF7AD023B}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {BF645A19-807E-4D55-A008-672D6E69800A}

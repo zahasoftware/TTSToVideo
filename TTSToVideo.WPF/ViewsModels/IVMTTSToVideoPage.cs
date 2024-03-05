@@ -13,7 +13,7 @@ namespace TTSToVideo.WPF.ViewModel
 {
     public interface IVMTTSToVideoPage : INotifyPropertyChanged
     {
-        MTTSToVideo Model { get; set; }
+        TTSToVideoModel Model { get; set; }
         IVMConfiguration VMConf { get; }
 
         AsyncRelayCommand ProcessCommand { get; set; }

@@ -28,7 +28,7 @@ namespace TTSToVideo
     /// </summary>
     public partial class App : Application
     {
-        private IMainWindow mw;
+        private IMainWindow? mw;
 
         protected override void OnStartup(StartupEventArgs e)
         {
@@ -60,7 +60,7 @@ namespace TTSToVideo
 
             var mapperConfig = new MapperConfiguration(cfg =>
             {
-                cfg.CreateMap<MTTSToVideo, MTTSToVideo>()
+                cfg.CreateMap<TTSToVideoModel, TTSToVideoModel>()
                         .ForMember(o => o.ProjectNameSelected, o => o.Ignore());
             });
 

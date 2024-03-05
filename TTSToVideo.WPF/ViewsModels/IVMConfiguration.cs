@@ -11,7 +11,7 @@ namespace TTSToVideo.WPF.ViewModel
 {
     public interface IVMConfiguration : INotifyPropertyChanged
     {
-        MConfiguration Model { get; set; }
+        ConfigurationModel Model { get; set; }
         Task Init();
         AsyncRelayCommand SaveCommand { get; set; }
 
