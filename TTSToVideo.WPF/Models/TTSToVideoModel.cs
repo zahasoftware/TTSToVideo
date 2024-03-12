@@ -8,44 +8,38 @@ using System.Windows.Controls;
 using System.Windows.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Newtonsoft.Json;
+using PropertyChanged;
 
 namespace TTSToVideo.WPF.Models
 {
 
+    [AddINotifyPropertyChangedInterface]
     public class TTSToVideoModel : ObservableRecipient
     {
-        public string? _prompt;
-        public string? Prompt { get => _prompt; set => SetProperty(ref _prompt, value, true); }
+        public string? Prompt { get; set; }
 
-        public string? _negativePrompt;
-        public string? NegativePrompt { get => _negativePrompt; set => SetProperty(ref _negativePrompt, value); }
+        public string? NegativePrompt { get; set; }
 
-        public string? _projectName;
-        public string? ProjectName { get => _projectName; set => SetProperty(ref _projectName, value, true); }
+        public string? ProjectName { get; set; }
 
-        private ProjectModel? _projectNameSelected;
-        public ProjectModel? ProjectNameSelected { get => _projectNameSelected; set => SetProperty(ref _projectNameSelected, value); }
+        public ProjectModel? ProjectNameSelected { get; set; }
 
-        private string? portraitBackgroundColor;
-        public string? PortraitBackgroundColor { get => portraitBackgroundColor; set => SetProperty(ref portraitBackgroundColor, value); }
+        public string? PortraitBackgroundColor { get; set; }
 
-        private string? portraitText;
-        public string? PortraitText { get => portraitText; set => SetProperty(ref portraitText, value); }
+        public string? PortraitText { get; set; }
 
-        private string? portraitVoice;
-        public string? PortraitVoice { get => portraitVoice; set => SetProperty(ref portraitVoice, value); }
+        public string? PortraitVoice { get; set; }
 
-        private string? portraitImagePath;
-        public string? PortraitImagePath { get => portraitImagePath; set => SetProperty(ref portraitImagePath, value); }
+        public string? PortraitImagePath { get; set; }
 
-        private BitmapImage? portraitImage;
         [JsonIgnore]
-        public BitmapImage? PortraitImage { get => portraitImage; set => SetProperty(ref portraitImage, value); }
+        public BitmapImage? PortraitImage { get; set; }
 
-        private bool portraitEnabled;
-        public bool PortraitEnabled { get => portraitEnabled; set => SetProperty(ref portraitEnabled, value); }
+        public bool PortraitEnabled { get; set; }
 
-        private ObservableCollection<ProjectModel>? projectsNames;
-        public ObservableCollection<ProjectModel>? ProjectsNames { get => projectsNames; set => SetProperty(ref projectsNames, value); }
+        [JsonIgnore]
+        public ObservableCollection<ProjectModel>? ProjectsNames { get; set; }
+
+        public string? PortraitPrompt { get; set; }
     }
 }

@@ -35,8 +35,6 @@ using System.Windows.Threading;
 using TTSToVideo.WPF.Helpers;
 using TTSToVideo.WPF.Models;
 
-
-
 namespace TTSToVideo.WPF.ViewModel.Implementations
 {
 
@@ -56,12 +54,10 @@ namespace TTSToVideo.WPF.ViewModel.Implementations
         public AsyncRelayCommand GeneratePortraitImageCommand { get; set; }
         public AsyncRelayCommand<string> ProjectNameSelectionChangedCommand { get; set; }
 
-
         [ObservableProperty]
         private TTSToVideoModel? model;
+        private bool isGeneratingPortrait;
 
-        public int WidthResolution { get; private set; } = 512;
-        public int HeightResolution { get; private set; } = 904;
         public string? FinalProjectVideoPathWithVoice { get; private set; }
         public CancellationTokenSource? CancellationTokenSource { get; private set; }
 
@@ -104,21 +100,33 @@ namespace TTSToVideo.WPF.ViewModel.Implementations
 
         private async Task GeneratePortraitImageCommandExecute()
         {
-            this.Validation();
+            try
+            {
+                isGeneratingPortrait = true;
 
-            this.CancellationTokenSource = new CancellationTokenSource();
-            var token = CancellationTokenSource.Token;
+                this.Validation();
 
-            var projectFullPath = this.GetProjectPath(this.Model.ProjectName);
-            int countImageMain = 1;
+                this.CancellationTokenSource = new CancellationTokenSource();
+                var token = CancellationTokenSource.Token;
 
-            var statement = new Statement { Text = this.Model.PortraitText };
-            await GenerateImage(projectFullPath, countImageMain, statement, token);
+                string projectFullPath = GetProjectPath(Model.ProjectName);
+                int countImageMain = 1;
 
-            this.Model.PortraitImagePath = Path.GetFileName(statement.Images.First().Path);
+                var statement = new Statement
+                {
+                    Text = string.IsNullOrEmpty(this.Model.PortraitPrompt?.Trim()) ? this.Model.PortraitText : this.Model.PortraitPrompt
+                };
+                await GenerateImage(projectFullPath, countImageMain, statement, token);
 
-            var fullPath = this.GetProjectPath(this.Model.ProjectName);
-            await this.SaveModel(fullPath);
+                this.Model.PortraitImagePath = Path.GetFileName(statement.Images.First().Path);
+
+                var fullPath = this.GetProjectPath(this.Model.ProjectName);
+                await this.SaveModel(fullPath);
+            }
+            finally
+            {
+                isGeneratingPortrait = false;
+            }
         }
 
         private async Task UploadImageCommandExecute()
@@ -244,10 +252,20 @@ namespace TTSToVideo.WPF.ViewModel.Implementations
                 Statement? statementPortraitVoice = null;
                 if (Model.PortraitEnabled)
                 {
+                    if (this.Model.PortraitImagePath == null)
+                    {
+                        await this.GeneratePortraitImageCommandExecute();
+                    }
+
                     statementPortraitVoice = new Statement()
                     {
-                        Images = new List<StatementImage> { new() { Path = Path.Combine(projectFullPath, this.Model.PortraitImagePath) } },
-                        Text = this.Model.PortraitVoice,
+                        Images = new List<StatementImage> {
+                            new() { Path = Path.Combine(projectFullPath, this.Model.PortraitImagePath
+                                                                        ?? throw new CustomApplicationException("PortraitImagePath empty") ) }
+                        },
+                        Text = (string.IsNullOrEmpty(this.Model.PortraitVoice) ? this.Model.PortraitText : this.Model.PortraitVoice) ??
+                                  throw new CustomApplicationException("PortraitText or PortraitVoice empty"),
+
                         AudioPath = Path.Combine(projectFullPath, "portrait-voice.wav")
                     };
                 }
@@ -640,7 +658,7 @@ namespace TTSToVideo.WPF.ViewModel.Implementations
                     throw new CustomApplicationException("Portrait text not written");
                 }
 
-                if (string.IsNullOrEmpty(this.Model.PortraitImagePath))
+                if (string.IsNullOrEmpty(this.Model.PortraitImagePath) && !isGeneratingPortrait)
                 {
                     throw new CustomApplicationException("Portrait image not uploaded or generated");
                 }
@@ -660,8 +678,8 @@ namespace TTSToVideo.WPF.ViewModel.Implementations
 
             var imageId = await this.imageGeneratorAI.Generate(new OptionsImageGenerator
             {
-                Width = WidthResolution,//512, //832,
-                Height = HeightResolution,//904, //1472,
+                Width = FFMPEGDefinitions.WidthResolution,//512, //832,
+                Height = FFMPEGDefinitions.HeightResolution,//904, //1472,
                 ModelId = modelsIds[rn - 1],
                 NumImages = 1,
                 Prompt = statement.Text,

@@ -6,8 +6,10 @@
       xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
       xmlns:local="clr-namespace:TTSToVideo.WPF" xmlns:implementations="clr-namespace:TTSToVideo.WPF.ViewModel.Implementations" d:DataContext="{d:DesignInstance Type=implementations:VMTTSToVideoPage}"
       mc:Ignorable="d" 
-      d:DesignHeight="450" d:DesignWidth="1000"
-      Title="MainPage">
+      d:DesignHeight="450" d:DesignWidth="967"
+      Background="White"
+      Title="MainPage"
+      >
     <Page.Resources>
         <Style TargetType="{x:Type Button}">
             <Setter Property="Margin" Value="5 0 0 0" />
@@ -24,6 +26,11 @@
             <Setter Property="Width" Value="2"></Setter>
             <Setter Property="VerticalAlignment" Value="Stretch"></Setter>
         </Style>
+        <Style TargetType="{x:Type TextBox}" x:Key="ShortInlineTextbox">
+            <Setter Property="Width" Value="300"></Setter>
+            <Setter Property="TextWrapping" Value="Wrap"></Setter>
+            <Setter Property="AcceptsReturn" Value="True"></Setter>
+        </Style>
     </Page.Resources>
 
     <Grid>
@@ -36,17 +43,22 @@
         </Grid.RowDefinitions>
         <StackPanel Grid.Row="0" HorizontalAlignment="Stretch" Orientation="Vertical">
             <StackPanel  Orientation="Horizontal">
+                <CheckBox x:Name="EnablePortrait" 
+                          Content="Enable Portrait" 
+                          IsChecked="{Binding Model.PortraitEnabled}" 
+                          />
+
                 <Label>Portrait Text</Label>
-                <TextBox IsEnabled="{Binding ElementName=EnablePortrait, Path=IsChecked}" MinWidth="200"
+                <TextBox IsEnabled="{Binding ElementName=EnablePortrait, Path=IsChecked}" 
                      TextWrapping="Wrap" 
                      AcceptsReturn="True" 
+                     Style="{ StaticResource ShortInlineTextbox}"
                      Text="{Binding Model.PortraitText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                      ></TextBox>
                 <Label>Portrait Voice</Label>
                 <TextBox  IsEnabled="{Binding ElementName=EnablePortrait, Path=IsChecked}"
-                     TextWrapping="Wrap" 
-                     AcceptsReturn="True" 
                      MinWidth="200"
+                     Style="{ StaticResource ShortInlineTextbox}"
                      Text="{Binding Model.PortraitVoice, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                 ></TextBox>
                 <Label>Text Background Color</Label>
@@ -54,11 +66,18 @@
                 Name="ClrPcker_Background" 
                 SelectedColor="{Binding Model.PortraitBackgroundColor}"
             ></xctk:ColorPicker>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal">
+                <Label>Portrait Prompt</Label>
+                <TextBox 
+                     Style="{ StaticResource ShortInlineTextbox}"
+                    Text="{Binding Model.PortraitPrompt}"></TextBox>
                 <Label>Portrait Image</Label>
                 <TextBox  
                      TextWrapping="Wrap" 
                      AcceptsReturn="True" 
                      MinWidth="200"
+                     Style="{ StaticResource ShortInlineTextbox}"
                      Text="{Binding Model.PortraitImagePath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                 ></TextBox>
                 <Button IsEnabled="{Binding ElementName=EnablePortrait, Path=IsChecked}" 
@@ -68,13 +87,10 @@
                 <Button  IsEnabled="{Binding ElementName=EnablePortrait, Path=IsChecked}" 
                          Content="Generate Portrait (IA)" 
                          Command="{Binding GeneratePortraitImageCommand}"  />
+
             </StackPanel>
-            <StackPanel Orientation="Horizontal">
-                <CheckBox x:Name="EnablePortrait" 
-                          Content="Enable" 
-                          IsChecked="{Binding Model.PortraitEnabled}" 
-                          />
-            </StackPanel>
+
+            <Separator Margin="0 5 0 -4"></Separator>
         </StackPanel>
         <Label Grid.Row="1">Prompt</Label>
         <TextBox  Grid.Row="2"
