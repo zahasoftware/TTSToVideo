@@ -37,9 +37,9 @@ namespace TTSToVideo.WPF.Models
 
         public bool PortraitEnabled { get; set; }
 
-        [JsonIgnore]
-        public ObservableCollection<ProjectModel>? ProjectsNames { get; set; }
-
         public string? PortraitPrompt { get; set; }
+
+        [JsonIgnore]
+        public string PortraitVideoPath { get; set; } = "portrait-video.mp4";
     }
 }

@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
         xmlns:local="clr-namespace:TTSToVideo" 
-        xmlns:implementations="clr-namespace:TTSToVideo.WPF.ViewModel.Implementations" 
+        xmlns:implementations="clr-namespace:TTSToVideo.WPF.ViewsModels" 
         d:DataContext="{d:DesignInstance Type=implementations:VMMainWindow}"
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800" >
@@ -50,7 +50,7 @@
                     <!--<RibbonTextBox Label="Project Name" Text="{Binding MainPage.ProjectName,Mode=, UpdateSourceTrigger=PropertyChanged}"></RibbonTextBox>-->
                     <ComboBox   IsEditable="true"
                                 IsTextSearchEnabled="true"
-                                ItemsSource="{Binding MainPage.Model.ProjectsNames,Mode=TwoWay}"
+                                ItemsSource="{Binding MainPage.ProjectsNames,Mode=TwoWay}"
                                 DisplayMemberPath="FileName"
                                 Text="{Binding MainPage.Model.ProjectName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                 SelectedItem="{Binding MainPage.Model.ProjectNameSelected}"

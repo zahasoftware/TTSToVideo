@@ -1,7 +1,6 @@
 ﻿using NAudio.Lame;
 using NAudio.Wave;
 using NAudio.Wave.SampleProviders;
-using NetXP.Exceptions;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -11,7 +10,7 @@ using System.Runtime.CompilerServices;
 
 public static class AudioHelper
 {
-    static public void ConcatenateAudioFiles(string outputFile, params string[] sourceFiles)
+    public static void ConcatenateAudioFiles(string outputFile, params string[] sourceFiles)
     {
         byte[] buffer = new byte[1024];
         Stream waveFileWriter = null;

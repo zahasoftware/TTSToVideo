@@ -1,4 +1,4 @@
-﻿namespace TTSToVideo.WPF.ViewModel.Implementations
+﻿namespace TTSToVideo.Business.Models
 {
     public class StatementImage
     {

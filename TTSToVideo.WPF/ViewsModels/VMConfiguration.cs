@@ -11,9 +11,9 @@ using System.Text;
 using System.Threading.Tasks;
 using TTSToVideo.WPF.Models;
 
-namespace TTSToVideo.WPF.ViewModel.Implementations
+namespace TTSToVideo.WPF.ViewsModels
 {
-    public class VMConfiguration : ObservableRecipient, IVMConfiguration
+    public class VMConfiguration : ObservableRecipient
     {
         private ConfigurationModel model;
         public ConfigurationModel Model { get => model; set => SetProperty(ref model, value, true); }
@@ -23,7 +23,7 @@ namespace TTSToVideo.WPF.ViewModel.Implementations
         public VMConfiguration()
         {
             SaveCommand = new AsyncRelayCommand(Save);
-            this.Model = new ConfigurationModel();
+            Model = new ConfigurationModel();
 
         }
 
@@ -31,7 +31,7 @@ namespace TTSToVideo.WPF.ViewModel.Implementations
         {
             await CreateConfIfNotExists();
             var json = await File.ReadAllTextAsync(ConfigurationFile);
-            this.Model = JsonConvert.DeserializeObject<ConfigurationModel>(json);
+            Model = JsonConvert.DeserializeObject<ConfigurationModel>(json);
         }
 
         private static async Task CreateConfIfNotExists()
@@ -44,23 +44,23 @@ namespace TTSToVideo.WPF.ViewModel.Implementations
 
         public async Task Init()
         {
-            await this.Load();
+            await Load();
 
-            if (string.IsNullOrEmpty(this.Model.ProjectBaseDir))
+            if (string.IsNullOrEmpty(Model.ProjectBaseDir))
             {
-                this.Model.ProjectBaseDir = Path.Combine(Directory.GetCurrentDirectory(), "Projects");
+                Model.ProjectBaseDir = Path.Combine(Directory.GetCurrentDirectory(), "Projects");
             }
 
-            if (string.IsNullOrEmpty(this.Model.MusicDir))
+            if (string.IsNullOrEmpty(Model.MusicDir))
             {
-                this.Model.MusicDir = "";
+                Model.MusicDir = "";
             }
         }
 
         public async Task Save()
         {
             await CreateConfIfNotExists();
-            string json = JsonConvert.SerializeObject(this.Model, Formatting.Indented);
+            string json = JsonConvert.SerializeObject(Model, Formatting.Indented);
             await File.WriteAllTextAsync("Configuration.json", json);
         }
 

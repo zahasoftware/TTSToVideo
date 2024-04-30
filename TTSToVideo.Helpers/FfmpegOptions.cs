@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace TTSToVideo.WPF.Helpers
+namespace TTSToVideo.Helpers
 {
     public class FfmpegOptions
     {

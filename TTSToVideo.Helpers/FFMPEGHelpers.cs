@@ -4,9 +4,10 @@ using System.Diagnostics;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using TTSToVideo.Helpers;
 using TTSToVideo.WPF.Helpers;
 
-internal static class FFMPEGHelpers
+public static class FFMPEGHelpers
 {
     public static async Task CreateVideoWithSubtitle(string outputPath, string text, string imagePath, TimeSpan duration, FfmpegOptions ffmpegOptions, CancellationToken token)
     {
@@ -63,10 +64,17 @@ internal static class FFMPEGHelpers
                 forceStyle = $":force_style={forceStyle}";
             }
 
+            //If image path extension is a video, then i assing -loop option in a string
+            string loop = "";
+            if (Path.GetExtension(imagePath) != ".mp4")
+            {
+                loop = "-loop 1";
+            }
+
             // Run FFmpeg process
             process = new Process();
             process.StartInfo.FileName = "ffmpeg";
-            process.StartInfo.Arguments = "-loop 1 -y" +
+            process.StartInfo.Arguments = $"{loop} -y" +
                                           $" -i \"{imagePath}\" " +
                                           $" -f lavfi " +
                                           $" -i anullsrc=r=44100:cl=stereo " +

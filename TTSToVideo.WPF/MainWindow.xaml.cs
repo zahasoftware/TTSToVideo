@@ -16,24 +16,24 @@ using System.Windows.Navigation;
 using System.Windows.Shapes;
 using TTSToVideo.WPF;
 using TTSToVideo.WPF.Pages;
-using TTSToVideo.WPF.ViewModel;
+using TTSToVideo.WPF.ViewsModels;
 
 namespace TTSToVideo
 {
     /// <summary>
     /// Interaction logic for MainWindow.xaml
     /// </summary>
-    public partial class MainWindow : Window, IMainWindow
+    public partial class MainWindow : Window
     {
         public IMainPage mainPage;
         private readonly IPage<ConfigurationPage> confPage;
 
-        public IVMMainWindow ViewModel { get; }
+        public VMMainWindow ViewModel { get; }
 
         public MainWindow(
               IMainPage mainPage
             , IPage<ConfigurationPage> confPage
-            , IVMMainWindow vmMainWindow)
+            , VMMainWindow vmMainWindow)
         {
             InitializeComponent();
 

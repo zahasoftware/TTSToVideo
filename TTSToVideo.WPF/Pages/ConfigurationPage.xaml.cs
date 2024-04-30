@@ -12,7 +12,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
-using TTSToVideo.WPF.ViewModel;
+using TTSToVideo.WPF.ViewsModels;
 
 namespace TTSToVideo.WPF.Pages
 {
@@ -21,9 +21,9 @@ namespace TTSToVideo.WPF.Pages
     /// </summary>
     public partial class ConfigurationPage : Page, IPage<ConfigurationPage>
     {
-        private readonly IVMConfiguration configuration;
+        private readonly VMConfiguration configuration;
 
-        public ConfigurationPage(IVMConfiguration configuration)
+        public ConfigurationPage(VMConfiguration configuration)
         {
             InitializeComponent();
             this.DataContext = configuration;

@@ -12,7 +12,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
-using TTSToVideo.WPF.ViewModel;
+using TTSToVideo.WPF.ViewsModels;
 
 namespace TTSToVideo.WPF
 {
@@ -21,7 +21,7 @@ namespace TTSToVideo.WPF
     /// </summary>
     public partial class TTSToVideoPage : Page, IMainPage
     {
-        public TTSToVideoPage(IVMTTSToVideoPage ttsToVideo)
+        public TTSToVideoPage(VMTTSToVideoPage ttsToVideo)
         {
             InitializeComponent();
             this.DataContext = ttsToVideo;
@@ -30,7 +30,7 @@ namespace TTSToVideo.WPF
             this.Loaded += MainPage_Loaded;
         }
 
-        public IVMTTSToVideoPage ttsToVideo { get; }
+        public VMTTSToVideoPage ttsToVideo { get; }
 
         private void MainPage_Loaded(object sender, RoutedEventArgs e)
         {

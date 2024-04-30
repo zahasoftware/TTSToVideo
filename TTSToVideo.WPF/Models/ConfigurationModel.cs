@@ -18,6 +18,8 @@ namespace TTSToVideo.WPF.Models
 
         public string? MusicDir { get; set; }
 
+        public string? NegativePrompt { get; set; }
+
         [JsonIgnore]
         public ObservableCollection<string>? ProjectsNames { get; set; }
 

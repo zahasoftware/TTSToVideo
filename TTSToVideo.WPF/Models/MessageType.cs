@@ -1,4 +1,4 @@
-﻿namespace TTSToVideo.WPF
+﻿namespace TTSToVideo.WPF.Models
 {
     internal enum MessageType
     {

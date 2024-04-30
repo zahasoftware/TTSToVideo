@@ -15,11 +15,12 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Navigation;
+using TTSToVideo.Helpers;
+using TTSToVideo.Helpers.Implementations;
 using TTSToVideo.WPF;
 using TTSToVideo.WPF.Models;
 using TTSToVideo.WPF.Pages;
-using TTSToVideo.WPF.ViewModel;
-using TTSToVideo.WPF.ViewModel.Implementations;
+using TTSToVideo.WPF.ViewsModels;
 
 namespace TTSToVideo
 {
@@ -28,7 +29,7 @@ namespace TTSToVideo
     /// </summary>
     public partial class App : Application
     {
-        private IMainWindow? mw;
+        private MainWindow? mw;
 
         protected override void OnStartup(StartupEventArgs e)
         {
@@ -49,7 +50,7 @@ namespace TTSToVideo
             services.AddOptions<TTSElevenlabsOptions>().Configure((o) =>
             {
                 configuration.GetSection("TTSOptions").Bind(o);
-                o.APIKey = configuration.GetSection("ElevenLabsToken").Value;
+                o.APIKey = configuration.GetSection("ElevenLabsToken").Value!;
             });
 
             services.AddOptions<ImageGeneratorAIOptions>().Configure((o) =>
@@ -70,22 +71,28 @@ namespace TTSToVideo
 
             //Framework NetXP
             services.AddSingleton<IImageGeneratorAI, NetXP.ImageGeneratorAI.LeonardoAI.ImageGeneratorAILeonardoAI>();
-            services.AddSingleton<ITTS, NetXP.TTSs.ElevenLabs.TTSEvenLabs>();
+            services.AddSingleton<ITTS, TTSEvenLabs>();
             services.AddSingleton<IIOTerminal, NetXP.Processes.Implementations.IOTerminal>();
 
+            services.AddSingleton<IProgressBar, ProgressBar>();
+
+            //Business
+            services.AddSingleton<Business.ITTSToVideoBusiness,Business.Implementations.TTSToVideoBusiness>();
+
+
             //MvvM
-            services.AddSingleton<IVMTTSToVideoPage, VMTTSToVideoPage>();
-            services.AddSingleton<IVMMainWindow, VMMainWindow>();
-            services.AddSingleton<IVMConfiguration, VMConfiguration>();
+            services.AddSingleton<VMTTSToVideoPage>();
+            services.AddSingleton<VMMainWindow>();
+            services.AddSingleton<VMConfiguration>();
 
             //Views
-            services.AddSingleton<IMainWindow, MainWindow>();
+            services.AddSingleton<MainWindow>();
             services.AddSingleton<IMainPage, TTSToVideoPage>();
             services.AddSingleton<IPage<ConfigurationPage>, ConfigurationPage>();
 
             var serviceProvider = services.BuildServiceProvider();
 
-            this.mw = serviceProvider.GetRequiredService<IMainWindow>();
+            this.mw = serviceProvider.GetRequiredService<MainWindow>();
             mw.Show();
         }
 

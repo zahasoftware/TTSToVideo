@@ -1,4 +1,4 @@
-﻿namespace TTSToVideo.WPF.Helpers
+﻿namespace TTSToVideo.Helpers
 {
     public class FfmpegFontStyle
     {

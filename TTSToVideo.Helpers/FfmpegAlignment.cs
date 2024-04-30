@@ -1,4 +1,4 @@
-﻿namespace TTSToVideo.WPF
+﻿namespace TTSToVideo.Helpers
 {
     public enum FfmpegAlignment
     {

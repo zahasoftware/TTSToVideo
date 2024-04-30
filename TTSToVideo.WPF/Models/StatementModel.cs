@@ -2,18 +2,18 @@
 using System;
 using System.Collections.Generic;
 
-namespace TTSToVideo.WPF.ViewModel.Implementations
+namespace TTSToVideo.WPF.Models
 {
-    internal class Statement
+    public class StatementModel
     {
-        public Statement()
+        public StatementModel()
         {
-            Images = new List<StatementImage>();
+            Images = new List<StatementImageModel>();
         }
         public string Text { get; internal set; }
         public bool IsFinalParagraph { get; internal set; }
         public string ImageId { get; internal set; }
-        public List<StatementImage> Images { get; set; }
+        public List<StatementImageModel> Images { get; set; }
         public string AudioPath { get; internal set; }
         public TimeSpan AudioDuration { get; internal set; }
     }
