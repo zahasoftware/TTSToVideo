@@ -21,7 +21,7 @@ namespace TTSToVideo.WPF
     /// </summary>
     public partial class TTSToVideoPage : Page, IMainPage
     {
-        public TTSToVideoPage(VMTTSToVideoPage ttsToVideo)
+        public TTSToVideoPage(TTSToVideoViewModel ttsToVideo)
         {
             InitializeComponent();
             this.DataContext = ttsToVideo;
@@ -30,11 +30,11 @@ namespace TTSToVideo.WPF
             this.Loaded += MainPage_Loaded;
         }
 
-        public VMTTSToVideoPage ttsToVideo { get; }
+        public TTSToVideoViewModel ttsToVideo { get; }
 
-        private void MainPage_Loaded(object sender, RoutedEventArgs e)
+        private async void MainPage_Loaded(object sender, RoutedEventArgs e)
         {
-            this.ttsToVideo.Init();
+            await this.ttsToVideo.Init();
         }
 
     }

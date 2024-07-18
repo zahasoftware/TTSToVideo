@@ -1,24 +1,22 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows.Controls;
-using System.Windows.Media.Imaging;
+﻿
 using CommunityToolkit.Mvvm.ComponentModel;
-using Newtonsoft.Json;
+using NetXP.ImageGeneratorAI;
 using PropertyChanged;
+using System.Collections.ObjectModel;
+using System.Text.Json.Serialization;
+using System.Windows.Media.Imaging;
 
 namespace TTSToVideo.WPF.Models
 {
 
     [AddINotifyPropertyChangedInterface]
-    public class TTSToVideoModel : ObservableRecipient
+    public class TtsToVideoModel
     {
         public string? Prompt { get; set; }
 
         public string? NegativePrompt { get; set; }
+
+        public string? AditionalPrompt { get; set; }
 
         public string? ProjectName { get; set; }
 
@@ -41,5 +39,12 @@ namespace TTSToVideo.WPF.Models
 
         [JsonIgnore]
         public string PortraitVideoPath { get; set; } = "portrait-video.mp4";
+
+        [JsonIgnore]
+        public ObservableCollection<StatementModel>? Statements { get; set; }
+
+        public ImageModel? ImageModelSelected { get; set; }
+        public VoiceModel? VoiceModelSelected { get; set; }
+        public string? PortraitImageFullPath { get; set; }
     }
 }

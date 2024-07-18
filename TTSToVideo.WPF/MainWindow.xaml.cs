@@ -14,6 +14,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using TTSToVideo.Helpers;
 using TTSToVideo.WPF;
 using TTSToVideo.WPF.Pages;
 using TTSToVideo.WPF.ViewsModels;
@@ -28,12 +29,14 @@ namespace TTSToVideo
         public IMainPage mainPage;
         private readonly IPage<ConfigurationPage> confPage;
 
-        public VMMainWindow ViewModel { get; }
+        public MainWindowViewModel ViewModel { get; }
 
         public MainWindow(
               IMainPage mainPage
             , IPage<ConfigurationPage> confPage
-            , VMMainWindow vmMainWindow)
+            , MainWindowViewModel vmMainWindow
+            , IProgressBar progressBar
+            )
         {
             InitializeComponent();
 
@@ -44,18 +47,18 @@ namespace TTSToVideo
             this.confPage = confPage;
             this.ViewModel = vmMainWindow;
 
-            double screenWidth = SystemParameters.PrimaryScreenWidth;
-            double screenHeight = SystemParameters.PrimaryScreenHeight;
+            // Set the window to full screen
+            WindowState = WindowState.Maximized;
 
-            double targetWidth = screenWidth * 0.6;
-            double targetHeight = screenHeight * 0.6;
+            progressBar.Incrementing += (s, e) =>
+            {
+                this.ViewModel.ProgressBarValue = e;
+            };
 
-            Width = targetWidth;
-            Height = targetHeight;
-
-            // Center the window on the screen
-            Left = (screenWidth - targetWidth) / 2;
-            Top = (screenHeight - targetHeight) / 2;
+            progressBar.MessageChanged += (s, e) =>
+            {
+                this.ViewModel.Message = e;
+            };  
         }
 
 

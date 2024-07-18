@@ -14,8 +14,11 @@ namespace TTSToVideo.Business.Models
         public bool IsFinalParagraph { get;  set; }
         public string ImageId { get;  set; }
         public List<StatementImage> Images { get; set; }
-        public string AudioPath { get;  set; }
+        public string VoiceAudioPath { get;  set; }
         public TimeSpan AudioDuration { get;  set; }
         public string NegativePrompt { get;  set; }
+        public string GlobalPrompt { get; internal set; }
+        public bool IsNewAudio { get; internal set; }
+        public string VoiceAudioPathWave { get; internal set; }
     }
 }

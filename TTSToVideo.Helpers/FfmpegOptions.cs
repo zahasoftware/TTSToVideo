@@ -13,5 +13,6 @@ namespace TTSToVideo.Helpers
         public int WidthResolution { get; set; }
         public int HeightResolution { get; set; }
         public object AdditionalArgs { get; internal set; }
+        public TimeSpan? MarginEndDuration { get; set; }
     }
 }

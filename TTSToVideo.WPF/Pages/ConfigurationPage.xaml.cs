@@ -21,9 +21,9 @@ namespace TTSToVideo.WPF.Pages
     /// </summary>
     public partial class ConfigurationPage : Page, IPage<ConfigurationPage>
     {
-        private readonly VMConfiguration configuration;
+        private readonly ConfigurationViewModel configuration;
 
-        public ConfigurationPage(VMConfiguration configuration)
+        public ConfigurationPage(ConfigurationViewModel configuration)
         {
             InitializeComponent();
             this.DataContext = configuration;

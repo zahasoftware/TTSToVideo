@@ -1,11 +1,12 @@
 ﻿using AutoMapper;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using NetXP;
 using NetXP.Exceptions;
 using NetXP.ImageGeneratorAI;
 using NetXP.Processes;
-using NetXP.TTS;
-using NetXP.TTSs.ElevenLabs;
+using NetXP.Tts;
+using NetXP.Tts.ElevenLabs;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
@@ -18,6 +19,7 @@ using System.Windows.Navigation;
 using TTSToVideo.Helpers;
 using TTSToVideo.Helpers.Implementations;
 using TTSToVideo.WPF;
+using TTSToVideo.WPF.Helpers.Implementations;
 using TTSToVideo.WPF.Models;
 using TTSToVideo.WPF.Pages;
 using TTSToVideo.WPF.ViewsModels;
@@ -47,7 +49,7 @@ namespace TTSToVideo
             services.AddSingleton<IConfiguration>(configuration);
             services.AddHttpClient();
 
-            services.AddOptions<TTSElevenlabsOptions>().Configure((o) =>
+            services.AddOptions<TtsElevenlabsOptions>().Configure((o) =>
             {
                 configuration.GetSection("TTSOptions").Bind(o);
                 o.APIKey = configuration.GetSection("ElevenLabsToken").Value!;
@@ -61,7 +63,7 @@ namespace TTSToVideo
 
             var mapperConfig = new MapperConfiguration(cfg =>
             {
-                cfg.CreateMap<TTSToVideoModel, TTSToVideoModel>()
+                cfg.CreateMap<TtsToVideoModel, TtsToVideoModel>()
                         .ForMember(o => o.ProjectNameSelected, o => o.Ignore());
             });
 
@@ -71,19 +73,20 @@ namespace TTSToVideo
 
             //Framework NetXP
             services.AddSingleton<IImageGeneratorAI, NetXP.ImageGeneratorAI.LeonardoAI.ImageGeneratorAILeonardoAI>();
-            services.AddSingleton<ITTS, TTSEvenLabs>();
+            services.AddSingleton<ITts, TtsEvenLabs>();
             services.AddSingleton<IIOTerminal, NetXP.Processes.Implementations.IOTerminal>();
 
             services.AddSingleton<IProgressBar, ProgressBar>();
+            services.AddSingleton<IMessage, Messages>();
 
             //Business
             services.AddSingleton<Business.ITTSToVideoBusiness,Business.Implementations.TTSToVideoBusiness>();
 
 
             //MvvM
-            services.AddSingleton<VMTTSToVideoPage>();
-            services.AddSingleton<VMMainWindow>();
-            services.AddSingleton<VMConfiguration>();
+            services.AddSingleton<TTSToVideoViewModel>();
+            services.AddSingleton<MainWindowViewModel>();
+            services.AddSingleton<ConfigurationViewModel>();
 
             //Views
             services.AddSingleton<MainWindow>();

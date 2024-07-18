@@ -4,9 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace TTSToVideo.WPF.Helpers.Implementations
+namespace TTSToVideo.WPF.ViewsModels
 {
-    public class Messages
+    internal class MusicVideoViewModel
     {
     }
 }

@@ -4,14 +4,18 @@
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
       xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
-      xmlns:local="clr-namespace:TTSToVideo.WPF" xmlns:implementations="clr-namespace:TTSToVideo.WPF.ViewsModels"
-      d:DataContext="{d:DesignInstance Type=implementations:VMTTSToVideoPage}"
+      xmlns:local="clr-namespace:TTSToVideo.WPF"
+      xmlns:converters="clr-namespace:TTSToVideo.WPF.Converters"
+      xmlns:implementations="clr-namespace:TTSToVideo.WPF.ViewsModels" 
+      d:DataContext="{d:DesignInstance Type=implementations:TTSToVideoViewModel}"
       mc:Ignorable="d" 
       d:DesignHeight="450" d:DesignWidth="1179"
       Background="White"
       Title="MainPage"
       >
     <Page.Resources>
+        <converters:ImageCollectionConverter x:Key="ImageCollectionConverter" />
+        <converters:ImageConverter x:Key="ImageConverter" />
         <Style TargetType="{x:Type Button}">
             <Setter Property="Margin" Value="5 0 0 0" />
         </Style>
@@ -38,17 +42,15 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="auto"></RowDefinition>
             <RowDefinition Height="auto"></RowDefinition>
-            <RowDefinition Height="*"></RowDefinition>
+            <RowDefinition Height="3*"></RowDefinition>
             <RowDefinition Height="auto"></RowDefinition>
-            <RowDefinition Height="*"></RowDefinition>
+            <RowDefinition Height="7*"></RowDefinition>
         </Grid.RowDefinitions>
         <StackPanel Grid.Row="0" HorizontalAlignment="Stretch" Orientation="Vertical">
             <StackPanel  Orientation="Horizontal">
                 <CheckBox x:Name="EnablePortrait" 
                           Content="Enable Portrait" 
-                          IsChecked="{Binding Model.PortraitEnabled}" 
-                          />
-
+                          IsChecked="{Binding Model.PortraitEnabled}" />
                 <Label>Portrait Text</Label>
                 <TextBox IsEnabled="{Binding ElementName=EnablePortrait, Path=IsChecked}" 
                      TextWrapping="Wrap" 
@@ -81,7 +83,7 @@
                      MinWidth="200"
                      IsEnabled="{Binding ElementName=EnablePortrait, Path=IsChecked}"
                      Style="{ StaticResource ShortInlineTextbox}"
-                     Text="{Binding Model.PortraitImagePath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                     Text="{Binding Model.PortraitImagePath, Mode=OneWay, UpdateSourceTrigger=PropertyChanged}"
                 ></TextBox>
                 <Button IsEnabled="{Binding ElementName=EnablePortrait, Path=IsChecked}" 
                         Content="Upload Image" 
@@ -94,8 +96,6 @@
                 <Button  IsEnabled="{Binding ElementName=EnablePortrait, Path=IsChecked}" 
                          Content="Generate Video (IA)" 
                          Command="{Binding GeneratePortraitVideoCommand}"  />
-
-
             </StackPanel>
 
             <Separator Margin="0 5 0 -4"></Separator>
@@ -107,6 +107,12 @@
                      VerticalScrollBarVisibility="Visible" 
                      Text="{Binding Model.Prompt, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
         <StackPanel Grid.Row="3">
+            <Label >Aditional Prompt</Label>
+            <TextBox VerticalAlignment="Stretch"
+                     TextWrapping="Wrap" 
+                     AcceptsReturn="True" 
+                     VerticalScrollBarVisibility="Visible" 
+                     Text="{Binding Model.AditionalPrompt, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
             <Label >Negative Prompt</Label>
             <TextBox VerticalAlignment="Stretch"
                      TextWrapping="Wrap" 
@@ -117,8 +123,8 @@
         <GridSplitter Grid.Row="3" Style="{StaticResource GridSplitterHeight}" />
         <Grid Grid.Row="4">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="auto"></ColumnDefinition>
-                <ColumnDefinition ></ColumnDefinition>
+                <ColumnDefinition Width="30*"></ColumnDefinition>
+                <ColumnDefinition Width="70*"></ColumnDefinition>
             </Grid.ColumnDefinitions>
             <Grid.RowDefinitions>
                 <RowDefinition Height="auto"></RowDefinition>
@@ -128,22 +134,70 @@
                 <Button Command="{Binding OpenVideoCommand}">Open Video</Button>
                 <Button Command="{Binding OpenExplorerCommand}">Open Explorer</Button>
             </StackPanel>
-            <ScrollViewer Grid.Row="1" >
-                <StackPanel>
+            <!--<ScrollViewer Grid.Row="1" >-->
+            <StackPanel Grid.Row="1">
+                <StackPanel Orientation="Horizontal">
                     <Label>Portrait Image</Label>
-                    <Image Source="{Binding Model.PortraitImage, Mode=TwoWay}" VerticalAlignment="Center"  />
+                    <Button>Open</Button>
+                    <Button>( - )</Button>
                 </StackPanel>
-            </ScrollViewer>
+                <Image Source="{Binding Model.PortraitImageFullPath, Converter={StaticResource ImageConverter}}"
+                    Width="200"
+                       ></Image>
+            </StackPanel>
+            <!--</ScrollViewer>-->
             <GridSplitter  Style="{StaticResource GridSplitterWidth}" Grid.RowSpan="2" />
-            <DataGrid Grid.Row="1" Grid.Column="1">
+
+            <DataGrid Grid.Row="1" Grid.Column="1" 
+                      ScrollViewer.CanContentScroll="False"
+                      ItemsSource="{Binding Model.Statements}"
+                      AutoGenerateColumns="False"
+                      CanUserAddRows="False"
+                      CanUserDeleteRows="False"
+                      >
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="Pictures" />
+                    <DataGridTemplateColumn Header="Pictures">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <ItemsControl ItemsSource="{Binding Images}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Horizontal" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Image Source="{Binding Path, Converter={StaticResource ImageCollectionConverter}}" Width="200" Height="200"/>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTemplateColumn Width="*" Header="Text">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Text}" TextWrapping="Wrap" />
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTemplateColumn Header="Actions">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <StackPanel>
+                                    <Button Command="{Binding DataContext.DeletePictureCommand, RelativeSource={RelativeSource AncestorType={x:Type Page}}}" 
+                                            CommandParameter="{Binding}">
+                                        Delete
+                                    </Button>
+                                    <Button Command="{Binding DataContext.OpenPictureCommand, RelativeSource={RelativeSource AncestorType={x:Type Page}}}" 
+                                            CommandParameter="{Binding}">
+                                        Open
+                                    </Button>
+                                </StackPanel>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
                 </DataGrid.Columns>
-                <!--<DataGrid.RowDetailsTemplate>
-                    <DataTemplate>
-                        <ContentPresenter Content="{Binding Model.Images, Converter={StaticResource ImageCollectionConverter}}"/>
-                    </DataTemplate>
-                </DataGrid.RowDetailsTemplate>-->
             </DataGrid>
         </Grid>
     </Grid>

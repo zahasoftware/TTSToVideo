@@ -1,7 +1,11 @@
-﻿namespace TTSToVideo.WPF.Models
+﻿using PropertyChanged;
+
+namespace TTSToVideo.WPF.Models
 {
+
+    [AddINotifyPropertyChangedInterface]
     public class StatementImageModel
     {
-        public string Path { get; internal set; }
+        public string? Path { get; set; }
     }
 }

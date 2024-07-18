@@ -13,18 +13,17 @@ using TTSToVideo.WPF.Models;
 
 namespace TTSToVideo.WPF.ViewsModels
 {
-    public class VMConfiguration : ObservableRecipient
+    public class ConfigurationViewModel : ObservableRecipient
     {
         private ConfigurationModel model;
         public ConfigurationModel Model { get => model; set => SetProperty(ref model, value, true); }
         public AsyncRelayCommand SaveCommand { get; set; }
         public const string ConfigurationFile = "Configuration.json";
 
-        public VMConfiguration()
+        public ConfigurationViewModel()
         {
             SaveCommand = new AsyncRelayCommand(Save);
             Model = new ConfigurationModel();
-
         }
 
         private async Task Load()

@@ -6,7 +6,7 @@
         xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
         xmlns:local="clr-namespace:TTSToVideo" 
         xmlns:implementations="clr-namespace:TTSToVideo.WPF.ViewsModels" 
-        d:DataContext="{d:DesignInstance Type=implementations:VMMainWindow}"
+        d:DataContext="{d:DesignInstance Type=implementations:MainWindowViewModel}"
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800" >
     <Grid>
@@ -16,26 +16,6 @@
             <RowDefinition Height="auto"></RowDefinition>
         </Grid.RowDefinitions>
         <Ribbon Grid.Row="0" x:Name="RibbonWin"  SelectedIndex="0" SelectionChanged="RibbonWin_SelectionChanged" >
-            <!-- Help Pane, located at the right-hand side -->
-            <!--<Ribbon.HelpPaneContent>
-                <RibbonButton SmallImageSource="Images\help.png" />
-            </Ribbon.HelpPaneContent>-->
-            <!-- Quick Access Toolbar - located at the upper-left corner -->
-            <!--<Ribbon.QuickAccessToolBar>
-                <RibbonQuickAccessToolBar>
-                    <RibbonButton x:Name ="Save" SmallImageSource="Images\save.png" />
-                    <RibbonSplitButton x:Name ="Undo" SmallImageSource="Images\undo.png">
-                        <RibbonSplitMenuItem Header="Undo 1" />
-                        <RibbonSplitMenuItem Header="Undo 2" />
-                        <RibbonSplitMenuItem Header="Undo 3" />
-                    </RibbonSplitButton>
-                    <RibbonSplitButton x:Name="Redo" SmallImageSource="Images\redo.png" >
-                        <RibbonSplitMenuItem Header="Redo 1" />
-                        <RibbonSplitMenuItem Header="Redo 2" />
-                    </RibbonSplitButton>
-                </RibbonQuickAccessToolBar>
-            </Ribbon.QuickAccessToolBar>-->
-            <!-- Application Menu, located at the left-hand side (down arrow) -->
             <Ribbon.ApplicationMenu>
                 <RibbonApplicationMenu KeyTip="F">
                     <RibbonApplicationMenuItem Header="Options"  />
@@ -43,10 +23,10 @@
                 </RibbonApplicationMenu>
             </Ribbon.ApplicationMenu>
 
-            <!-- Ribbon Tab #1: Home -->
-            <RibbonTab Name="tabHome" Header="Home" KeyTip="H" >
+            <!-- Ribbon Tab #1: TTSToVideo -->
+            <RibbonTab Name="tabHome" Header="TTSToVideo" KeyTip="T" >
                 <!-- Home  group-->
-                <RibbonGroup Header="Home">
+                <RibbonGroup Header="Project">
                     <!--<RibbonTextBox Label="Project Name" Text="{Binding MainPage.ProjectName,Mode=, UpdateSourceTrigger=PropertyChanged}"></RibbonTextBox>-->
                     <ComboBox   IsEditable="true"
                                 IsTextSearchEnabled="true"
@@ -59,8 +39,6 @@
                             <i:EventTrigger EventName="SelectionChanged">
                                 <i:InvokeCommandAction Command="{Binding MainPage.ProjectNameSelectionChangedCommand}"                            
                                                        CommandParameter="{Binding SelectedItem.ProjectName, RelativeSource={RelativeSource AncestorType={x:Type ComboBox}}}" />
-                            </i:EventTrigger>
-                            <i:EventTrigger EventName="">
                             </i:EventTrigger>
                         </i:Interaction.Triggers>
                     </ComboBox>
@@ -79,6 +57,32 @@
                         </RibbonGallery>
                     </RibbonComboBox>-->
                 </RibbonGroup>
+                <RibbonGroup>
+                    <!--SelectedValuePath="GeneratedImage.ImageUrl"-->
+                    <ComboBox ItemsSource="{Binding MainPage.ImagesModels}"
+                              SelectedValue="{Binding MainPage.Model.ImageModelSelected}"
+                              Width="220">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Width="120" Text="{Binding Name}" Margin="5"/>
+                                    <Image Source="{Binding ImageUrl}" Width="60"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                </RibbonGroup>
+
+                <RibbonGroup>
+                    <!--SelectedValuePath="GeneratedImage.ImageUrl"-->
+                    <ComboBox ItemsSource="{Binding MainPage.VoicesModels}"
+                              SelectedValue="{Binding MainPage.Model.VoiceModelSelected}"
+                              DisplayMemberPath="Display"
+                              Width="220">
+                    </ComboBox>
+                </RibbonGroup>
+ 
+ 
             </RibbonTab>
             <RibbonTab Name="tabConfiguration" Header="Configuration" KeyTip="C" >
                 <RibbonButton Label="Save" Command="{Binding VMConf.SaveCommand}" ></RibbonButton>
@@ -86,7 +90,8 @@
             <!-- Ribbon Tab #2: -->
         </Ribbon>
         <Frame Grid.Row="1" x:Name="mainFrame" NavigationUIVisibility="Hidden"/>
-        <StatusBar Grid.Row="2" DockPanel.Dock="Bottom">
+        <StatusBar Grid.Row="2" DockPanel.Dock="Bottom" >
+            <ProgressBar Value="{Binding ProgressBarValue}" Minimum="0" Maximum="100" Height="10" Width="200"/>
             <StatusBarItem>
                 <Label Content="{Binding Message}"></Label>
             </StatusBarItem>
