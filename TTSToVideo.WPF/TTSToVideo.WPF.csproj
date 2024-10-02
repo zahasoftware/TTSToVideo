@@ -11,6 +11,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="bin\Debug\net8.0-windows7.0\Projects\NewFolder\**" />
+    <EmbeddedResource Remove="bin\Debug\net8.0-windows7.0\Projects\NewFolder\**" />
+    <None Remove="bin\Debug\net8.0-windows7.0\Projects\NewFolder\**" />
+    <Page Remove="bin\Debug\net8.0-windows7.0\Projects\NewFolder\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Remove="Images\remove-icon.png" />
   </ItemGroup>
 
@@ -55,11 +62,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="bin\Debug\net8.0-windows7.0\Projects\NewFolder\" />
+    <Page Include="App.xaml" />
   </ItemGroup>
 
   <ItemGroup>
-    <Page Include="App.xaml" />
+    <Folder Include="bin\Debug\net8.0-windows7.0\Projects\" />
   </ItemGroup>
 
 </Project>

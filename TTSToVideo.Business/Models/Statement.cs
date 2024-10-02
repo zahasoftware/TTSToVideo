@@ -1,6 +1,7 @@
 ﻿using NetXP.ImageGeneratorAI;
 using System;
 using System.Collections.Generic;
+using TTSToVideo.Helpers;
 
 namespace TTSToVideo.Business.Models
 {
@@ -20,5 +21,8 @@ namespace TTSToVideo.Business.Models
         public string GlobalPrompt { get; internal set; }
         public bool IsNewAudio { get; internal set; }
         public string VoiceAudioPathWave { get; internal set; }
+        public bool IsProtrait { get; internal set; }
+        public string? VideoPath { get; internal set; }
+        public FfmpegFontStyle? FontStyle { get; set; }
     }
 }

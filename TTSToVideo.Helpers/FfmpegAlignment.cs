@@ -2,6 +2,7 @@
 {
     public enum FfmpegAlignment
     {
+        Default = 0,//Default
         BottomLeft = 1,//Bottom left
         BottomCenter = 2,//Bottom center
         BottomRigt = 3,//Bottom right

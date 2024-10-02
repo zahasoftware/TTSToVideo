@@ -12,6 +12,12 @@ namespace TTSToVideo.WPF.Models
     [AddINotifyPropertyChangedInterface]
     public class TtsToVideoModel
     {
+        public bool UseOnlyFirstImage { get; set; }
+
+        public bool UseTextForPrompt { get; set; }
+
+        public bool CreateVideo { get; set; }
+
         public string? Prompt { get; set; }
 
         public string? NegativePrompt { get; set; }
@@ -22,29 +28,15 @@ namespace TTSToVideo.WPF.Models
 
         public ProjectModel? ProjectNameSelected { get; set; }
 
-        public string? PortraitBackgroundColor { get; set; }
-
-        public string? PortraitText { get; set; }
-
-        public string? PortraitVoice { get; set; }
-
-        public string? PortraitImagePath { get; set; }
-
-        [JsonIgnore]
-        public BitmapImage? PortraitImage { get; set; }
-
         public bool PortraitEnabled { get; set; }
 
-        public string? PortraitPrompt { get; set; }
-
-        [JsonIgnore]
-        public string PortraitVideoPath { get; set; } = "portrait-video.mp4";
-
-        [JsonIgnore]
-        public ObservableCollection<StatementModel>? Statements { get; set; }
+        public double MusicVolume { get; set; }
 
         public ImageModel? ImageModelSelected { get; set; }
         public VoiceModel? VoiceModelSelected { get; set; }
-        public string? PortraitImageFullPath { get; set; }
+        public MusicModel? MusicModelSelected { get; set; }
+
+        [JsonIgnore]
+        public ObservableCollection<StatementModel>? Statements { get; set; } = [];
     }
 }

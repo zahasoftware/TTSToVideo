@@ -6,23 +6,23 @@ namespace TTSToVideo.Business
     public interface ITTSToVideoBusiness
     {
         Task GeneratePortraitVideoCommandExecute(string imagePath,
-                                                  string outputPath);
+                                                 string outputPath);
 
         Task GeneratePortraitImageCommandExecute(Statement statement,
-                                                  string[] imageModelIds,
-                                                  string outputFolder,
-                                                  CancellationToken token);
+                                                 string[] imageModelIds,
+                                                 string outputFolder,
+                                                 TTSToVideoOptions options,
+                                                 CancellationToken token);
 
         Task ProcessCommandExecute(string projectPath
                                  , string projectName
-                                 , string text
+                                 , List<Statement> statements
                                  , string negativePrompt
                                  , string globalPrompt
                                  , string[] imageModelId
                                  , TtsVoice selectedVoice
-                                 , TTSToVideoPortraitParams portraitParams
+                                 , bool portraitEnabled
                                  , TTSToVideoOptions options
                                  , CancellationToken token);
-
     }
 }

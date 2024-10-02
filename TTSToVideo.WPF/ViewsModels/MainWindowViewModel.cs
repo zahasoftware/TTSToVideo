@@ -19,7 +19,13 @@ namespace TTSToVideo.WPF.ViewsModels
         {
             MainPage = mainPage;
             VMConf = configurationViewModel;
+
+            //version from assembly
+            var version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+            this.Title = $"TTS To Video, v{version}";
         }
+
+        public string Title { get; set; }
 
         public TTSToVideoViewModel MainPage { get; set; }
 

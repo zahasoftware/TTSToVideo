@@ -8,6 +8,6 @@ namespace TTSToVideo.Helpers
 {
     public static class Constants
     {
-        public const int MAX_PATH = 255 - 4 - 50;//-4 Extension
+        public const int MAX_PATH = 128 - 4;//-4 Extension
     }
 }

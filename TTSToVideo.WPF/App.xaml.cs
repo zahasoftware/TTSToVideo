@@ -16,6 +16,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Navigation;
+using TTSToVideo.Business.Models;
 using TTSToVideo.Helpers;
 using TTSToVideo.Helpers.Implementations;
 using TTSToVideo.WPF;
@@ -63,13 +64,14 @@ namespace TTSToVideo
 
             var mapperConfig = new MapperConfiguration(cfg =>
             {
-                cfg.CreateMap<TtsToVideoModel, TtsToVideoModel>()
-                        .ForMember(o => o.ProjectNameSelected, o => o.Ignore());
+                cfg.CreateMap<TtsToVideoModel, TtsToVideoModel>().ForMember(o => o.ProjectNameSelected, o => o.Ignore());
             });
+
+            mapperConfig.AssertConfigurationIsValid();
 
             var mapper = mapperConfig.CreateMapper();
 
-            services.AddSingleton<IMapper>(mapper);
+            services.AddSingleton(mapper);
 
             //Framework NetXP
             services.AddSingleton<IImageGeneratorAI, NetXP.ImageGeneratorAI.LeonardoAI.ImageGeneratorAILeonardoAI>();
@@ -80,18 +82,20 @@ namespace TTSToVideo
             services.AddSingleton<IMessage, Messages>();
 
             //Business
-            services.AddSingleton<Business.ITTSToVideoBusiness,Business.Implementations.TTSToVideoBusiness>();
+            services.AddSingleton<Business.ITTSToVideoBusiness, Business.Implementations.TTSToVideoBusiness>();
 
 
             //MvvM
             services.AddSingleton<TTSToVideoViewModel>();
             services.AddSingleton<MainWindowViewModel>();
             services.AddSingleton<ConfigurationViewModel>();
+            services.AddSingleton<FontStyleViewModel>();
 
             //Views
             services.AddSingleton<MainWindow>();
-            services.AddSingleton<IMainPage, TTSToVideoPage>();
-            services.AddSingleton<IPage<ConfigurationPage>, ConfigurationPage>();
+            services.AddTransient<FontStyleWindowsView>();
+            services.AddSingleton<TTSToVideoPage>();
+            services.AddSingleton<ConfigurationPage, ConfigurationPage>();
 
             var serviceProvider = services.BuildServiceProvider();
 
@@ -111,7 +115,7 @@ namespace TTSToVideo
                 File.WriteAllText("Exception.txt", e.Exception.ToString());
             }
 #if DEBUG
-            e.Handled = false;
+            e.Handled = e.Exception is CustomApplicationException;
 #else
             e.Handled = true;
 #endif

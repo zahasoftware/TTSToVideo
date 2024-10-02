@@ -1,6 +1,8 @@
-﻿using System;
+﻿using NAudio.Midi;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -39,8 +41,6 @@ namespace TTSToVideo.Helpers
                             .Replace("\\", "\\\\\\\\")
                             .Replace(":", "\\:");
 
-
-
                 //Force_Style for ffmpeg
                 var options = new List<string>();
                 if (ffmpegOptions.FontStyle.Alignment != null)
@@ -64,16 +64,21 @@ namespace TTSToVideo.Helpers
                 {
                     forceStyle = $":force_style={forceStyle}";
                 }
+                var isVideo = Path.GetExtension(imagePath) == ".mp4";
 
-                //If image path extension is a video, then i assing -loop option in a string
-                string loop = "";
-                if (Path.GetExtension(imagePath) != ".mp4")
+                var videoDuration = duration + (ffmpegOptions.MarginEndDuration ?? new TimeSpan());
+
+                double inputVideoDuration = 0;
+                if (isVideo)
                 {
-                    loop = "-loop 1";
+                    inputVideoDuration = (videoDuration.TotalSeconds / GetVideoDuration(imagePath).TotalSeconds) + 1;
+                    inputVideoDuration = Math.Ceiling(inputVideoDuration);
                 }
 
+                //If image path extension is a video, then i assing -loop option in a string
+                string loop = isVideo ? $"-stream_loop {inputVideoDuration}" : "-loop 1";
+
                 // Run FFmpeg process
-                var videoDuration = duration + (ffmpegOptions.MarginEndDuration ?? new TimeSpan());
                 process = new Process();
                 process.StartInfo.FileName = "ffmpeg";
                 process.StartInfo.Arguments = $"{loop} -y" +
@@ -200,9 +205,21 @@ namespace TTSToVideo.Helpers
                 return;
             }
 
+            var isVideo = Path.GetExtension(inputImagePath) == ".mp4";
+
+            double inputVideoDuration = 0;
+            if (isVideo)
+            {
+                inputVideoDuration = (duration.Value.TotalSeconds / GetVideoDuration(inputImagePath).TotalSeconds) + 1;
+                inputVideoDuration = Math.Ceiling(inputVideoDuration);
+            }
+
+            //If image path extension is a video, then i assing -loop option in a string
+            string loop = isVideo ? $"-stream_loop {inputVideoDuration}" : "-loop 1";
+
             var p = new Process();
             p.StartInfo.FileName = "ffmpeg";
-            p.StartInfo.Arguments = $"-loop 1 -y" +
+            p.StartInfo.Arguments = $"{loop} -y" +
                                     $" -i \"{inputImagePath}\" " +
                                     $" -f lavfi " +
                                     $" -t \"{duration:h\\:m\\:s\\.fff}\" " +
@@ -224,6 +241,32 @@ namespace TTSToVideo.Helpers
             }
 
             await p.WaitForExitAsync(token);
+        }
+
+        private static readonly string[] separator = ["Duration: "];
+
+        static TimeSpan GetVideoDuration(string filePath)
+        {
+            ProcessStartInfo startInfo = new()
+            {
+                FileName = "ffmpeg",
+                Arguments = $"-i \"{filePath}\"",
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+
+            using Process process = Process.Start(startInfo);
+            using StreamReader reader = process.StandardError;
+
+            string result = reader.ReadToEnd();
+            string duration = result.Split(separator, StringSplitOptions.None)[1].Split(',')[0];
+            return ParseDuration(duration.Trim());
+        }
+
+        static TimeSpan ParseDuration(string duration)
+        {
+            return TimeSpan.ParseExact(duration, @"hh\:mm\:ss\.ff", CultureInfo.InvariantCulture);
         }
 
 

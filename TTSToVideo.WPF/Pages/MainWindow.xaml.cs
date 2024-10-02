@@ -26,14 +26,14 @@ namespace TTSToVideo
     /// </summary>
     public partial class MainWindow : Window
     {
-        public IMainPage mainPage;
-        private readonly IPage<ConfigurationPage> confPage;
+        public TTSToVideoPage mainPage;
+        private readonly ConfigurationPage confPage;
 
         public MainWindowViewModel ViewModel { get; }
 
         public MainWindow(
-              IMainPage mainPage
-            , IPage<ConfigurationPage> confPage
+              TTSToVideoPage mainPage
+            , ConfigurationPage confPage
             , MainWindowViewModel vmMainWindow
             , IProgressBar progressBar
             )
@@ -58,7 +58,7 @@ namespace TTSToVideo
             progressBar.MessageChanged += (s, e) =>
             {
                 this.ViewModel.Message = e;
-            };  
+            };
         }
 
 

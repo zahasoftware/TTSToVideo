@@ -11,8 +11,7 @@
       mc:Ignorable="d" 
       d:DesignHeight="450" d:DesignWidth="1179"
       Background="White"
-      Title="MainPage"
-      >
+      Title="MainPage" >
     <Page.Resources>
         <converters:ImageCollectionConverter x:Key="ImageCollectionConverter" />
         <converters:ImageConverter x:Key="ImageConverter" />
@@ -47,58 +46,6 @@
             <RowDefinition Height="7*"></RowDefinition>
         </Grid.RowDefinitions>
         <StackPanel Grid.Row="0" HorizontalAlignment="Stretch" Orientation="Vertical">
-            <StackPanel  Orientation="Horizontal">
-                <CheckBox x:Name="EnablePortrait" 
-                          Content="Enable Portrait" 
-                          IsChecked="{Binding Model.PortraitEnabled}" />
-                <Label>Portrait Text</Label>
-                <TextBox IsEnabled="{Binding ElementName=EnablePortrait, Path=IsChecked}" 
-                     TextWrapping="Wrap" 
-                     AcceptsReturn="True" 
-                     Style="{ StaticResource ShortInlineTextbox}"
-                     Text="{Binding Model.PortraitText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                     ></TextBox>
-                <Label>Portrait Voice</Label>
-                <TextBox  IsEnabled="{Binding ElementName=EnablePortrait, Path=IsChecked}"
-                     MinWidth="200"
-                     Style="{ StaticResource ShortInlineTextbox}"
-                     Text="{Binding Model.PortraitVoice, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                ></TextBox>
-                <Label>Text Background Color</Label>
-                <xctk:ColorPicker  IsEnabled="{Binding ElementName=EnablePortrait, Path=IsChecked}"
-                Name="ClrPcker_Background" 
-                SelectedColor="{Binding Model.PortraitBackgroundColor}"
-            ></xctk:ColorPicker>
-            </StackPanel>
-            <StackPanel Orientation="Horizontal">
-                <Label>Portrait Prompt</Label>
-                <TextBox 
-                     Style="{ StaticResource ShortInlineTextbox}"
-                     IsEnabled="{Binding ElementName=EnablePortrait, Path=IsChecked}"
-                    Text="{Binding Model.PortraitPrompt}"></TextBox>
-                <Label>Portrait Image</Label>
-                <TextBox  
-                     TextWrapping="Wrap" 
-                     AcceptsReturn="True" 
-                     MinWidth="200"
-                     IsEnabled="{Binding ElementName=EnablePortrait, Path=IsChecked}"
-                     Style="{ StaticResource ShortInlineTextbox}"
-                     Text="{Binding Model.PortraitImagePath, Mode=OneWay, UpdateSourceTrigger=PropertyChanged}"
-                ></TextBox>
-                <Button IsEnabled="{Binding ElementName=EnablePortrait, Path=IsChecked}" 
-                        Content="Upload Image" 
-                        Command="{Binding UploadImageCommand}" 
-                        HorizontalAlignment="Center"/>
-                <Button  IsEnabled="{Binding ElementName=EnablePortrait, Path=IsChecked}" 
-                         Content="Generate Portrait (IA)" 
-                         Command="{Binding GeneratePortraitImageCommand}"  />
-
-                <Button  IsEnabled="{Binding ElementName=EnablePortrait, Path=IsChecked}" 
-                         Content="Generate Video (IA)" 
-                         Command="{Binding GeneratePortraitVideoCommand}"  />
-            </StackPanel>
-
-            <Separator Margin="0 5 0 -4"></Separator>
         </StackPanel>
         <Label Grid.Row="1">Prompt</Label>
         <TextBox  Grid.Row="2"
@@ -123,29 +70,14 @@
         <GridSplitter Grid.Row="3" Style="{StaticResource GridSplitterHeight}" />
         <Grid Grid.Row="4">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="30*"></ColumnDefinition>
-                <ColumnDefinition Width="70*"></ColumnDefinition>
+                <ColumnDefinition Width="*"></ColumnDefinition>
             </Grid.ColumnDefinitions>
             <Grid.RowDefinitions>
                 <RowDefinition Height="auto"></RowDefinition>
                 <RowDefinition Height="*"></RowDefinition>
             </Grid.RowDefinitions>
             <StackPanel Grid.ColumnSpan="2" Orientation="Horizontal" HorizontalAlignment="Left">
-                <Button Command="{Binding OpenVideoCommand}">Open Video</Button>
-                <Button Command="{Binding OpenExplorerCommand}">Open Explorer</Button>
             </StackPanel>
-            <!--<ScrollViewer Grid.Row="1" >-->
-            <StackPanel Grid.Row="1">
-                <StackPanel Orientation="Horizontal">
-                    <Label>Portrait Image</Label>
-                    <Button>Open</Button>
-                    <Button>( - )</Button>
-                </StackPanel>
-                <Image Source="{Binding Model.PortraitImageFullPath, Converter={StaticResource ImageConverter}}"
-                    Width="200"
-                       ></Image>
-            </StackPanel>
-            <!--</ScrollViewer>-->
             <GridSplitter  Style="{StaticResource GridSplitterWidth}" Grid.RowSpan="2" />
 
             <DataGrid Grid.Row="1" Grid.Column="1" 
@@ -193,6 +125,7 @@
                                             CommandParameter="{Binding}">
                                         Open
                                     </Button>
+                                    <Button Click="OpenFontStyleWindow">Open Font Style Window</Button>
                                 </StackPanel>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>

@@ -1,4 +1,6 @@
 ﻿using PropertyChanged;
+using System;
+using TTSToVideo.Business.Models;
 
 namespace TTSToVideo.WPF.Models
 {
@@ -7,5 +9,10 @@ namespace TTSToVideo.WPF.Models
     public class StatementImageModel
     {
         public string? Path { get; set; }
+
+        internal StatementImage ToStatementImage()
+        {
+            return new StatementImage { Path = Path };
+        }
     }
 }

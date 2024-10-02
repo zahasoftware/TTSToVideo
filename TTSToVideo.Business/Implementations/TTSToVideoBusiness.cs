@@ -15,10 +15,7 @@ using Constants = TTSToVideo.Helpers.Constants;
 
 namespace TTSToVideo.Business.Implementations
 {
-    public class TTSToVideoBusiness(IImageGeneratorAI imageGeneratorAI
-                                      , ITts tts
-                                      , IProgressBar progressBar
-            ) : ITTSToVideoBusiness
+    public class TTSToVideoBusiness(IImageGeneratorAI imageGeneratorAI, ITts tts, IProgressBar progressBar) : ITTSToVideoBusiness
     {
 
         public async Task GeneratePortraitVideoCommandExecute(string imagePath, string outputPath)
@@ -28,76 +25,43 @@ namespace TTSToVideo.Business.Implementations
                 {
                     ImageUrlOrPath = imagePath
                 });
-
             File.WriteAllBytes(outputPath, video.Video);
         }
 
-        public async Task GeneratePortraitImageCommandExecute(Statement statement, string[] imageModelIds, string outputFolder, CancellationToken token)
+        public async Task GeneratePortraitImageCommandExecute(Statement statement, string[] imageModelIds, string outputFolder, TTSToVideoOptions options, CancellationToken token)
         {
             int countImageMain = 1;
-
-            await GenerateImage(outputFolder, imageModelIds, countImageMain, statement, token);
+            await GenerateImage(outputFolder, imageModelIds, countImageMain, statement, options, token);
         }
-
 
         public async Task ProcessCommandExecute(string projectPath
                                                , string projectName
-                                               , string text
+                                               , List<Statement> statements
                                                , string negativePrompt
                                                , string globalPrompt
                                                , string[] imageModelIds
                                                , TtsVoice selectedVoice
-                                               , TTSToVideoPortraitParams portraitParams
+                                               , bool portraitEnabled
                                                , TTSToVideoOptions options
                                                , CancellationToken token)
         {
-            List<Statement> statements = null;
-            //Assign the total of all iterations to progress bar Total
 
             try
             {
-
                 Directory.CreateDirectory(projectPath);
 
-                //Split text process text with dot and paragraph
-                string[] paragraphs = text.Split(new string[] { Environment.NewLine + Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
-                statements = paragraphs.Select(o => new Statement
+                foreach (var s in statements)
                 {
-                    Prompt = o,
-                    GlobalPrompt = globalPrompt,
-                    NegativePrompt = negativePrompt
-                }).ToList();
+                    s.GlobalPrompt = globalPrompt;
+                    s.NegativePrompt = negativePrompt;
+                }
 
+                //Assign the total of all iterations to progress bar Total
                 progressBar.Total = statements.Count * 3; //3 because we have to generate image, voice and video
 
-                Statement? statementPortraitVoice = null;
-                if (portraitParams.Enable)
+                if (portraitEnabled && statements.Count > 0)
                 {
-                    if (portraitParams.ImagePath == null)
-                    {
-                        //Map StatementModel to Statement
-                        statementPortraitVoice = new Statement
-                        {
-                            Prompt = portraitParams.Text,
-                            NegativePrompt = negativePrompt,
-                        };
-
-                        await this.GeneratePortraitImageCommandExecute(statementPortraitVoice, imageModelIds, projectPath, token);
-                    }
-
-                    statementPortraitVoice = new Statement()
-                    {
-                        Images = [
-                            new() {
-                                    Path = Path.Combine(projectPath, portraitParams.ImagePath
-                                                                     ?? throw new CustomApplicationException("PortraitImagePath empty"))
-                                }
-                        ],
-                        Prompt = (string.IsNullOrEmpty(portraitParams.Voice) ? portraitParams.Text : portraitParams.Voice) ??
-                                  throw new CustomApplicationException("PortraitText or PortraitVoice empty"),
-
-                        VoiceAudioPath = Path.Combine(projectPath, "portrait-voice.wav")
-                    };
+                    statements[0].IsProtrait = portraitEnabled;
                 }
 
                 /*
@@ -118,30 +82,20 @@ namespace TTSToVideo.Business.Implementations
                 //Getting voices
                 #region Processing Voices
 
-                //Getting portrait voice
-                if (portraitParams.Enable && statementPortraitVoice != null)
-                {
-                    await GetVoice(new TtsVoice
-                    {
-                        ModelId = selectedVoice.ModelId,
-                        Id = selectedVoice.Id
-                    }, statementPortraitVoice, token);
-                }
-
                 //Getting statement voices
                 int ca = 1;
-                foreach (var statement in statements) 
+                foreach (var statement in statements)
                 {
                     progressBar.Increment();
                     progressBar.ShowMessage($"Getting voices {ca}");
 
                     var audioFileName = $"{statement.Prompt[..Math.Min(statement.Prompt.Length, Constants.MAX_PATH)]}";
-                    audioFileName = Path.Combine(projectPath, $"{ca++}.-{PathHelper.CleanFileName(audioFileName)}.wav");
+                    audioFileName = Path.Combine(projectPath, $"v-{PathHelper.CleanFileName(audioFileName)}.wav");
                     statement.VoiceAudioPath = audioFileName;
 
                     await GetVoice(new TtsVoice
                     {
-                        ModelId = selectedVoice.ModelId,
+                        ModelId = "eleven_multilingual_v2",//selectedVoice.ModelId,
                         Id = selectedVoice.Id
                     }, statement, token);
                 }
@@ -154,25 +108,17 @@ namespace TTSToVideo.Business.Implementations
 
                 var previosVoiceAudioPath = "";
 
-                //Concatenating Portrait with the first audio
-                if (portraitParams.Enable)
-                {
-                    previosVoiceAudioPath = statementPortraitVoice?.VoiceAudioPathWave;
-                }
-                else
-                {
-                    previosVoiceAudioPath = statements.First().VoiceAudioPathWave;
-                }
-
-                var isFirstIteration = true;
+                //First audio
+                previosVoiceAudioPath = statements.First().VoiceAudioPathWave;
                 var silenceAudioTemp = $"{Path.GetTempFileName()}.wav";
 
                 if (options.DurationBetweenVideo != null && options.DurationBetweenVideo.Value.TotalSeconds != 0)
                 {
-                    AudioHelper.CreateSilentWavAudio(silenceAudioTemp, (options.DurationBetweenVideo ?? new TimeSpan()), token);//, AudioHelper.AudioFormat.WAV, token);
+                    await AudioHelper.CreateSilentWavAudio(silenceAudioTemp, (options.DurationBetweenVideo ?? new TimeSpan()), token);//AudioHelper.AudioFormat.WAV, token);
                 }
 
-                foreach (var s in portraitParams.Enable ? statements : statements.Skip(1))
+                //The rest of the other audios
+                foreach (var s in statements.Skip(1))
                 {
                     if (token.IsCancellationRequested)
                     {
@@ -208,13 +154,13 @@ namespace TTSToVideo.Business.Implementations
                 #region Processing Pictures
                 int numImages = 1;
                 int countImageMain = 0;
+                var firstStatement = statements.First();
                 foreach (var statement in statements)
                 {
                     progressBar.Increment();
                     progressBar.ShowMessage($"Getting Picture {countImageMain}");
 
                     countImageMain++;
-
 
                     if (token.IsCancellationRequested)
                     {
@@ -225,29 +171,68 @@ namespace TTSToVideo.Business.Implementations
                     for (int i = 0; i < numImages; i++)
                     {
                         var imageFileName = $"{statement.Prompt[..Math.Min(statement.Prompt.Length, Constants.MAX_PATH)]}";
-                        imageFileName = Path.Combine(projectPath, $"{countImageMain}.{i + 1}.-{PathHelper.CleanFileName(imageFileName)}.jpg");
-
-                        statement.Images.Add(new StatementImage
-                        {
-                            Path = imageFileName
-                        });
+                        imageFileName = Path.Combine(projectPath, $"{PathHelper.CleanFileName(imageFileName)}.jpg");
 
                         if (!File.Exists(imageFileName))
                         {
                             notExistsOneImage = true;
                         }
+
+                        statement.Images.Clear();
+                        statement.Images.Add(new StatementImage
+                        {
+                            Path = imageFileName
+                        });
                     }
 
-                    if (notExistsOneImage)
+                    if (options.ImageOptions.UseOnlyFirstImage && statement != firstStatement)
                     {
-                        await GenerateImage(projectPath, imageModelIds, countImageMain, statement, token);
+                        statement.Images.Clear();
+                        statement.Images.Add(new StatementImage
+                        {
+                            Path = statements.First().Images[0].Path
+                        });
+                    }
+                    else if (notExistsOneImage)
+                    {
+                        await GenerateImage(projectPath, imageModelIds, countImageMain, statement, options, token);
                     }
                 }
                 #endregion
 
-                //Making Audio
+                //Creating Video (If It is enabled)
+                #region Generating Video
+                if (options.ImageOptions.CreateVideo)
+                {
+                    foreach (var statement in statements)
+                    {
+                        progressBar.Increment();
+                        progressBar.ShowMessage($"Generating Video {countImageMain}");
+                        if (token.IsCancellationRequested)
+                        {
+                            throw new CustomApplicationException("Operantion Cancelled by User");
+                        }
+
+                        var videoPath = $"{statement.Images[0].Path}.mp4";
+                        if (options.ImageOptions.UseOnlyFirstImage && statement != firstStatement)
+                        {
+                            statement.VideoPath = firstStatement.VideoPath;
+                        }
+                        else if (statement == firstStatement)
+                        {
+                            if (!File.Exists(videoPath))
+                            {
+                                await this.GeneratePortraitVideoCommandExecute(statement.Images[0].Path, videoPath);
+                            }
+                            statement.VideoPath = videoPath;
+                        }
+                    }
+                }
+                #endregion
+
+                //Making Music 
                 #region Processing Audio
-                progressBar.ShowMessage($"Making Audio.");
+                progressBar.ShowMessage($"Making Music Audio.");
 
                 Random random = new();
                 var audioWavs = Directory.GetFiles(options.MusicDir, "*.wav");
@@ -258,11 +243,11 @@ namespace TTSToVideo.Business.Implementations
                 foreach (var s in statements)
                 {
                     desiredDuration += s.AudioDuration + (options.DurationBetweenVideo ?? new TimeSpan());
-                }
 
-                if (portraitParams.Enable)
-                {
-                    desiredDuration += statementPortraitVoice.AudioDuration;
+                    if (s.IsProtrait)
+                    {
+                        desiredDuration -= options.DurationBetweenVideo ?? new TimeSpan();
+                    }
                 }
 
                 desiredDuration += (options.DurationEndVideo ?? new TimeSpan());
@@ -276,7 +261,7 @@ namespace TTSToVideo.Business.Implementations
                 var tempAudioFileB = $"{Path.GetTempFileName()}.wav";
                 File.Copy(audioFilePath, tempAudioFileB, true);
 
-                var outputMusicFile = "output.wav";
+                var outputMusicFile = Path.Combine(projectPath, "output-music.wav");
 
                 var tempAudioFileC = $"{Path.GetTempFileName()}.wav";
                 for (double s = 0; s < desiredDuration.TotalSeconds; s += audioFileReal.TotalTime.TotalSeconds)
@@ -295,8 +280,14 @@ namespace TTSToVideo.Business.Implementations
                 await a.DisposeAsync();
 
                 AudioHelper.CutAudio(tempAudioFileC, tempAudioFileA, cut);
-                //AudioHelper.DecreaseVolumeAtSpecificTime(tempAudioFileA, tempAudioFileB, TimeSpan.FromSeconds(cut - 10), 0.5f);
-                File.Copy(tempAudioFileA, outputMusicFile, true);
+
+                AudioHelper.DecreaseVolumeAtSpecificTime( tempAudioFileA
+                                            , tempAudioFileB
+                                            , TimeSpan.FromSeconds(0)//(cut - 10)
+                                            , AudioHelper.GetAudioDuration(concatenatedVoicesPath)
+                                            , -20.0f);
+
+                File.Copy(tempAudioFileB, outputMusicFile, true);
 
                 RemoveTempFile(tempAudioFileA);
                 RemoveTempFile(tempAudioFileB);
@@ -308,83 +299,38 @@ namespace TTSToVideo.Business.Implementations
                 progressBar.ShowMessage($"Making Video.");
 
                 var finalProjectVideoPath = projectPath + "\\" + $"{projectName}.mp4";
+                if (File.Exists(finalProjectVideoPath))
+                {
+                    File.Delete(finalProjectVideoPath);
+                }
 
                 var previousVideo = "";
                 string outputPath = "";
                 string tempFile = "";
 
-                FfmpegOptions ffmpegOptions = new()
-                {
-                    FontStyle = new FfmpegFontStyle
-                    {
-                        Alignment = FfmpegAlignment.TopCenter,
-                        FontSize = 11
-                    },
-                    MarginEndDuration = options.DurationBetweenVideo
-                };
-
-                FfmpegOptions ffmpegOptionPortrait = new()
-                {
-                    FontStyle = new FfmpegFontStyle
-                    {
-                        Alignment = FfmpegAlignment.TopCenter,
-                        FontSize = 11
-                    },
-                    MarginEndDuration = options.DurationBetweenVideo
-                };
-
                 List<Statement> statementsToIterate = statements;
-                if (portraitParams.Enable && statementPortraitVoice != null)
-                {
-                    if (statementPortraitVoice.Images.Count == 0)
-                    {
-                        throw new CustomApplicationException("Portrait image not generated.");
-                    }
 
-                    outputPath = statementPortraitVoice.VoiceAudioPath + ".mp4";
-                    if (File.Exists(portraitParams.VideoPath))
-                    {
-                        await FFMPEGHelpers.CreateVideoWithSubtitle(
-                            outputPath,
-                            statementPortraitVoice.Prompt,
-                            portraitParams.VideoPath,
-                            statementPortraitVoice.AudioDuration,
-                            ffmpegOptionPortrait,
-                            token);
-                    }
-                    else
-                    {
-                        await FFMPEGHelpers.CreateVideoWithSubtitle(
-                            outputPath,
-                            statementPortraitVoice.Prompt,
-                            statementPortraitVoice.Images.First().Path,
-                            statementPortraitVoice.AudioDuration,
-                            ffmpegOptionPortrait,
-                            token);
-                    }
+                await FFMPEGHelpers.CreateVideoWithSubtitle(
+                    finalProjectVideoPath,
+                    firstStatement.Prompt,
+                    firstStatement.VideoPath != null && File.Exists(firstStatement.VideoPath) ? firstStatement.VideoPath : firstStatement?.Images.FirstOrDefault()?.Path,
+                    firstStatement.AudioDuration,
+                     new()
+                     {
+                         FontStyle = new FfmpegFontStyle
+                         {
+                             Alignment = firstStatement?.FontStyle?.Alignment ?? FfmpegAlignment.TopCenter,
+                             FontSize = 11
+                         },
+                         MarginEndDuration = options.DurationBetweenVideo
+                     },
+                     token);
 
-                    tempFile = $"{Path.GetTempFileName()}.mp4";
-                    File.Copy(outputPath, tempFile, true);
-                    previousVideo = tempFile;
-                }
-                else
-                {
-                    var firstStatement = statements.First();
-                    outputPath = firstStatement.VoiceAudioPath + ".mp4";
-                    await FFMPEGHelpers.CreateVideoWithSubtitle(
-                        outputPath,
-                        firstStatement.Prompt,
-                        firstStatement.Images.First().Path,
-                        firstStatement.AudioDuration,
-                        ffmpegOptions,
-                        token);
+                tempFile = $"{Path.GetTempFileName()}.mp4";
+                File.Copy(finalProjectVideoPath, tempFile, true);
+                previousVideo = tempFile;
 
-                    tempFile = $"{Path.GetTempFileName()}.mp4";
-                    File.Copy(outputPath, tempFile, true);
-                    previousVideo = tempFile;
-
-                    statementsToIterate = statements.Skip(1).ToList();
-                }
+                statementsToIterate = statements.Skip(1).ToList();
 
                 foreach (var s in statementsToIterate)
                 {
@@ -396,25 +342,30 @@ namespace TTSToVideo.Business.Implementations
 
                     // Set the output file path
                     outputPath = s.VoiceAudioPath + ".mp4";
-                    ffmpegOptions = new()
-                    {
-                        HeightResolution = FFMPEGDefinitions.HeightResolution,
-                        WidthResolution = FFMPEGDefinitions.WidthResolution,
-                        FontStyle = new()
-                        {
-                            Alignment = FfmpegAlignment.TopCenter,
-                            FontSize = 11,
-                        },
-                        MarginEndDuration = options.DurationBetweenVideo
-                    };
 
                     await FFMPEGHelpers.CreateVideoWithSubtitle(
                         outputPath,
                         s.Prompt,
-                        s.Images.First().Path,
-                        s.AudioDuration, ffmpegOptions, token);
+                        File.Exists(s.VideoPath) ? s.VideoPath : s.Images.First().Path,
+                        s.AudioDuration,
+                        new()
+                        {
+                            HeightResolution = FFMPEGDefinitions.HeightResolution,
+                            WidthResolution = FFMPEGDefinitions.WidthResolution,
+                            FontStyle = new()
+                            {
+                                Alignment = s?.FontStyle?.Alignment ?? FfmpegAlignment.TopCenter,
+                                FontSize = 11,
+                            },
+                            MarginEndDuration = options.DurationBetweenVideo
+                        }, token);
 
-                    await FFMPEGHelpers.JoiningVideos(previousVideo, outputPath, finalProjectVideoPath, ffmpegOptions, token);
+                    await FFMPEGHelpers.JoiningVideos(previousVideo, outputPath, finalProjectVideoPath, new()
+                    {
+                        HeightResolution = FFMPEGDefinitions.HeightResolution,
+                        WidthResolution = FFMPEGDefinitions.WidthResolution,
+                    }
+                        , token);
 
                     if (File.Exists(previousVideo))
                     {
@@ -431,7 +382,10 @@ namespace TTSToVideo.Business.Implementations
                 previousVideo = tempFile;
 
                 var lastStatement = statements.Last();
-                var lastImage = lastStatement.Images[0].Path;
+
+                var lastImage = File.Exists(lastStatement.VideoPath) 
+                                ? lastStatement.VideoPath 
+                                : lastStatement.Images.First().Path;
                 outputPath = $"{lastStatement.VoiceAudioPath}-no-text.mp4";
 
                 //Run ffmpeg process
@@ -519,6 +473,7 @@ namespace TTSToVideo.Business.Implementations
                                          string[] imageModelId,
                                           int countImageMain,
                                           Statement statement,
+                                          TTSToVideoOptions options,
                                           CancellationToken token)
         {
 
@@ -531,7 +486,8 @@ namespace TTSToVideo.Business.Implementations
                 Height = FFMPEGDefinitions.HeightResolution,//904, //1472,
                 ModelId = imageModelId[rn - 1],
                 NumImages = 1,
-                Prompt = statement.GlobalPrompt + (string.IsNullOrEmpty(statement.GlobalPrompt) ? "" : ",") + statement.Prompt,
+                Prompt = statement.GlobalPrompt + (string.IsNullOrEmpty(statement.GlobalPrompt) || options.ImageOptions.UseTextForPrompt ? "" : ",")
+                        + (options.ImageOptions.UseTextForPrompt ? statement.Prompt : ""),
                 NegativePrompt = statement.NegativePrompt
             });
             statement.ImageId = imageId.Id;
@@ -553,11 +509,10 @@ namespace TTSToVideo.Business.Implementations
 
             } while (response == null || response.Images.Count == 0);
 
-            var ci = 1;
             foreach (var image in response.Images)
             {
                 var imageFileName = $"{statement.Prompt[..Math.Min(statement.Prompt.Length, Helpers.Constants.MAX_PATH)]}";
-                imageFileName = Path.Combine(projectPath, $"{countImageMain}.{ci++}.-{PathHelper.CleanFileName(imageFileName)}.jpg");
+                imageFileName = Path.Combine(projectPath, $"{PathHelper.CleanFileName(imageFileName)}.jpg");
 
                 statement.Images.Add(new StatementImage
                 {

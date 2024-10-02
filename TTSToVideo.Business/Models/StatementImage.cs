@@ -2,6 +2,6 @@
 {
     public class StatementImage
     {
-        public string Path { get; internal set; }
+        public string? Path { get; set; }
     }
 }

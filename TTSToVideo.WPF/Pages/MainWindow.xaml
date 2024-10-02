@@ -5,10 +5,14 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
         xmlns:local="clr-namespace:TTSToVideo" 
+        xmlns:converters="clr-namespace:TTSToVideo.WPF.Converters"
         xmlns:implementations="clr-namespace:TTSToVideo.WPF.ViewsModels" 
         d:DataContext="{d:DesignInstance Type=implementations:MainWindowViewModel}"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800" >
+        Title="{Binding Title}" Height="450" Width="1000" >
+    <Window.Resources>
+        <converters:IsNotNullConverter x:Key="IsNotNullConverter" />
+    </Window.Resources>
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="auto"></RowDefinition>
@@ -34,7 +38,8 @@
                                 DisplayMemberPath="FileName"
                                 Text="{Binding MainPage.Model.ProjectName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                 SelectedItem="{Binding MainPage.Model.ProjectNameSelected}"
-                                Width="200">
+                                Width="200"
+                                Name="cbx" >
                         <i:Interaction.Triggers>
                             <i:EventTrigger EventName="SelectionChanged">
                                 <i:InvokeCommandAction Command="{Binding MainPage.ProjectNameSelectionChangedCommand}"                            
@@ -42,6 +47,13 @@
                             </i:EventTrigger>
                         </i:Interaction.Triggers>
                     </ComboBox>
+
+                    <Button Command="{Binding MainPage.OpenVideoCommand}" 
+                            IsEnabled="{Binding ElementName=cbx, Path=SelectedItem, Converter={StaticResource IsNotNullConverter}}">Open Video
+                    </Button>
+                    <Button Command="{Binding MainPage.OpenExplorerCommand}" 
+                            IsEnabled="{Binding ElementName=cbx, Path=SelectedItem, Converter={StaticResource IsNotNullConverter}}">Open Explorer
+                    </Button>
                     <Separator Height="50"></Separator>
                     <RibbonButton Label="Process" Command="{Binding MainPage.ProcessCommand}" ></RibbonButton>
                     <Separator Height="50"></Separator>
@@ -51,14 +63,17 @@
                                   Command="{Binding MainPage.CancelCommand}" 
                                   IsEnabled="{Binding MainPage.ProcessCommand.IsRunning}"
                                   ></RibbonButton>
+
+
+
                     <!--<RibbonComboBox IsEditable="True" IsReadOnly="False" Label="Recent Projects" >
                         <RibbonGallery SelectedItem="{Binding MainPage.ProjectNameSelected,Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
                             <RibbonGalleryCategory ItemsSource="{Binding MainPage.ProjectsNames}"></RibbonGalleryCategory>
                         </RibbonGallery>
                     </RibbonComboBox>-->
                 </RibbonGroup>
-                <RibbonGroup>
-                    <!--SelectedValuePath="GeneratedImage.ImageUrl"-->
+
+                <RibbonGroup Name="Picture"  Header="Images" >
                     <ComboBox ItemsSource="{Binding MainPage.ImagesModels}"
                               SelectedValue="{Binding MainPage.Model.ImageModelSelected}"
                               Width="220">
@@ -71,9 +86,12 @@
                             </DataTemplate>
                         </ComboBox.ItemTemplate>
                     </ComboBox>
+                    <CheckBox IsChecked="{Binding MainPage.Model.UseOnlyFirstImage}" Content="Use first image to all"></CheckBox>
+                    <CheckBox IsChecked="{Binding MainPage.Model.UseTextForPrompt}" Content="Use paragraph for prompt"></CheckBox>
+                    <CheckBox IsChecked="{Binding MainPage.Model.CreateVideo}" Content="Create a video"></CheckBox>
                 </RibbonGroup>
 
-                <RibbonGroup>
+                <RibbonGroup Name="Voices" Header="Voice">
                     <!--SelectedValuePath="GeneratedImage.ImageUrl"-->
                     <ComboBox ItemsSource="{Binding MainPage.VoicesModels}"
                               SelectedValue="{Binding MainPage.Model.VoiceModelSelected}"
@@ -81,15 +99,31 @@
                               Width="220">
                     </ComboBox>
                 </RibbonGroup>
- 
- 
+                <RibbonGroup Name="Music" Header="Voice">
+                    <!-- SelectedValuePath="GeneratedImage.ImageUrl" -->
+                    <ComboBox ItemsSource       ="{Binding MainPage.MusicModels}" 
+                              SelectedValue     ="{Binding MainPage.Model.MusicModelSelected}" 
+                              DisplayMemberPath ="Display" 
+                              Width="220" 
+                              >
+                    </ComboBox>
+                    <Slider Value="{Binding MainPage.Model.MusicVolume, Mode=TwoWay}" 
+                            Minimum             ="-60" Maximum="0" 
+                            Width               ="150" 
+                            TickFrequency       ="10" 
+                            TickPlacement       ="BottomRight" 
+                            IsSnapToTickEnabled ="True" 
+                            AutoToolTipPlacement="BottomRight" 
+                            AutoToolTipPrecision="0" 
+                            Margin="10"/>
+                </RibbonGroup>
             </RibbonTab>
             <RibbonTab Name="tabConfiguration" Header="Configuration" KeyTip="C" >
                 <RibbonButton Label="Save" Command="{Binding VMConf.SaveCommand}" ></RibbonButton>
             </RibbonTab>
             <!-- Ribbon Tab #2: -->
         </Ribbon>
-        <Frame Grid.Row="1" x:Name="mainFrame" NavigationUIVisibility="Hidden"/>
+        <Frame Grid.Row="1" x:Name="mainFrame" NavigationUIVisibility="Hidden"  />
         <StatusBar Grid.Row="2" DockPanel.Dock="Bottom" >
             <ProgressBar Value="{Binding ProgressBarValue}" Minimum="0" Maximum="100" Height="10" Width="200"/>
             <StatusBarItem>

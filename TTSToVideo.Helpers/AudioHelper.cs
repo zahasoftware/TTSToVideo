@@ -51,26 +51,40 @@ namespace TTSToVideo.Helpers
         }
 
 
-        public static void DecreaseVolumeAtSpecificTime(string inputFilePath, string outputFilePath, TimeSpan targetTime, float volumeDecibel)
+        public static void DecreaseVolumeAtSpecificTime(string inputFilePath, string outputFilePath, TimeSpan targetTime, TimeSpan duration, float volumeDecibel)
         {
-            // Load the input audio file
-            using var reader = OpenAudio(inputFilePath);
-            // Get the sample rate (number of samples per second) of the audio
-            int sampleRate = reader.WaveFormat.SampleRate;
+            using (var reader = new AudioFileReader(inputFilePath))
+            {
+                using (var writer = new WaveFileWriter(outputFilePath, reader.WaveFormat))
+                {
+                    var samplesPerSecond = reader.WaveFormat.SampleRate * reader.WaveFormat.Channels;
+                    var bytesPerSample = reader.WaveFormat.BitsPerSample / 8;
 
-            // Calculate the number of samples corresponding to the target time
-            long targetSample = (long)(targetTime.TotalSeconds * sampleRate);
+                    // Convert time to samples
+                    int startSample = (int)(targetTime.TotalSeconds * samplesPerSecond);
+                    int endSample = (int)((targetTime + duration).TotalSeconds * samplesPerSecond);
 
-            // Create a WaveProvider to process the audio
-            var waveProvider = new OffsetSampleProvider(reader as ISampleProvider);
-            waveProvider.SkipOver = TimeSpan.FromSeconds(targetSample);
+                    float[] buffer = new float[samplesPerSecond];
+                    int samplesRead;
+                    int sampleIndex = 0;
 
-            // Create a volume adjustment provider
-            var volumeProvider = new VolumeSampleProvider(waveProvider);
-            volumeProvider.Volume = volumeDecibel;
+                    while ((samplesRead = reader.Read(buffer, 0, buffer.Length)) > 0)
+                    {
+                        for (int i = 0; i < samplesRead; i++)
+                        {
+                            if (sampleIndex >= startSample && sampleIndex < endSample)
+                            {
+                                float volumeFactor = (float)Math.Pow(10.0, volumeDecibel / 20.0);
+                                buffer[i] *= volumeFactor;
+                            }
 
-            // Write the processed audio to a new output file
-            WaveFileWriter.CreateWaveFile16(outputFilePath, volumeProvider);
+                            sampleIndex++;
+                        }
+
+                        writer.WriteSamples(buffer, 0, samplesRead);
+                    }
+                }
+            }
         }
 
         public static void CutAudio(string inputPath, string outputPath, double durationInSeconds)
@@ -218,6 +232,12 @@ namespace TTSToVideo.Helpers
                 // Write the buffer to the WAV file
                 writer.Write(buffer, 0, buffer.Length);
             }
+        }
+
+        public static TimeSpan GetAudioDuration(string audioFile)
+        {
+            using var audioFileReader = new AudioFileReader(audioFile);
+            return audioFileReader.TotalTime;
         }
     }
 

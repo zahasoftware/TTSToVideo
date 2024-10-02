@@ -19,7 +19,7 @@ namespace TTSToVideo.WPF.Pages
     /// <summary>
     /// Interaction logic for ConfigurationPage.xaml
     /// </summary>
-    public partial class ConfigurationPage : Page, IPage<ConfigurationPage>
+    public partial class ConfigurationPage : Page
     {
         private readonly ConfigurationViewModel configuration;
 
