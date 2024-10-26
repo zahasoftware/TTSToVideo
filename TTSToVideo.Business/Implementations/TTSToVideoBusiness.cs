@@ -10,7 +10,7 @@ using System.Reflection;
 using System.Text;
 using TTSToVideo.Business.Models;
 using TTSToVideo.Helpers;
-using TTSToVideo.WPF.Helpers;
+using TTSToVideo.Helpers.Implementations.Ffmpeg;
 using Constants = TTSToVideo.Helpers.Constants;
 
 namespace TTSToVideo.Business.Implementations
@@ -39,6 +39,7 @@ namespace TTSToVideo.Business.Implementations
                                                , List<Statement> statements
                                                , string negativePrompt
                                                , string globalPrompt
+                                               , string selectedMusicFile
                                                , string[] imageModelIds
                                                , TtsVoice selectedVoice
                                                , bool portraitEnabled
@@ -234,10 +235,10 @@ namespace TTSToVideo.Business.Implementations
                 #region Processing Audio
                 progressBar.ShowMessage($"Making Music Audio.");
 
-                Random random = new();
-                var audioWavs = Directory.GetFiles(options.MusicDir, "*.wav");
-                int randomNumber = random.Next(1, audioWavs.Length);
-                var audioFilePath = audioWavs[randomNumber - 1];
+                //Random random = new();
+                //var audioWavs = Directory.GetFiles(options.MusicDir, "*.wav");
+                //int randomNumber = random.Next(1, audioWavs.Length);
+                var audioFilePath = selectedMusicFile; //audioWavs[randomNumber - 1];
 
                 TimeSpan desiredDuration = new();  // Adjust this value for desired audio duration
                 foreach (var s in statements)
@@ -281,11 +282,11 @@ namespace TTSToVideo.Business.Implementations
 
                 AudioHelper.CutAudio(tempAudioFileC, tempAudioFileA, cut);
 
-                AudioHelper.DecreaseVolumeAtSpecificTime( tempAudioFileA
+                AudioHelper.DecreaseVolumeAtSpecificTime(tempAudioFileA
                                             , tempAudioFileB
                                             , TimeSpan.FromSeconds(0)//(cut - 10)
                                             , AudioHelper.GetAudioDuration(concatenatedVoicesPath)
-                                            , -20.0f);
+                                            , (float)options.MusicaOptions.MusicVolume);
 
                 File.Copy(tempAudioFileB, outputMusicFile, true);
 
@@ -320,7 +321,7 @@ namespace TTSToVideo.Business.Implementations
                          FontStyle = new FfmpegFontStyle
                          {
                              Alignment = firstStatement?.FontStyle?.Alignment ?? FfmpegAlignment.TopCenter,
-                             FontSize = 11
+                             FontSize = firstStatement?.FontStyle?.FontSize ?? 11,  
                          },
                          MarginEndDuration = options.DurationBetweenVideo
                      },
@@ -355,7 +356,7 @@ namespace TTSToVideo.Business.Implementations
                             FontStyle = new()
                             {
                                 Alignment = s?.FontStyle?.Alignment ?? FfmpegAlignment.TopCenter,
-                                FontSize = 11,
+                                FontSize = s?.FontStyle?.FontSize ?? 11,
                             },
                             MarginEndDuration = options.DurationBetweenVideo
                         }, token);
@@ -383,8 +384,8 @@ namespace TTSToVideo.Business.Implementations
 
                 var lastStatement = statements.Last();
 
-                var lastImage = File.Exists(lastStatement.VideoPath) 
-                                ? lastStatement.VideoPath 
+                var lastImage = File.Exists(lastStatement.VideoPath)
+                                ? lastStatement.VideoPath
                                 : lastStatement.Images.First().Path;
                 outputPath = $"{lastStatement.VoiceAudioPath}-no-text.mp4";
 

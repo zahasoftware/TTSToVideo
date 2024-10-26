@@ -1,4 +1,4 @@
-﻿namespace TTSToVideo.Helpers
+﻿namespace TTSToVideo.Helpers.Implementations.Ffmpeg
 {
     public enum FfmpegAlignment
     {

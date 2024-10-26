@@ -6,9 +6,8 @@ using System.Globalization;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using TTSToVideo.WPF.Helpers;
 
-namespace TTSToVideo.Helpers
+namespace TTSToVideo.Helpers.Implementations.Ffmpeg
 {
     public static class FFMPEGHelpers
     {
@@ -48,14 +47,25 @@ namespace TTSToVideo.Helpers
                     options.Add($"Alignment={(byte)ffmpegOptions.FontStyle.Alignment.Value}");
                 }
 
+
+                if (ffmpegOptions.FontStyle.FontSize != null)
+                {
+                    options.Add($"Fontsize={(byte)ffmpegOptions.FontStyle.FontSize.Value}");
+                }
+
                 if (ffmpegOptions.FontStyle.MarginV != null)
                 {
                     options.Add($"MarginV={(byte)ffmpegOptions.FontStyle.MarginV.Value}");
                 }
 
-                if (ffmpegOptions.FontStyle.FontSize != null)
+                if (ffmpegOptions.FontStyle.MarginV!= null)
                 {
-                    options.Add($"Fontsize={(byte)ffmpegOptions.FontStyle.FontSize.Value}");
+                    options.Add($"MarginL={(byte)ffmpegOptions.FontStyle.MarginV.Value}");
+                }
+
+                if (ffmpegOptions.FontStyle.MarginR!= null)
+                {
+                    options.Add($"MarginR={(byte)ffmpegOptions.FontStyle.MarginR.Value}");
                 }
 
                 var forceStyle = string.Join(",", options);
@@ -71,7 +81,7 @@ namespace TTSToVideo.Helpers
                 double inputVideoDuration = 0;
                 if (isVideo)
                 {
-                    inputVideoDuration = (videoDuration.TotalSeconds / GetVideoDuration(imagePath).TotalSeconds) + 1;
+                    inputVideoDuration = videoDuration.TotalSeconds / GetVideoDuration(imagePath).TotalSeconds + 1;
                     inputVideoDuration = Math.Ceiling(inputVideoDuration);
                 }
 
@@ -210,7 +220,7 @@ namespace TTSToVideo.Helpers
             double inputVideoDuration = 0;
             if (isVideo)
             {
-                inputVideoDuration = (duration.Value.TotalSeconds / GetVideoDuration(inputImagePath).TotalSeconds) + 1;
+                inputVideoDuration = duration.Value.TotalSeconds / GetVideoDuration(inputImagePath).TotalSeconds + 1;
                 inputVideoDuration = Math.Ceiling(inputVideoDuration);
             }
 

@@ -3,16 +3,38 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
         xmlns:local="clr-namespace:TTSToVideo.WPF.ViewsModels"
-        Title="New Window" Height="450" Width="800" >
+        Title="New Window" Height="450" Width="800"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+        d:DataContext="{d:DesignInstance Type=local:FontStyleViewModel}"
+        mc:Ignorable="d"
+        d:DesignHeight="450" d:DesignWidth="800"
+        >
+
     <i:Interaction.Triggers>
-      <i:EventTrigger EventName="Closed">
-        <i:InvokeCommandAction Command="{Binding WindowClosedCommand}" />
-      </i:EventTrigger>
+        <i:EventTrigger EventName="Closed">
+            <i:InvokeCommandAction Command="{Binding WindowClosedCommand}" />
+        </i:EventTrigger>
+        <i:EventTrigger EventName="Loaded">
+            <i:InvokeCommandAction Command="{Binding WindowOpenedCommand}" />
+        </i:EventTrigger>
     </i:Interaction.Triggers>
-  <Grid>
-    <StackPanel Orientation="Vertical">
-      <ComboBox ItemsSource="{Binding FontPosition}" DisplayMemberPath="Name"
+    <StackPanel>
+        <Label>Font Position</Label>
+        <StackPanel Orientation="Vertical">
+            <ComboBox ItemsSource="{Binding FontPosition}" DisplayMemberPath="Name"
                 SelectedItem="{Binding SelectedFontPosition}"></ComboBox>
+        </StackPanel>
+
+        <Label>Font Size</Label>
+        <Slider Value="{Binding FontSize, Mode=TwoWay}" 
+          Minimum             ="5" Maximum="50" 
+          Width               ="150" 
+          TickFrequency       ="1" 
+          TickPlacement       ="BottomRight" 
+          IsSnapToTickEnabled ="True" 
+          AutoToolTipPlacement="BottomRight" 
+          AutoToolTipPrecision="0" 
+          Margin="10"/>
     </StackPanel>
-  </Grid>
 </Window>

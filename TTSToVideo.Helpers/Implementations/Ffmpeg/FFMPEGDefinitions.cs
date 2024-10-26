@@ -7,7 +7,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace TTSToVideo.WPF.Helpers
+namespace TTSToVideo.Helpers.Implementations.Ffmpeg
 {
     public static class FFMPEGDefinitions
     {

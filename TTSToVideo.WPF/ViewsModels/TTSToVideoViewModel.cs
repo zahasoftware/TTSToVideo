@@ -23,6 +23,7 @@ using System.Windows.Threading;
 using TTSToVideo.Business;
 using TTSToVideo.Business.Models;
 using TTSToVideo.Helpers;
+using TTSToVideo.Helpers.Implementations.Ffmpeg;
 using TTSToVideo.WPF.Models;
 using Message = TTSToVideo.WPF.Models.Message;
 
@@ -245,14 +246,24 @@ namespace TTSToVideo.WPF.ViewsModels
                 foreach (var image in images)
                 {
                     var path = image.Path;
+
                     image.Path = "";
                     if (path != null && File.Exists(path))
                     {
                         File.Delete(path);
                     }
-                }
-                var imagePath = this.Model.Statements.FirstOrDefault(o => o == statementModel)?.Images[0].Path;
 
+                    if (path != null && File.Exists($"{path}.mp4"))
+                    {
+                        File.Delete($"{path}.mp4");
+                    }
+
+                    if (path != null && File.Exists($"{path}.wav.mp4"))
+                    {
+                        File.Delete($"{path}.wav.mp4");
+                    }
+                }
+                
                 var fullPathProject = GetProjectPath(this.Model.ProjectName);
 
                 var musicFinalPath = Path.Combine(fullPathProject, $"{Model.ProjectName}-Music-Final.mp4");
@@ -421,25 +432,30 @@ namespace TTSToVideo.WPF.ViewsModels
                     , statements
                     , Model.NegativePrompt + "," + configuration.Model.NegativePrompt
                     , Model.AditionalPrompt ?? ""
+                    , Model.MusicModelSelected.FilePath
                     , [Model.ImageModelSelected.Id]
                     , new TtsVoice
                     {
                         Id = Model.VoiceModelSelected.Id,
                         ModelId = Model.VoiceModelSelected.ModelId
                     },
-                      Model.PortraitEnabled,
-                      new TTSToVideoOptions
+                  Model.PortraitEnabled,
+                  new TTSToVideoOptions
+                  {
+                      DurationBetweenVideo = TimeSpan.FromSeconds(2),
+                      DurationEndVideo = TimeSpan.FromSeconds(7),
+                      MusicaOptions = new TtsToVideoMusicOptions
                       {
-                          DurationBetweenVideo = TimeSpan.FromSeconds(2),
-                          DurationEndVideo = TimeSpan.FromSeconds(7),
                           MusicDir = configuration.Model.MusicDir,
-                          ImageOptions = new TtsToVideoImageOptions
-                          {
-                              UseOnlyFirstImage = Model.UseOnlyFirstImage,
-                              UseTextForPrompt = Model.UseTextForPrompt,
-                              CreateVideo = Model.CreateVideo
-                          }
-                      }, token);
+                          MusicVolume = Model.MusicVolume,
+                      },
+                      ImageOptions = new TtsToVideoImageOptions
+                      {
+                          UseOnlyFirstImage = Model.UseOnlyFirstImage,
+                          UseTextForPrompt = Model.UseTextForPrompt,
+                          CreateVideo = Model.CreateVideo
+                      }
+                  }, token);
 
                 await LoadModel(projectFullPath);
 
@@ -501,21 +517,21 @@ namespace TTSToVideo.WPF.ViewsModels
             }
         }
 
-        private void Validation() 
+        private void Validation()
         {
             ArgumentNullException.ThrowIfNull(this.Model);
 
-            if (string.IsNullOrEmpty(this.Model.Prompt)) 
+            if (string.IsNullOrEmpty(this.Model.Prompt))
             {
                 throw new CustomApplicationException("Text Empty");
             }
 
-            if (string.IsNullOrEmpty(configuration.Model.MusicDir)) 
+            if (string.IsNullOrEmpty(configuration.Model.MusicDir))
             {
                 throw new CustomApplicationException("Music Directory Empty or does not exist");
-            } 
+            }
 
-            if (!Directory.Exists(configuration.Model.MusicDir)) 
+            if (!Directory.Exists(configuration.Model.MusicDir))
             {
                 throw new CustomApplicationException("Music Directory does not exist");
             }
@@ -526,9 +542,9 @@ namespace TTSToVideo.WPF.ViewsModels
             }
 
             if (Model.VoiceModelSelected == null)
-            { 
+            {
                 throw new CustomApplicationException("Voice Model not selected");
-            } 
+            }
 
         }
 
@@ -546,10 +562,10 @@ namespace TTSToVideo.WPF.ViewsModels
             string? json = null;
             if (File.Exists(configurationFile))
             {
-                json = await File.ReadAllTextAsync(configurationFile); 
+                json = await File.ReadAllTextAsync(configurationFile);
             }
 
-            if (json == null) 
+            if (json == null)
             {
                 this.Model = new TtsToVideoModel();
             }

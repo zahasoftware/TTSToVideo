@@ -19,6 +19,7 @@ namespace TTSToVideo.Business
                                  , List<Statement> statements
                                  , string negativePrompt
                                  , string globalPrompt
+                                 , string selectedMusicFile
                                  , string[] imageModelId
                                  , TtsVoice selectedVoice
                                  , bool portraitEnabled

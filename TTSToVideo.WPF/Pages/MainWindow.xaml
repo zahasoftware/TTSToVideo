@@ -9,7 +9,7 @@
         xmlns:implementations="clr-namespace:TTSToVideo.WPF.ViewsModels" 
         d:DataContext="{d:DesignInstance Type=implementations:MainWindowViewModel}"
         mc:Ignorable="d"
-        Title="{Binding Title}" Height="450" Width="1000" >
+        Title="{Binding Title}" Height="450" Width="1500" >
     <Window.Resources>
         <converters:IsNotNullConverter x:Key="IsNotNullConverter" />
     </Window.Resources>
@@ -99,7 +99,7 @@
                               Width="220">
                     </ComboBox>
                 </RibbonGroup>
-                <RibbonGroup Name="Music" Header="Voice">
+                <RibbonGroup Name="Music" Header="Music">
                     <!-- SelectedValuePath="GeneratedImage.ImageUrl" -->
                     <ComboBox ItemsSource       ="{Binding MainPage.MusicModels}" 
                               SelectedValue     ="{Binding MainPage.Model.MusicModelSelected}" 
@@ -118,10 +118,10 @@
                             Margin="10"/>
                 </RibbonGroup>
             </RibbonTab>
+            <!-- Ribbon Tab #2: -->
             <RibbonTab Name="tabConfiguration" Header="Configuration" KeyTip="C" >
                 <RibbonButton Label="Save" Command="{Binding VMConf.SaveCommand}" ></RibbonButton>
             </RibbonTab>
-            <!-- Ribbon Tab #2: -->
         </Ribbon>
         <Frame Grid.Row="1" x:Name="mainFrame" NavigationUIVisibility="Hidden"  />
         <StatusBar Grid.Row="2" DockPanel.Dock="Bottom" >

@@ -1,7 +1,7 @@
 ﻿using NetXP.ImageGeneratorAI;
 using System;
 using System.Collections.Generic;
-using TTSToVideo.Helpers;
+using TTSToVideo.Helpers.Implementations.Ffmpeg;
 
 namespace TTSToVideo.Business.Models
 {

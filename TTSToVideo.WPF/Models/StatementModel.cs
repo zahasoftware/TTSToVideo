@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using TTSToVideo.Business.Models;
-using TTSToVideo.Helpers;
+using TTSToVideo.Helpers.Implementations.Ffmpeg;
 
 namespace TTSToVideo.WPF.Models
 {
