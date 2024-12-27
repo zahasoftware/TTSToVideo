@@ -23,7 +23,7 @@ namespace TTSToVideo.WPF
     /// </summary>
     public partial class TTSToVideoPage : Page
     {
-        public TTSToVideoPage(TTSToVideoViewModel ttsToVideo, IServiceProvider serviceProvider)
+        public TTSToVideoPage(TTSToVideoViewModel ttsToVideo,  IServiceProvider serviceProvider)
         {
             InitializeComponent();
             this.DataContext = ttsToVideo;
@@ -37,7 +37,10 @@ namespace TTSToVideo.WPF
 
         private async void MainPage_Loaded(object sender, RoutedEventArgs e)
         {
-            await this.ttsToVideo.Init();
+            if (!this.ttsToVideo.IsInitialized)
+            {
+                await this.ttsToVideo.Init();
+            }
         }
 
         private void OpenFontStyleWindow(object sender, RoutedEventArgs e)

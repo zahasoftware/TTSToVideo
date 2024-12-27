@@ -64,7 +64,7 @@ namespace TTSToVideo
 
             var mapperConfig = new MapperConfiguration(cfg =>
             {
-                cfg.CreateMap<TtsToVideoModel, TtsToVideoModel>().ForMember(o => o.ProjectNameSelected, o => o.Ignore());
+                cfg.CreateMap<TtsToVideoModel, TtsToVideoModel>();
             });
 
             mapperConfig.AssertConfigurationIsValid();
@@ -84,18 +84,22 @@ namespace TTSToVideo
             //Business
             services.AddSingleton<Business.ITTSToVideoBusiness, Business.Implementations.TTSToVideoBusiness>();
 
-
             //MvvM
             services.AddSingleton<TTSToVideoViewModel>();
             services.AddSingleton<MainWindowViewModel>();
             services.AddSingleton<ConfigurationViewModel>();
             services.AddSingleton<FontStyleViewModel>();
+            services.AddSingleton<NewProjectViewModel>();
+            services.AddSingleton<NewCategoryViewModel>();
 
             //Views
             services.AddSingleton<MainWindow>();
             services.AddTransient<FontStyleWindowsView>();
             services.AddSingleton<TTSToVideoPage>();
-            services.AddSingleton<ConfigurationPage, ConfigurationPage>();
+            services.AddSingleton<ConfigurationPage>();
+            services.AddTransient<NewProjectWindow>();
+            services.AddTransient<NewCategoryView>();
+
 
             var serviceProvider = services.BuildServiceProvider();
 

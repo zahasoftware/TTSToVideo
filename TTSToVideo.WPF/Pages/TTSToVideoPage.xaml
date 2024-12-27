@@ -116,17 +116,42 @@
                     <DataGridTemplateColumn Header="Actions">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <StackPanel>
-                                    <Button Command="{Binding DataContext.DeletePictureCommand, RelativeSource={RelativeSource AncestorType={x:Type Page}}}" 
-                                            CommandParameter="{Binding}">
-                                        Delete Picture
-                                    </Button>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"></ColumnDefinition>
+                                        <ColumnDefinition Width="*"></ColumnDefinition>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="auto"></RowDefinition>
+                                        <RowDefinition Height="auto"></RowDefinition>
+                                        <RowDefinition Height="auto"></RowDefinition>
+                                    </Grid.RowDefinitions>
                                     <Button Command="{Binding DataContext.OpenPictureCommand, RelativeSource={RelativeSource AncestorType={x:Type Page}}}" 
                                             CommandParameter="{Binding}">
                                         Open Picture
                                     </Button>
-                                    <Button Click="OpenFontStyleWindow">Open Font Style Window</Button>
-                                </StackPanel>
+                                    <Button Grid.Column="1" Command="{Binding DataContext.DeletePictureCommand, RelativeSource={RelativeSource AncestorType={x:Type Page}}}" 
+                                            CommandParameter="{Binding}">
+                                        <Image Source="pack://application:,,,/TTSToVideo.WPF;component/Resources/remove-icon.png" Width="16" Height="16"/>
+                                    </Button>
+                                    <Button 
+                                            Grid.Row="1"
+                                            Command="{Binding DataContext.DeleteVoiceCommand, RelativeSource={RelativeSource AncestorType={x:Type Page}}}" 
+                                            CommandParameter="{Binding}">
+                                        Delete Voice
+                                    </Button>
+                                    <Button 
+                                     Grid.Row="1"
+                                     Grid.Column="1"
+                                            Command="{Binding DataContext.OpenVoiceCommand, RelativeSource={RelativeSource AncestorType={x:Type Page}}}" 
+                                            CommandParameter="{Binding}">
+                                        Open Voice
+                                    </Button>
+
+                                    <Button 
+                                    Grid.Row="2" 
+                                           Click="OpenFontStyleWindow">Open Font Style Window</Button>
+                                </Grid>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>

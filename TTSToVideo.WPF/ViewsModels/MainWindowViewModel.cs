@@ -17,7 +17,7 @@ namespace TTSToVideo.WPF.ViewsModels
 
         public MainWindowViewModel(TTSToVideoViewModel mainPage, ConfigurationViewModel configurationViewModel)
         {
-            MainPage = mainPage;
+            TtsToVideoViewModel = mainPage;
             VMConf = configurationViewModel;
 
             //version from assembly
@@ -27,12 +27,24 @@ namespace TTSToVideo.WPF.ViewsModels
 
         public string Title { get; set; }
 
-        public TTSToVideoViewModel MainPage { get; set; }
+        public TTSToVideoViewModel? TtsToVideoViewModel { get; set; }
 
         public string Message { get; set; }
 
         public ConfigurationViewModel VMConf { get; set; }
 
         public int ProgressBarValue { get; set; }
+
+        internal void CleanProject()
+        {
+            if (TtsToVideoViewModel != null && TtsToVideoViewModel.Model != null)
+            {
+                TtsToVideoViewModel.Model.Prompt = "";
+                TtsToVideoViewModel.Model.AditionalPrompt = "";
+                TtsToVideoViewModel.Model.MusicVolume = 100;
+                TtsToVideoViewModel.Model.NegativePrompt = "";
+                TtsToVideoViewModel.Model.Statements = [];
+            }
+        }
     }
 }

@@ -24,10 +24,8 @@ namespace TTSToVideo.WPF.Models
 
         public string? AditionalPrompt { get; set; }
 
-        public string? ProjectName { get; set; }
-
-        public ProjectModel? ProjectNameSelected { get; set; }
-
+        //public ProjectModel? ProjectSelected{ get; set; }//Cannot be here because it is reloaded from coniguration and if configuration is empty this back to empty as well
+      
         public bool PortraitEnabled { get; set; }
 
         public double MusicVolume { get; set; }
@@ -35,6 +33,8 @@ namespace TTSToVideo.WPF.Models
         public ImageModel? ImageModelSelected { get; set; }
         public VoiceModel? VoiceModelSelected { get; set; }
         public MusicModel? MusicModelSelected { get; set; }
+
+
 
         [JsonIgnore]
         public ObservableCollection<StatementModel>? Statements { get; set; } = [];

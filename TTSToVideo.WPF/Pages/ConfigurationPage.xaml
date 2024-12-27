@@ -10,6 +10,8 @@
       Title="ConfigurationPage">
     <Grid>
         <StackPanel>
+            <Label>Project Base Dir</Label>
+            <TextBox Text="{Binding Model.ProjectBaseDir, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
             <Label>Music Dir</Label>
             <TextBox Text="{Binding Model.MusicDir, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
             <Label>Global Negative Prompt</Label>

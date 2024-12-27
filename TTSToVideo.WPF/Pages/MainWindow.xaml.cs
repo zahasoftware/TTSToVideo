@@ -30,11 +30,14 @@ namespace TTSToVideo
         private readonly ConfigurationPage confPage;
 
         public MainWindowViewModel ViewModel { get; }
+        public IServiceProvider ServiceProvider { get; }
 
         public MainWindow(
               TTSToVideoPage mainPage
             , ConfigurationPage confPage
+            , NewProjectWindow newProjectWindow
             , MainWindowViewModel vmMainWindow
+            , IServiceProvider serviceProvider
             , IProgressBar progressBar
             )
         {
@@ -46,6 +49,7 @@ namespace TTSToVideo
             this.DataContext = vmMainWindow;
             this.confPage = confPage;
             this.ViewModel = vmMainWindow;
+            ServiceProvider = serviceProvider;
 
             // Set the window to full screen
             WindowState = WindowState.Maximized;
@@ -61,13 +65,11 @@ namespace TTSToVideo
             };
         }
 
-
         private void RibbonWin_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (e.AddedItems.Count > 0 && this.mainFrame != null)
             {
-                var selectedTab = e.AddedItems[0] as RibbonTab;
-                if (selectedTab != null)
+                if (e.AddedItems[0] is RibbonTab selectedTab)
                 {
                     // Perform actions based on the selected tab
                     if (selectedTab.Name == "tabHome")
@@ -82,5 +84,25 @@ namespace TTSToVideo
                 }
             }
         }
+
+        private void OpenNewProjectWindow(object sender, RoutedEventArgs e)
+        {
+            NewProjectWindow? newProjectWindow = ServiceProvider.GetService(typeof(NewProjectWindow)) as NewProjectWindow;
+            if (newProjectWindow != null)
+            {
+                newProjectWindow.Owner = this;
+                newProjectWindow.WindowStartupLocation = WindowStartupLocation.CenterOwner;
+                if (newProjectWindow?.ShowDialog() == true)
+                {
+                    ViewModel.CleanProject();
+                }
+            }
+            else
+            {
+                // Handle the case where the service is not available
+                MessageBox.Show("Unable to open new project window. Service not available.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
     }
 }

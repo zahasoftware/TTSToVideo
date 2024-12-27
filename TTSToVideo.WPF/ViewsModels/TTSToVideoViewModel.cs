@@ -37,7 +37,9 @@ namespace TTSToVideo.WPF.ViewsModels
                           IIOTerminal terminal,
                           IMapper mapper,
                           ITTSToVideoBusiness ttsToVideoBusiness,
-                          FontStyleViewModel fontStyleViewModel
+                          FontStyleViewModel fontStyleViewModel,
+                          NewProjectViewModel newProjectViewModel,
+                          NewCategoryViewModel newCategoryViewModel
         ) : ObservableRecipient
     {
 
@@ -51,8 +53,9 @@ namespace TTSToVideo.WPF.ViewsModels
 
 
         public AsyncRelayCommand<object?> DeletePictureCommand { get; set; }
+        public AsyncRelayCommand<object?> DeleteVoiceCommand { get; set; }
         public AsyncRelayCommand<object?> OpenPictureCommand { get; set; }
-
+        public AsyncRelayCommand<object?> OpenVoiceCommand { get; private set; }
         public AsyncRelayCommand ProcessCommand { get; set; }
         public AsyncRelayCommand SaveCommand { get; set; }
         public AsyncRelayCommand CancelCommand { get; set; }
@@ -61,29 +64,35 @@ namespace TTSToVideo.WPF.ViewsModels
         public AsyncRelayCommand UploadImageCommand { get; set; }
         public AsyncRelayCommand GeneratePortraitImageCommand { get; set; }
         public AsyncRelayCommand GeneratePortraitVideoCommand { get; set; }
-        public AsyncRelayCommand<string> ProjectNameSelectionChangedCommand { get; set; }
+        public AsyncRelayCommand<string> CategorySelectionChangedCommand { get; set; }
+        public AsyncRelayCommand<ProjectModel?> ProjectSelectionChangedCommand { get; set; }
 
-        [ObservableProperty]
-        private TtsToVideoModel? model;
-        private bool isGeneratingPortrait;
+        //Models
+        public TtsToVideoModel? Model { get; set; }
+        public ProjectModel? ProjectSelected { get; set; }
 
         public string? FinalProjectVideoPathWithVoice { get; private set; }
         public CancellationTokenSource? CancellationTokenSource { get; private set; }
+
+        //ViewModels
         public FontStyleViewModel FontStyleViewModel { get; } = fontStyleViewModel;
+        public NewProjectViewModel NewProjectViewModel { get; set; } = newProjectViewModel;
+        public NewCategoryViewModel NewCategoryViewModel { get; set; } = newCategoryViewModel;
+        public bool IsInitialized { get; internal set; }
 
         private async Task SaveCommandExecute()
         {
             ArgumentNullException.ThrowIfNull(this.Model);
-            ArgumentNullException.ThrowIfNull(this.Model.ProjectName);
 
-            var path = GetProjectPath(this.Model.ProjectName);
+            if (ProjectSelected == null)
+                throw new CustomApplicationException("Select a project");
+
+            var path = this.ProjectSelected.FullPath;
 
             Directory.CreateDirectory(path);
 
             await SaveModel(path);
-
             message.Info("Project saved.");
-
         }
 
         private async Task GeneratePortraitImageCommandExecute()
@@ -119,7 +128,7 @@ namespace TTSToVideo.WPF.ViewsModels
             //        token);
 
             //    this.Model.PortraitImagePath = Path.GetFileName(statementForBusiness.Images.First().Path);
-            //    var fullPath = this.GetProjectPath(this.Model.ProjectName);
+            //    var fullPath = this.GetProjectPath(this.ProjectSelected.ProjectName);
             //    await this.SaveModel(fullPath);
             //}
             //finally
@@ -137,7 +146,7 @@ namespace TTSToVideo.WPF.ViewsModels
 
             //if (openFileDialog.ShowDialog() == DialogResult.OK)
             //{
-            //    var fullProjectPath = this.GetProjectPath(this.Model.ProjectName);
+            //    var fullProjectPath = this.GetProjectPath(this.ProjectSelected.ProjectName);
             //    var imageName = Path.GetFileName(openFileDialog.FileName);
             //    if (!File.Exists(openFileDialog.FileName))
             //    {
@@ -162,9 +171,20 @@ namespace TTSToVideo.WPF.ViewsModels
             OpenVideoCommand = new AsyncRelayCommand(OpenVideo);
             UploadImageCommand = new AsyncRelayCommand(UploadImageCommandExecute);
             GeneratePortraitImageCommand = new AsyncRelayCommand(GeneratePortraitImageCommandExecute);
-            ProjectNameSelectionChangedCommand = new AsyncRelayCommand<string>(ProjectNameSelectionChangedCommandExecute);
+            CategorySelectionChangedCommand = new AsyncRelayCommand<string>(CategorySelectionChangedCommandExecute);
+            ProjectSelectionChangedCommand = new AsyncRelayCommand<ProjectModel?>(ProjectSelectionChangedCommandExecute);
             DeletePictureCommand = new AsyncRelayCommand<object?>(DeletePictureCommandExecute);
+            DeleteVoiceCommand = new AsyncRelayCommand<object?>(DeleteVoiceCommandExecute);
             OpenPictureCommand = new AsyncRelayCommand<object?>(OpenPictureCommandExecute);
+            OpenVoiceCommand = new AsyncRelayCommand<object?>(OpenVoiceCommandExecute);
+
+            NewProjectViewModel.CloseNewProject += (s, p) =>
+            {
+                this.ProjectsNames.Add(p);
+                this.ProjectSelected = p;
+            };
+
+            NewProjectViewModel.Init();
 
             this.Model = new TtsToVideoModel
             {
@@ -174,14 +194,17 @@ namespace TTSToVideo.WPF.ViewsModels
             configuration.Model.ProjectsNames = [];
 
             //Loading music directory
-            var musicFiles = Directory.GetFiles(configuration.Model.MusicDir, "*.wav");
-
-            foreach (var musicFile in musicFiles)
+            if (Directory.Exists(configuration.Model.MusicDir))
             {
-                MusicModels.Add(new MusicModel { FilePath = musicFile });
+                var musicFiles = Directory.GetFiles(configuration.Model.MusicDir, "*.wav");
+
+                foreach (var musicFile in musicFiles)
+                {
+                    MusicModels.Add(new MusicModel { FilePath = musicFile });
+                }
             }
 
-            //Loading models
+            //Loading Image models
             _ = imageGeneratorAI.GetModels().ContinueWith((task) =>
             {
                 if (task.Exception != null)
@@ -193,7 +216,7 @@ namespace TTSToVideo.WPF.ViewsModels
                 ImagesModels = new ObservableCollection<ImageModel>(models);
             });
 
-            //Loading models voices
+            //Loading voice models
             _ = tts.GetTtsVoices().ContinueWith((task) =>
             {
                 if (task.Exception != null)
@@ -214,20 +237,89 @@ namespace TTSToVideo.WPF.ViewsModels
                 VoicesModels = new ObservableCollection<VoiceModel>(models);
             });
 
+
             if (!Directory.Exists(configuration.Model.ProjectBaseDir))
             {
                 Directory.CreateDirectory(configuration.Model.ProjectBaseDir);
             }
-            else
+
+            this.IsInitialized = true;
+
+        }
+
+        private async Task DeleteVoiceCommandExecute(object? statement)
+        {
+            if (await message.Confirm("Are you sure you want to delete this voice?") == false)
+                return;
+
+            if (statement is StatementModel statementModel)
             {
-                var directories = Directory.GetDirectories(configuration.Model.ProjectBaseDir, $"*");
-                this.ProjectsNames = new ObservableCollection<ProjectModel>(directories.Select(o => new ProjectModel
+                if (statementModel.AudioPath != null && Path.Exists($"{statementModel.AudioPath}.mp4"))
                 {
-                    FileName = Path.GetFileName(o),
-                    FullPath = o,
-                    ProjectName = Path.GetFileName(o),
-                }));
+                    File.Delete($"{statementModel.AudioPath}.mp4");
+                }
+
+                var path = this.Model.Statements.FirstOrDefault(o => o == statementModel)?.AudioPath;
+
+                if (path != null && File.Exists(path))
+                {
+                    File.Delete(path);
+                }
+
+                if (path != null && File.Exists(path + ".wav"))
+                {
+                    File.Delete(path + ".wav");
+                }
+
+                if (path != null && File.Exists($"{path}.mp4"))
+                {
+                    File.Delete($"{path}.mp4");
+                }
+
+                if (path != null && File.Exists($"{path}.wav.mp4"))
+                {
+                    File.Delete($"{path}.wav.mp4");
+                }
+
+                var fullPathProject = this.ProjectSelected.FullPath;
+
+                var musicFinalPath = Path.Combine(fullPathProject, $"{ProjectSelected.ProjectName}-Music-Final.mp4");
+                if (File.Exists(musicFinalPath))
+                {
+                    File.Delete(musicFinalPath);
+                }
+
+                var projectPath = Path.Combine(fullPathProject, $"{ProjectSelected.ProjectName}.mp4");
+                if (File.Exists(projectPath))
+                {
+                    File.Delete(projectPath);
+                }
+
+                var finalPath = Path.Combine(fullPathProject, $"{ProjectSelected.ProjectName}-Final.mp4");
+                if (File.Exists(finalPath))
+                {
+                    File.Delete(finalPath);
+                }
             }
+        }
+
+        private async Task OpenVoiceCommandExecute(object? statement)
+        {
+            //Open the picture in the default image viewer
+            if (statement is StatementModel statementModel)
+            {
+                var path = $"{statementModel.AudioPath}.wav";
+                if (path != null && Path.Exists(path))
+                {
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = $"\"{path}\"",
+                        UseShellExecute = true,
+                        Verb = "open"
+                    });
+                }
+            }
+            await Task.Delay(0);
         }
 
         private async Task DeletePictureCommandExecute(object? statement)
@@ -263,22 +355,22 @@ namespace TTSToVideo.WPF.ViewsModels
                         File.Delete($"{path}.wav.mp4");
                     }
                 }
-                
-                var fullPathProject = GetProjectPath(this.Model.ProjectName);
 
-                var musicFinalPath = Path.Combine(fullPathProject, $"{Model.ProjectName}-Music-Final.mp4");
+                var fullPathProject = this.ProjectSelected.FullPath;
+
+                var musicFinalPath = Path.Combine(fullPathProject, $"{ProjectSelected.ProjectName}-Music-Final.mp4");
                 if (File.Exists(musicFinalPath))
                 {
                     File.Delete(musicFinalPath);
                 }
 
-                var projectPath = Path.Combine(fullPathProject, $"{Model.ProjectName}.mp4");
+                var projectPath = Path.Combine(fullPathProject, $"{ProjectSelected.ProjectName}.mp4");
                 if (File.Exists(projectPath))
                 {
                     File.Delete(projectPath);
                 }
 
-                var finalPath = Path.Combine(fullPathProject, $"{Model.ProjectName}-Final.mp4");
+                var finalPath = Path.Combine(fullPathProject, $"{ProjectSelected.ProjectName}-Final.mp4");
                 if (File.Exists(finalPath))
                 {
                     File.Delete(finalPath);
@@ -329,27 +421,38 @@ namespace TTSToVideo.WPF.ViewsModels
             Process.Start(
                 new ProcessStartInfo
                 {
-                    FileName = $"\"{this.GetProjectPath(this.Model.ProjectName)}\"",
+                    FileName = $"\"{this.ProjectSelected.FullPath}\"",
                     UseShellExecute = true,
                     Verb = "open"
                 });
             await Task.Delay(0);
         }
 
-        private async Task ProjectNameSelectionChangedCommandExecute(string? p)
+        private async Task CategorySelectionChangedCommandExecute(string? path)
         {
-            this.Model = new TtsToVideoModel();
+            //Load all directories from path to the list of projects
+            if (path != null)
+            {
+                var directories = Directory.GetDirectories(path, $"*");
+                this.ProjectsNames = new ObservableCollection<ProjectModel>(directories.Select(o => new ProjectModel
+                {
+                    FileName = Path.GetFileName(o),
+                    FullPath = o,
+                    ProjectName = Path.GetFileName(o),
+                }));
+            }
+        }
 
-            if (p == null)
+        private async Task ProjectSelectionChangedCommandExecute(ProjectModel? pm)
+        {
+            if (pm == null)
             {
                 return;
             }
 
-            string projectFullPath = GetProjectPath(p);
+            await this.LoadModel(pm);
 
-            await this.LoadModel(projectFullPath);
-
-            this.FinalProjectVideoPathWithVoice = projectFullPath + "\\" + $"{p}-Final.mp4";
+            this.FinalProjectVideoPathWithVoice = Path.Combine(pm.FullPath, $"{pm.FileName}-Final.mp4");
         }
 
         private async Task ProcessCommandExecute()
@@ -361,7 +464,7 @@ namespace TTSToVideo.WPF.ViewsModels
                 Validation();
 
                 ArgumentNullException.ThrowIfNull(this.Model);
-                ArgumentNullException.ThrowIfNull(this.Model.ProjectName);
+                ArgumentNullException.ThrowIfNull(this.ProjectSelected.ProjectName);
                 ArgumentNullException.ThrowIfNull(this.ProjectsNames);
                 ArgumentNullException.ThrowIfNull(this.Model.Prompt);
                 ArgumentNullException.ThrowIfNull(configuration.Model.MusicDir);
@@ -373,23 +476,23 @@ namespace TTSToVideo.WPF.ViewsModels
                 var token = CancellationTokenSource.Token;
 
 
-                string projectFullPath = GetProjectPath(this.Model.ProjectName);
+                string projectFullPath = this.ProjectSelected.FullPath;
 
                 Directory.CreateDirectory(projectFullPath);
 
                 // Check if the project name already exists in the list
-                if (!ProjectsNames.Any(p => p.ProjectName == this.Model.ProjectName))
+                if (!ProjectsNames.Any(p => p.ProjectName == this.ProjectSelected.ProjectName))
                 {
                     ProjectsNames.Add(new ProjectModel
                     {
-                        ProjectName = this.Model.ProjectName,
-                        FileName = this.Model.ProjectName,
+                        ProjectName = this.ProjectSelected.ProjectName,
+                        FileName = this.ProjectSelected.ProjectName,
                         FullPath = projectFullPath,
                     });
                 }
 
                 //Split text process text with dot and paragraph
-                string[] paragraphs = Model.Prompt.Split("\n", StringSplitOptions.RemoveEmptyEntries);
+                string[] paragraphs = Model.Prompt.Split("\r\n\r\n", StringSplitOptions.RemoveEmptyEntries);
                 paragraphs = paragraphs.Where(o => !string.IsNullOrWhiteSpace(o)).ToArray();
 
                 var firstParagraph = paragraphs.First();
@@ -428,7 +531,7 @@ namespace TTSToVideo.WPF.ViewsModels
 
                 await ttsToVideoBusiness.ProcessCommandExecute(
                       projectFullPath
-                    , Model.ProjectName
+                    , ProjectSelected.ProjectName
                     , statements
                     , Model.NegativePrompt + "," + configuration.Model.NegativePrompt
                     , Model.AditionalPrompt ?? ""
@@ -457,7 +560,7 @@ namespace TTSToVideo.WPF.ViewsModels
                       }
                   }, token);
 
-                await LoadModel(projectFullPath);
+                await LoadModel(ProjectSelected);
 
             }
             finally
@@ -466,46 +569,17 @@ namespace TTSToVideo.WPF.ViewsModels
             }
         }
 
-        private string PortraitValidation()
-        {
-            CommonValidation();
-
-            ArgumentNullException.ThrowIfNull(this.Model);
-            ArgumentNullException.ThrowIfNull(this.Model.ProjectName);
-
-            string projectFullPath = GetProjectPath(this.Model.ProjectName);
-
-            //if (Model.PortraitEnabled)
-            //{
-            //    if (string.IsNullOrEmpty(this.Model.PortraitText))
-            //    {
-            //        throw new CustomApplicationException("Portrait text not written");
-            //    }
-
-            //    var projectPath = GetProjectPath(this.Model.ProjectName);
-            //    if (string.IsNullOrEmpty(this.Model.PortraitImagePath)
-            //        && !isGeneratingPortrait && !File.Exists(Path.Combine(projectPath, this.Model.PortraitVideoPath)))
-            //    {
-            //        throw new CustomApplicationException("Portrait image or video not uploaded or generated");
-            //    }
-
-
-            //}
-
-            return projectFullPath;
-        }
-
         private void CommonValidation()
         {
             ArgumentNullException.ThrowIfNull(this.Model);
 
-            if (string.IsNullOrEmpty(this.Model.ProjectName))
+            if (string.IsNullOrEmpty(this.ProjectSelected.ProjectName))
             {
                 throw new CustomApplicationException("Project Name Empty");
             }
 
             var invalidChars = Path.GetInvalidFileNameChars();
-            var invalidCharsInPath = Model.ProjectName.Where(o => invalidChars.Any(a => a == o));
+            var invalidCharsInPath = ProjectSelected.ProjectName.Where(o => invalidChars.Any(a => a == o));
             if (invalidCharsInPath.Any())
             {
                 throw new CustomApplicationException($"There are invalid chars in project name => \"{string.Join(",", invalidCharsInPath)}\"");
@@ -554,11 +628,11 @@ namespace TTSToVideo.WPF.ViewsModels
             await File.WriteAllTextAsync(Path.Combine(basePath, "TTSToVideo.json"), json);
         }
 
-        private async Task LoadModel(string basePath)
+        private async Task LoadModel(ProjectModel? pm)
         {
             ArgumentNullException.ThrowIfNull(this.ImagesModels);
 
-            var configurationFile = Path.Combine(basePath, "TTSToVideo.json");
+            var configurationFile = Path.Combine(pm.FullPath, "TTSToVideo.json");
             string? json = null;
             if (File.Exists(configurationFile))
             {
@@ -572,7 +646,7 @@ namespace TTSToVideo.WPF.ViewsModels
             else
             {
                 var model = JsonConvert.DeserializeObject<TtsToVideoModel>(json)
-                    ?? throw new Exception($"Error reading configuration of the project \"{Path.GetFileName(basePath)}\"");
+                    ?? throw new Exception($"Error reading configuration of the project \"{Path.GetFileName(pm.FullPath)}\"");
 
                 this.Model = new TtsToVideoModel();
 
@@ -590,11 +664,10 @@ namespace TTSToVideo.WPF.ViewsModels
                     this.Model.MusicModelSelected = this.MusicModels.FirstOrDefault(o => o.FilePath == model.MusicModelSelected?.FilePath);
                 }
 
-                var projectFullPath = GetProjectPath(this.Model.ProjectName);
 
                 if (!string.IsNullOrEmpty(Model.Prompt))
                 {
-                    string[] paragraphs = Model.Prompt.Split("\n", StringSplitOptions.RemoveEmptyEntries);
+                    string[] paragraphs = Model.Prompt.Split("\r\n\r\n", StringSplitOptions.RemoveEmptyEntries);
                     paragraphs = paragraphs.Where(o => !string.IsNullOrWhiteSpace(o)).ToArray();
 
                     var statements = paragraphs.Select((o, i) =>
@@ -610,8 +683,8 @@ namespace TTSToVideo.WPF.ViewsModels
                         }
 
                         var pathNoExtensionAndNumber = $"{o[..Math.Min(o.Length, Constants.MAX_PATH)]}";
-                        var pathImage = Path.Combine(projectFullPath, $"{PathHelper.CleanFileName(pathNoExtensionAndNumber)}.jpg");
-                        var pathAudio = Path.Combine(projectFullPath, $"{PathHelper.CleanFileName(pathNoExtensionAndNumber)}.wav");
+                        var pathImage = Path.Combine(pm.FullPath, $"{PathHelper.CleanFileName(pathNoExtensionAndNumber)}.jpg");
+                        var pathAudio = Path.Combine(pm.FullPath, $"v-{PathHelper.CleanFileName(pathNoExtensionAndNumber)}.wav");
 
                         return new StatementModel
                         {
@@ -633,15 +706,14 @@ namespace TTSToVideo.WPF.ViewsModels
             await Task.Delay(0);
         }
 
-        private string GetProjectPath(string p)
-        {
-            if (p != null)
-            {
-                var projectFullPath = Path.Combine($"{configuration.Model.ProjectBaseDir}", p);
-                return projectFullPath;
-            }
-            return "";
-        }
-
+        //private string GetProjectPath(string p)
+        //{
+        //    if (p != null)
+        //    {
+        //        var projectFullPath = Path.Combine($"{configuration.Model.ProjectBaseDir}", p);
+        //        return projectFullPath;
+        //    }
+        //    return "";
+        //}
     }
 }

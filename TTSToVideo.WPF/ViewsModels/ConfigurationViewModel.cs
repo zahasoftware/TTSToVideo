@@ -16,7 +16,15 @@ namespace TTSToVideo.WPF.ViewsModels
     public class ConfigurationViewModel : ObservableRecipient
     {
         private ConfigurationModel model;
-        public ConfigurationModel Model { get => model; set => SetProperty(ref model, value, true); }
+        public ConfigurationModel Model
+        {
+            get => model;
+            set
+            {
+                SetProperty(ref model, value, true);
+            }
+        }
+
         public AsyncRelayCommand SaveCommand { get; set; }
         public const string ConfigurationFile = "Configuration.json";
 
@@ -58,9 +66,23 @@ namespace TTSToVideo.WPF.ViewsModels
 
         public async Task Save()
         {
+            Validate();
             await CreateConfIfNotExists();
             string json = JsonConvert.SerializeObject(Model, Formatting.Indented);
             await File.WriteAllTextAsync("Configuration.json", json);
+        }
+
+        private void Validate()
+        {
+            if (string.IsNullOrEmpty(Model.ProjectBaseDir) || !Directory.Exists(Model.ProjectBaseDir))
+            {
+                throw new ApplicationException("Please set a valid project base directory");
+            }
+
+            if (string.IsNullOrEmpty(Model.MusicDir) || !Directory.Exists(Model.MusicDir))
+            {
+                throw new ApplicationException("Please set a valid music directory");
+            }
         }
 
     }
