@@ -58,12 +58,12 @@ namespace TTSToVideo.Helpers.Implementations.Ffmpeg
                     options.Add($"MarginV={(byte)ffmpegOptions.FontStyle.MarginV.Value}");
                 }
 
-                if (ffmpegOptions.FontStyle.MarginV!= null)
+                if (ffmpegOptions.FontStyle.MarginV != null)
                 {
                     options.Add($"MarginL={(byte)ffmpegOptions.FontStyle.MarginV.Value}");
                 }
 
-                if (ffmpegOptions.FontStyle.MarginR!= null)
+                if (ffmpegOptions.FontStyle.MarginR != null)
                 {
                     options.Add($"MarginR={(byte)ffmpegOptions.FontStyle.MarginR.Value}");
                 }
@@ -130,7 +130,11 @@ namespace TTSToVideo.Helpers.Implementations.Ffmpeg
             }
 
             // Execute ffmpeg command to mix audio with video
-            string arguments = $"-i \"{videoFilePath}\" -i \"{audioFilePath}\" -c:v copy -c:a aac -y -filter_complex \"[0:a][1:a] amix=inputs=2:duration=longest [audio_out]\" -map 0:v -map \"[audio_out]\" \"{outputFilePath}\"";
+            string arguments = $"-i \"{videoFilePath}\" -i \"{audioFilePath}\" -c:v copy -c:a aac -y " +
+                               "-filter_complex \"[0:a][1:a]amix=inputs=2:duration=longest:normalize=0 [audio_out]\" " +
+                               $"-map 0:v -map \"[audio_out]\" \"{outputFilePath}\"";
+
+
 
             var process = new Process();
             process.StartInfo.FileName = "ffmpeg";
@@ -147,7 +151,12 @@ namespace TTSToVideo.Helpers.Implementations.Ffmpeg
 
             await process.WaitForExitAsync(token);
 
-            Console.WriteLine("Error: " + tmpErrorOut);
+            if (tmpErrorOut.Contains("Error"))
+            {
+                Console.WriteLine("Error: " + tmpErrorOut);
+                throw new Exception("Error when try to mix audio with video", new Exception(tmpErrorOut));
+            }
+
         }
 
         public static bool IsFFmpegAvailable()
@@ -207,6 +216,69 @@ namespace TTSToVideo.Helpers.Implementations.Ffmpeg
             }
             await process.WaitForExitAsync(token);
         }
+
+        public static async Task JoiningVideos(
+            string[] videoPaths,
+            string outputPath,
+            FfmpegOptions options,
+            CancellationToken token
+        )
+        {
+            if (videoPaths.Length < 2)
+            {
+                throw new ArgumentException("At least two video files are required.", nameof(videoPaths));
+            }
+
+            // Build input arguments
+            string inputArgs = string.Join(" ", videoPaths.Select(v => $"-i \"{v}\""));
+
+            // Generate filter_complex for concatenation
+            string scale = $"{options.WidthResolution}:{options.HeightResolution}";
+            var filterParts = new List<string>();
+            for (int i = 0; i < videoPaths.Length; i++)
+            {
+                filterParts.Add($"[{i}:v]scale={scale},setsar=1[v{i}]");
+            }
+
+            string videoInputs = string.Join("", videoPaths.Select((_, i) => $"[v{i}][{i}:a]"));
+            string filterComplex = string.Join(";", filterParts) +
+                                   $";{videoInputs}concat=n={videoPaths.Length}:v=1:a=1[vv][a];" +
+                                   $"[vv]fps=30,format=yuv420p[v]";
+
+            // Construct FFmpeg command
+            string ffmpegCmd = $"{options.AdditionalArgs} {inputArgs} " +
+                               $"-filter_complex \"{filterComplex}\" " +
+                               "-map \"[v]\" -map \"[a]\" -c:v libx264 -y " +
+                               $"\"{outputPath}\"";
+
+            // Run FFmpeg process
+            using var process = new Process
+            {
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = "ffmpeg",
+                    Arguments = ffmpegCmd,
+                    CreateNoWindow = true,
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true
+                }
+            };
+
+            process.Start();
+            process.BeginOutputReadLine();
+            string errorOutput = await process.StandardError.ReadToEndAsync();
+
+            if (errorOutput.Contains("Error"))
+            {
+                throw new Exception(errorOutput);
+            }
+
+            await process.WaitForExitAsync(token);
+        }
+
+
+
 
         public static async Task GenerateVideoWithImage(string outputPath, string inputImagePath, TimeSpan? duration, CancellationToken token)
         {

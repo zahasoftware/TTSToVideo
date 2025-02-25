@@ -30,6 +30,7 @@ namespace TTSToVideo.WPF.Pages
 
         private void CategoryViewModel_Close(CategoryModel obj)
         {
+            this.DialogResult = true;
             this.Close();
         }
     }

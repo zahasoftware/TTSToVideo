@@ -35,16 +35,5 @@ namespace TTSToVideo.WPF.ViewsModels
 
         public int ProgressBarValue { get; set; }
 
-        internal void CleanProject()
-        {
-            if (TtsToVideoViewModel != null && TtsToVideoViewModel.Model != null)
-            {
-                TtsToVideoViewModel.Model.Prompt = "";
-                TtsToVideoViewModel.Model.AditionalPrompt = "";
-                TtsToVideoViewModel.Model.MusicVolume = 100;
-                TtsToVideoViewModel.Model.NegativePrompt = "";
-                TtsToVideoViewModel.Model.Statements = [];
-            }
-        }
-    }
+           }
 }

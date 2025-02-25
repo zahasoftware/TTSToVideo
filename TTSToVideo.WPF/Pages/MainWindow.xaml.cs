@@ -92,10 +92,7 @@ namespace TTSToVideo
             {
                 newProjectWindow.Owner = this;
                 newProjectWindow.WindowStartupLocation = WindowStartupLocation.CenterOwner;
-                if (newProjectWindow?.ShowDialog() == true)
-                {
-                    ViewModel.CleanProject();
-                }
+                newProjectWindow?.ShowDialog();
             }
             else
             {

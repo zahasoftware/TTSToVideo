@@ -24,5 +24,6 @@ namespace TTSToVideo.Business.Models
         public bool IsProtrait { get; internal set; }
         public string? VideoPath { get; internal set; }
         public FfmpegFontStyle? FontStyle { get; set; }
+        public PromptPatternsEnum PropmtPatterType { get; internal set; }
     }
 }

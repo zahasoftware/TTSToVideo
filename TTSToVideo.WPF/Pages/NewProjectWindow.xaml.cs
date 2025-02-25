@@ -24,23 +24,34 @@ namespace TTSToVideo.WPF.Pages
     {
         private readonly NewProjectViewModel newProjectViewModel;
         private readonly IServiceProvider serviceProvider;
+        private readonly TTSToVideoViewModel ttsToVideoViewModel;
 
         public ConfigurationViewModel ConfViewModel { get; }
 
         // ...
-        public NewProjectWindow(ConfigurationViewModel confViewModel, NewProjectViewModel newProjectViewModel, IServiceProvider serviceProvider)
+        public NewProjectWindow(ConfigurationViewModel confViewModel
+            , NewProjectViewModel newProjectViewModel
+            , IServiceProvider serviceProvider
+            , TTSToVideoViewModel ttsToVideoViewModel)
         {
             InitializeComponent();
             ConfViewModel = confViewModel;
             this.newProjectViewModel = newProjectViewModel;
             this.serviceProvider = serviceProvider;
-
+            this.ttsToVideoViewModel = ttsToVideoViewModel;
             this.DataContext = newProjectViewModel;
 
             // Center the window in the parent window
             WindowStartupLocation = WindowStartupLocation.CenterOwner;
 
-            newProjectViewModel.CloseNewProject += (s, p) => { this.Close(); };
+            this.Loaded += (sender, args) =>
+            {
+                newProjectViewModel.CloseNewProject += (s, p) =>
+                {
+                    ttsToVideoViewModel.CleanProject();
+                    this.Close();
+                };
+            };
         }
 
         private void NewCategory_Click(object sender, RoutedEventArgs e)

@@ -9,7 +9,7 @@ using System.Diagnostics.Eventing.Reader;
 using System.IO;
 using System.Runtime.CompilerServices;
 
-namespace TTSToVideo.Helpers
+namespace TTSToVideo.Helpers.Audios
 {
     public static class AudioHelper
     {
@@ -121,16 +121,6 @@ namespace TTSToVideo.Helpers
             }
         }
 
-        private static Stream AudioWriter(string outputFilePath, AudioFormat audioFormat, WaveStream audioFileReader)
-        {
-            Stream writer;
-            if (audioFormat == AudioFormat.MP3)
-                writer = new LameMP3FileWriter(outputFilePath, audioFileReader.WaveFormat, LAMEPreset.STANDARD);
-            else
-                writer = new WaveFileWriter(outputFilePath, audioFileReader.WaveFormat);
-            return writer;
-        }
-
         public enum AudioFormat
         {
             Unknown,
@@ -207,7 +197,7 @@ namespace TTSToVideo.Helpers
             WaveFileWriter.CreateWaveFile(wavFile, reader);
         }
 
-        public static async Task CreateSilentWavAudio(string silenceAudioTemp, TimeSpan timeSpan, CancellationToken token)
+        public static void CreateSilentWavAudio(string silenceAudioTemp, TimeSpan timeSpan, CancellationToken token)
         {
             // Calculate the number of samples needed for the silent audio
             int sampleRate = 44100; // Assuming a sample rate of 44100 Hz
@@ -217,21 +207,19 @@ namespace TTSToVideo.Helpers
             float[] samples = new float[numSamples];
 
             // Write the silent audio samples to a WAV file
-            using (var writer = new WaveFileWriter(silenceAudioTemp, new WaveFormat(sampleRate, 16, 1)))
+            using var writer = new WaveFileWriter(silenceAudioTemp, new WaveFormat(sampleRate, 16, 1));
+            byte[] buffer = new byte[numSamples * 2]; // 2 bytes per sample for 16-bit audio
+
+            // Convert the float samples to 16-bit PCM and write to the buffer
+            for (int i = 0; i < numSamples; i++)
             {
-                byte[] buffer = new byte[numSamples * 2]; // 2 bytes per sample for 16-bit audio
-
-                // Convert the float samples to 16-bit PCM and write to the buffer
-                for (int i = 0; i < numSamples; i++)
-                {
-                    short sampleValue = (short)(samples[i] * short.MaxValue);
-                    buffer[i * 2] = (byte)(sampleValue & 0xFF);
-                    buffer[i * 2 + 1] = (byte)(sampleValue >> 8);
-                }
-
-                // Write the buffer to the WAV file
-                writer.Write(buffer, 0, buffer.Length);
+                short sampleValue = (short)(samples[i] * short.MaxValue);
+                buffer[i * 2] = (byte)(sampleValue & 0xFF);
+                buffer[i * 2 + 1] = (byte)(sampleValue >> 8);
             }
+
+            // Write the buffer to the WAV file
+            writer.Write(buffer, 0, buffer.Length);
         }
 
         public static TimeSpan GetAudioDuration(string audioFile)
@@ -239,6 +227,32 @@ namespace TTSToVideo.Helpers
             using var audioFileReader = new AudioFileReader(audioFile);
             return audioFileReader.TotalTime;
         }
+
+        public static void GradualPanning(string inputFile, string outputFile, float panDuration, float switchInterval, float totalDuration)
+        {
+            // Load your audio file
+            using var audioFileReader = new AudioFileReader(inputFile);
+            // Create an instance of the GradualPanningSampleProvider
+            var panningProvider = new GradualPanningSampleProvider(
+                audioFileReader,
+                panDuration,
+                switchInterval,
+                totalDuration
+            );
+
+            // Create a WaveFileWriter to save the processed audio
+            using var waveFileWriter = new WaveFileWriter(outputFile, panningProvider.WaveFormat);
+            // Create a buffer to hold the audio samples
+            float[] buffer = new float[panningProvider.WaveFormat.SampleRate * panningProvider.WaveFormat.Channels];
+            int samplesRead;
+
+            // Read and process the audio samples
+            while ((samplesRead = panningProvider.Read(buffer, 0, buffer.Length)) > 0)
+            {
+                waveFileWriter.WriteSamples(buffer, 0, samplesRead);
+            }
+        }
+
     }
 
 

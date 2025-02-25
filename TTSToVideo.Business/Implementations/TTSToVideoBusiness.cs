@@ -5,11 +5,14 @@ using NetXP.ImageGeneratorAI;
 using NetXP.Tts;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Diagnostics.Eventing.Reader;
 using System.Globalization;
 using System.Reflection;
 using System.Text;
+using System.Text.RegularExpressions;
 using TTSToVideo.Business.Models;
 using TTSToVideo.Helpers;
+using TTSToVideo.Helpers.Audios;
 using TTSToVideo.Helpers.Implementations.Ffmpeg;
 using Constants = TTSToVideo.Helpers.Constants;
 
@@ -25,6 +28,7 @@ namespace TTSToVideo.Business.Implementations
                 {
                     ImageUrlOrPath = imagePath
                 });
+
             File.WriteAllBytes(outputPath, video.Video);
         }
 
@@ -34,9 +38,9 @@ namespace TTSToVideo.Business.Implementations
             await GenerateImage(outputFolder, imageModelIds, countImageMain, statement, options, token);
         }
 
-        public async Task ProcessCommandExecute(string projectPath
+        public async Task<List<Statement>> ProcessCommandExecute(string projectPath
                                                , string projectName
-                                               , List<Statement> statements
+                                               , string prompt
                                                , string negativePrompt
                                                , string globalPrompt
                                                , string selectedMusicFile
@@ -47,14 +51,90 @@ namespace TTSToVideo.Business.Implementations
                                                , CancellationToken token)
         {
 
+            List<Statement>? statements = [];
             try
             {
+                if (!options.ImageOptions.UseTextForPrompt && string.IsNullOrEmpty(globalPrompt))
+                {
+                    throw new CustomApplicationException("If option 'Use paragraph for prompt' is not selected you need to define a 'Additional prompt'");
+                }
+
                 Directory.CreateDirectory(projectPath);
 
+
+                var pattern = string.Join("|", PromptPatternDictionary.Patterns.Values.Where(o => o.IsParagraphSeparator).Select(o => o.Pattern));
+                string[] paragraphs = Regex.Split(prompt, pattern, RegexOptions.None);
+                paragraphs = paragraphs.Where(o => !string.IsNullOrWhiteSpace(o)).ToArray();
+
+                var firstParagraph = paragraphs.First();
+                var tempStatements = new List<string>();
+
+                foreach (var paragraph in paragraphs)
+                {
+                    Statement? statement = null;
+
+                    //Search pattern and split
+                    var patterns = PromptPatternDictionary.Patterns.Values.Where(o => !o.IsParagraphSeparator);
+                    bool hasPatter = false;
+                    foreach (var p in patterns)
+                    {
+                        if (PromptPatternsEnum.SilentVoice == p.TypeRegex && Regex.IsMatch(paragraph, p.Pattern))
+                        {
+                            hasPatter = true;
+                            var matchesSplit = Regex.Split(paragraph, p.Pattern).Where(ms => !string.IsNullOrWhiteSpace(ms)).ToArray();
+                            foreach (var ms in matchesSplit)
+                            {
+                                if (Regex.IsMatch(ms, p.Pattern))
+                                {
+                                    var msSplitResult = ms.Split(":", StringSplitOptions.TrimEntries).ToList();
+                                    if (msSplitResult.Count != 2)
+                                    {
+                                        throw new CustomApplicationException($"Format of \"{ms}\" incorrect in prompt.");
+                                    }
+
+                                    var seconds = msSplitResult[1].Replace(">", "");
+                                    //converting seconds to integer
+                                    if (!int.TryParse(seconds, out int secondsInt))
+                                    {
+                                        throw new CustomApplicationException($"Format of \"{ms}\" incorrect in prompt, seconds part should be integer.");
+                                    }
+
+                                    //Validating max of seconds to 600
+                                    if (secondsInt > 600)
+                                    {
+                                        throw new CustomApplicationException($"Format of \"{ms}\" incorrect in prompt, seconds part should be less than 600.");
+                                    }
+
+                                    statements.Add(new Statement
+                                    {
+                                        PropmtPatterType = PromptPatternsEnum.SilentVoice,
+                                        AudioDuration = TimeSpan.FromSeconds(secondsInt)
+                                    });
+                                }
+                                else
+                                {
+                                    statements.Add(new Statement { Prompt = ms });
+                                }
+                            }
+                        }
+                    }
+
+                    if (!hasPatter)
+                    {
+                        statements.Add(new Statement { Prompt = paragraph });
+                    }
+                };
+
+                //Adding options to statements
                 foreach (var s in statements)
                 {
+                    var statementOption = options.StatementOptions.FirstOrDefault(o => o.Index == statements.IndexOf(s));
                     s.GlobalPrompt = globalPrompt;
                     s.NegativePrompt = negativePrompt;
+                    if (statementOption != null)
+                    {
+                        s.FontStyle = statementOption.FontStyle;
+                    }
                 }
 
                 //Assign the total of all iterations to progress bar Total
@@ -64,21 +144,6 @@ namespace TTSToVideo.Business.Implementations
                 {
                     statements[0].IsProtrait = portraitEnabled;
                 }
-
-                /*
-                foreach (var paragraph in paragraphs)
-                {
-                    string[] sentences = Regex.Split(paragraph, @"(?<=[:\.!\?])\s+");
-                    foreach (string sentence in sentences)
-                    {
-                        statements.Add(new Statement
-                        {
-                            Text = sentence,
-                            IsFinalParagraph = paragraphs.Any(o => o.EndsWith(sentence))
-                        });
-                    }
-                }
-                */
 
                 //Getting voices
                 #region Processing Voices
@@ -90,15 +155,26 @@ namespace TTSToVideo.Business.Implementations
                     progressBar.Increment();
                     progressBar.ShowMessage($"Getting voices {ca}");
 
-                    var audioFileName = $"{statement.Prompt[..Math.Min(statement.Prompt.Length, Constants.MAX_PATH)]}";
-                    audioFileName = Path.Combine(projectPath, $"v-{PathHelper.CleanFileName(audioFileName)}.wav");
-                    statement.VoiceAudioPath = audioFileName;
-
-                    await GetVoice(new TtsVoice
+                    if (statement.PropmtPatterType == PromptPatternsEnum.SilentVoice)
                     {
-                        ModelId = "eleven_multilingual_v2",//selectedVoice.ModelId,
-                        Id = selectedVoice.Id
-                    }, statement, token);
+                        var silenceAudioPatternTemp = Path.Combine(projectPath, $"silencevoice_{statement.AudioDuration.TotalSeconds}.wav");
+                        AudioHelper.CreateSilentWavAudio(silenceAudioPatternTemp, statement.AudioDuration, token);
+                        statement.VoiceAudioPath = silenceAudioPatternTemp;
+                        statement.VoiceAudioPathWave = statement.VoiceAudioPath + ".wav";
+                        File.Copy(statement.VoiceAudioPath, statement.VoiceAudioPathWave, true);
+                    }
+                    else
+                    {
+                        var audioFileName = $"{statement.Prompt[..Math.Min(statement.Prompt.Length, Constants.MAX_PATH)]}";
+                        audioFileName = Path.Combine(projectPath, $"v-{PathHelper.CleanFileName(audioFileName)}.wav");
+                        statement.VoiceAudioPath = audioFileName;
+
+                        await GetVoice(new TtsVoice
+                        {
+                            ModelId = "eleven_multilingual_v2",//selectedVoice.ModelId,
+                            Id = selectedVoice.Id
+                        }, statement, token);
+                    }
                 }
 
                 //Concatenating Voices
@@ -106,7 +182,6 @@ namespace TTSToVideo.Business.Implementations
 
                 var tempVoiceFileA = $"{Path.GetTempFileName()}.wav";
                 var tempVoiceFileB = $"{Path.GetTempFileName()}.wav";
-
                 var previosVoiceAudioPath = "";
 
                 //First audio
@@ -115,7 +190,7 @@ namespace TTSToVideo.Business.Implementations
 
                 if (options.DurationBetweenVideo != null && options.DurationBetweenVideo.Value.TotalSeconds != 0)
                 {
-                    await AudioHelper.CreateSilentWavAudio(silenceAudioTemp, (options.DurationBetweenVideo ?? new TimeSpan()), token);//AudioHelper.AudioFormat.WAV, token);
+                    AudioHelper.CreateSilentWavAudio(silenceAudioTemp, (options.DurationBetweenVideo ?? new TimeSpan()), token);
                 }
 
                 //The rest of the other audios
@@ -144,11 +219,7 @@ namespace TTSToVideo.Business.Implementations
 
                 RemoveTempFile(tempVoiceFileA);
                 RemoveTempFile(tempVoiceFileB);
-
-                if (silenceAudioTemp != null)
-                {
-                    RemoveTempFile(silenceAudioTemp);
-                }
+                RemoveTempFile(silenceAudioTemp);
                 #endregion
 
                 //Taking Picture
@@ -171,8 +242,28 @@ namespace TTSToVideo.Business.Implementations
                     bool notExistsOneImage = false;
                     for (int i = 0; i < numImages; i++)
                     {
-                        var imageFileName = $"{statement.Prompt[..Math.Min(statement.Prompt.Length, Constants.MAX_PATH)]}";
-                        imageFileName = Path.Combine(projectPath, $"{PathHelper.CleanFileName(imageFileName)}.jpg");
+                        string imageFileName;
+                        if (statement.PropmtPatterType == PromptPatternsEnum.SilentVoice)
+                        {
+                            //Get previous statement 
+                            var previousStatementIndex = statements.IndexOf(statement) - 1;
+                            Statement previousStatement;
+                            if (previousStatementIndex >= 0 && previousStatementIndex < statements.Count)
+                            {
+                                previousStatement = statements[previousStatementIndex];
+                                imageFileName = previousStatement.Images.FirstOrDefault()?.Path ?? throw new CustomApplicationException("Previous statement image path is null.");
+                            }
+                            else
+                            {
+                                throw new CustomApplicationException("Previous statement index is out of range.");
+                            }
+                            imageFileName = previousStatement.Images.FirstOrDefault().Path;
+                        }
+                        else
+                        {
+                            imageFileName = $"{statement.Prompt[..Math.Min(statement.Prompt.Length, Constants.MAX_PATH)]}";
+                            imageFileName = Path.Combine(projectPath, $"{PathHelper.CleanFileName(imageFileName)}.jpg");
+                        }
 
                         if (!File.Exists(imageFileName))
                         {
@@ -231,27 +322,24 @@ namespace TTSToVideo.Business.Implementations
                 }
                 #endregion
 
-                //Making Music 
-                #region Processing Audio
-                progressBar.ShowMessage($"Making Music Audio.");
+                //Making Background Music 
+                #region Processing Background Music
+                progressBar.ShowMessage($"Making Background Music Audio.");
 
-                //Random random = new();
-                //var audioWavs = Directory.GetFiles(options.MusicDir, "*.wav");
-                //int randomNumber = random.Next(1, audioWavs.Length);
-                var audioFilePath = selectedMusicFile; //audioWavs[randomNumber - 1];
+                var audioFilePath = selectedMusicFile; 
 
                 TimeSpan desiredDuration = new();  // Adjust this value for desired audio duration
                 foreach (var s in statements)
                 {
                     desiredDuration += s.AudioDuration + (options.DurationBetweenVideo ?? new TimeSpan());
 
-                    if (s.IsProtrait)
-                    {
-                        desiredDuration -= options.DurationBetweenVideo ?? new TimeSpan();
-                    }
+                    //if (s.IsProtrait)
+                    //{
+                    //    desiredDuration -= options.DurationBetweenVideo ?? new TimeSpan();
+                    //}
                 }
 
-                desiredDuration += (options.DurationEndVideo ?? new TimeSpan());
+                desiredDuration += ((options.DurationEndVideo ?? new TimeSpan()) + (options.DurationBetweenVideo ?? new TimeSpan()));
 
                 var audioFileReal = AudioHelper.OpenAudio(audioFilePath);
                 double cut = audioFileReal.TotalTime.TotalSeconds - (options.DurationEndVideo?.TotalSeconds ?? 0);
@@ -284,8 +372,8 @@ namespace TTSToVideo.Business.Implementations
 
                 AudioHelper.DecreaseVolumeAtSpecificTime(tempAudioFileA
                                             , tempAudioFileB
-                                            , TimeSpan.FromSeconds(0)//(cut - 10)
-                                            , AudioHelper.GetAudioDuration(concatenatedVoicesPath)
+                                            , TimeSpan.FromSeconds(0)
+                                            , desiredDuration
                                             , (float)options.MusicaOptions.MusicVolume);
 
                 File.Copy(tempAudioFileB, outputMusicFile, true);
@@ -297,6 +385,23 @@ namespace TTSToVideo.Business.Implementations
 
                 //Making the Video
                 #region Making the Video
+
+                //Adding last image
+
+
+                var silenceVoice = $"{Path.GetTempFileName()}.wav";
+                AudioHelper.CreateSilentWavAudio(silenceAudioTemp, (options.DurationBetweenVideo ?? new TimeSpan()), token);
+
+                var lastStatement = statements.Last();
+                var additionalLastStatement = new Statement
+                {
+                    AudioDuration = options.DurationEndVideo.Value,
+                    Images = [new StatementImage { Path = $"{lastStatement.Images.First().Path}" }],
+                    VideoPath = lastStatement.VideoPath,
+                    VoiceAudioPath = $"{lastStatement.Images.First().Path}-last-video-part.mp4",
+                };
+                statements.Add(additionalLastStatement);
+
                 progressBar.ShowMessage($"Making Video.");
 
                 var finalProjectVideoPath = projectPath + "\\" + $"{projectName}.mp4";
@@ -305,35 +410,8 @@ namespace TTSToVideo.Business.Implementations
                     File.Delete(finalProjectVideoPath);
                 }
 
-                var previousVideo = "";
                 string outputPath = "";
-                string tempFile = "";
-
-                List<Statement> statementsToIterate = statements;
-
-                await FFMPEGHelpers.CreateVideoWithSubtitle(
-                    finalProjectVideoPath,
-                    firstStatement.Prompt,
-                    firstStatement.VideoPath != null && File.Exists(firstStatement.VideoPath) ? firstStatement.VideoPath : firstStatement?.Images.FirstOrDefault()?.Path,
-                    firstStatement.AudioDuration,
-                     new()
-                     {
-                         FontStyle = new FfmpegFontStyle
-                         {
-                             Alignment = firstStatement?.FontStyle?.Alignment ?? FfmpegAlignment.TopCenter,
-                             FontSize = firstStatement?.FontStyle?.FontSize ?? 11,  
-                         },
-                         MarginEndDuration = options.DurationBetweenVideo
-                     },
-                     token);
-
-                tempFile = $"{Path.GetTempFileName()}.mp4";
-                File.Copy(finalProjectVideoPath, tempFile, true);
-                previousVideo = tempFile;
-
-                statementsToIterate = statements.Skip(1).ToList();
-
-                foreach (var s in statementsToIterate)
+                foreach (var s in statements)
                 {
                     progressBar.Increment();
                     if (token.IsCancellationRequested)
@@ -344,7 +422,8 @@ namespace TTSToVideo.Business.Implementations
                     // Set the output file path
                     outputPath = s.VoiceAudioPath + ".mp4";
 
-                    await FFMPEGHelpers.CreateVideoWithSubtitle(
+                    await FFMPEGHelpers.CreateVideoWithSubtitle
+                    (
                         outputPath,
                         s.Prompt,
                         File.Exists(s.VideoPath) ? s.VideoPath : s.Images.First().Path,
@@ -360,40 +439,11 @@ namespace TTSToVideo.Business.Implementations
                             },
                             MarginEndDuration = options.DurationBetweenVideo
                         }, token);
-
-                    await FFMPEGHelpers.JoiningVideos(previousVideo, outputPath, finalProjectVideoPath, new()
-                    {
-                        HeightResolution = FFMPEGDefinitions.HeightResolution,
-                        WidthResolution = FFMPEGDefinitions.WidthResolution,
-                    }
-                        , token);
-
-                    if (File.Exists(previousVideo))
-                    {
-                        RemoveTempFile(previousVideo);
-                    }
-
-                    tempFile = $"{Path.GetTempFileName()}.mp4";
-                    File.Copy(finalProjectVideoPath, tempFile, true);
-                    previousVideo = tempFile;
                 }
 
-                tempFile = $"{Path.GetTempFileName()}.mp4";
-                File.Copy(finalProjectVideoPath, tempFile, true);
-                previousVideo = tempFile;
-
-                var lastStatement = statements.Last();
-
-                var lastImage = File.Exists(lastStatement.VideoPath)
-                                ? lastStatement.VideoPath
-                                : lastStatement.Images.First().Path;
-                outputPath = $"{lastStatement.VoiceAudioPath}-no-text.mp4";
-
-                //Run ffmpeg process
-                await FFMPEGHelpers.GenerateVideoWithImage(outputPath, lastImage, options.DurationEndVideo, token);
-
-                //Adding last image
-                await FFMPEGHelpers.JoiningVideos(previousVideo, outputPath, finalProjectVideoPath, new FfmpegOptions
+                //Joining videos
+                var videoPaths = statements.Select(o => o.VoiceAudioPath + ".mp4").ToList();
+                await FFMPEGHelpers.JoiningVideos([.. videoPaths], finalProjectVideoPath, new()
                 {
                     HeightResolution = FFMPEGDefinitions.HeightResolution,
                     WidthResolution = FFMPEGDefinitions.WidthResolution,
@@ -413,9 +463,9 @@ namespace TTSToVideo.Business.Implementations
                                            , FinalProjectVideoPathWithVoice
                                            , token);
 
-                RemoveTempFile(previousVideo);
-
                 #endregion
+
+                return statements;
             }
             finally
             {
@@ -524,10 +574,10 @@ namespace TTSToVideo.Business.Implementations
             }
         }
 
-        private static void RemoveTempFile(string tempFileFinalVideo)
+        private static void RemoveTempFile(string pathToRemove)
         {
-            File.Delete(tempFileFinalVideo);
-            string path = tempFileFinalVideo.Replace(".mp4", "")
+            File.Delete(pathToRemove);
+            string path = pathToRemove.Replace(".mp4", "")
                           .Replace(".wav", "")
                           .Replace(".mp3", "");
             File.Delete(path);

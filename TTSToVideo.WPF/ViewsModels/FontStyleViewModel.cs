@@ -46,8 +46,8 @@ namespace TTSToVideo.WPF.ViewsModels
         {
             if (Statement != null)
             {
-                if (Statement.FontStyle.Alignment != (FfmpegAlignment)this.SelectedFontPosition.Id
-                    || Statement.FontStyle.FontSize != this.FontSize) 
+                if (Statement.FontStyle?.Alignment != (FfmpegAlignment)this.SelectedFontPosition.Id
+                    || Statement.FontStyle?.FontSize != this.FontSize) 
                 {
                     var path = Statement?.Images?.FirstOrDefault()?.Path;
                     if (path != null)

@@ -14,9 +14,9 @@ namespace TTSToVideo.Business
                                                  TTSToVideoOptions options,
                                                  CancellationToken token);
 
-        Task ProcessCommandExecute(string projectPath
+        Task<List<Statement>> ProcessCommandExecute(string projectPath
                                  , string projectName
-                                 , List<Statement> statements
+                                 , string statements
                                  , string negativePrompt
                                  , string globalPrompt
                                  , string selectedMusicFile
