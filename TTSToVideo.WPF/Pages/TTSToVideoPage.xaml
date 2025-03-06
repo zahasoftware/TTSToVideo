@@ -1,0 +1,162 @@
+﻿<Page x:Class="TTSToVideo.WPF.TTSToVideoPage"
+      xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+      xmlns:local="clr-namespace:TTSToVideo.WPF"
+      xmlns:converters="clr-namespace:TTSToVideo.WPF.Converters"
+      xmlns:implementations="clr-namespace:TTSToVideo.WPF.ViewsModels" 
+      d:DataContext="{d:DesignInstance Type=implementations:TTSToVideoViewModel}"
+      mc:Ignorable="d" 
+      d:DesignHeight="450" d:DesignWidth="1179"
+      Background="White"
+      Title="MainPage" >
+    <Page.Resources>
+        <converters:ImageCollectionConverter x:Key="ImageCollectionConverter" />
+        <converters:ImageConverter x:Key="ImageConverter" />
+        <Style TargetType="{x:Type Button}">
+            <Setter Property="Margin" Value="5 0 0 0" />
+        </Style>
+        <Style TargetType="{x:Type GridSplitter}" x:Key="GridSplitterBase" >
+            <Setter Property="Background" Value="Violet"></Setter>
+            <Setter Property="ShowsPreview" Value="True"></Setter>
+        </Style>
+        <Style TargetType="{x:Type GridSplitter}" x:Key="GridSplitterHeight" BasedOn="{StaticResource GridSplitterBase}" >
+            <Setter Property="Height" Value="2"></Setter>
+            <Setter Property="HorizontalAlignment" Value="Stretch"></Setter>
+        </Style>
+        <Style TargetType="{x:Type GridSplitter}" x:Key="GridSplitterWidth" BasedOn="{StaticResource GridSplitterBase}" >
+            <Setter Property="Width" Value="2"></Setter>
+            <Setter Property="VerticalAlignment" Value="Stretch"></Setter>
+        </Style>
+        <Style TargetType="{x:Type TextBox}" x:Key="ShortInlineTextbox">
+            <Setter Property="Width" Value="300"></Setter>
+            <Setter Property="TextWrapping" Value="Wrap"></Setter>
+            <Setter Property="AcceptsReturn" Value="True"></Setter>
+        </Style>
+    </Page.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="auto"></RowDefinition>
+            <RowDefinition Height="auto"></RowDefinition>
+            <RowDefinition Height="3*"></RowDefinition>
+            <RowDefinition Height="auto"></RowDefinition>
+            <RowDefinition Height="7*"></RowDefinition>
+        </Grid.RowDefinitions>
+        <StackPanel Grid.Row="0" HorizontalAlignment="Stretch" Orientation="Vertical">
+        </StackPanel>
+        <Label Grid.Row="1">Prompt</Label>
+        <TextBox  Grid.Row="2"
+                     TextWrapping="Wrap" 
+                     AcceptsReturn="True" 
+                     VerticalScrollBarVisibility="Visible" 
+                     Text="{Binding Model.Prompt, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+        <StackPanel Grid.Row="3">
+            <Label >Aditional Prompt</Label>
+            <TextBox VerticalAlignment="Stretch"
+                     TextWrapping="Wrap" 
+                     AcceptsReturn="True" 
+                     VerticalScrollBarVisibility="Visible" 
+                     Text="{Binding Model.AditionalPrompt, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+            <Label >Negative Prompt</Label>
+            <TextBox VerticalAlignment="Stretch"
+                     TextWrapping="Wrap" 
+                     AcceptsReturn="True" 
+                     VerticalScrollBarVisibility="Visible" 
+                     Text="{Binding Model.NegativePrompt, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+        </StackPanel>
+        <GridSplitter Grid.Row="3" Style="{StaticResource GridSplitterHeight}" />
+        <Grid Grid.Row="4">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"></ColumnDefinition>
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="auto"></RowDefinition>
+                <RowDefinition Height="*"></RowDefinition>
+            </Grid.RowDefinitions>
+            <StackPanel Grid.ColumnSpan="2" Orientation="Horizontal" HorizontalAlignment="Left">
+            </StackPanel>
+            <GridSplitter  Style="{StaticResource GridSplitterWidth}" Grid.RowSpan="2" />
+
+            <DataGrid Grid.Row="1" Grid.Column="1" 
+                      ScrollViewer.CanContentScroll="False"
+                      ItemsSource="{Binding Model.Statements}"
+                      AutoGenerateColumns="False"
+                      CanUserAddRows="False"
+                      CanUserDeleteRows="False"
+                      >
+                <DataGrid.Columns>
+                    <DataGridTemplateColumn Header="Pictures">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <ItemsControl ItemsSource="{Binding Images}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Horizontal" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Image Source="{Binding Path, Converter={StaticResource ImageCollectionConverter}}" Width="200" Height="200"/>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTemplateColumn Width="*" Header="Text">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Text}" TextWrapping="Wrap" />
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTemplateColumn Header="Actions">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"></ColumnDefinition>
+                                        <ColumnDefinition Width="*"></ColumnDefinition>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="auto"></RowDefinition>
+                                        <RowDefinition Height="auto"></RowDefinition>
+                                        <RowDefinition Height="auto"></RowDefinition>
+                                    </Grid.RowDefinitions>
+                                    <Button Command="{Binding DataContext.OpenPictureCommand, RelativeSource={RelativeSource AncestorType={x:Type Page}}}" 
+                                            CommandParameter="{Binding}">
+                                        Open Picture
+                                    </Button>
+                                    <Button Grid.Column="1" Command="{Binding DataContext.DeletePictureCommand, RelativeSource={RelativeSource AncestorType={x:Type Page}}}" 
+                                            CommandParameter="{Binding}">
+                                        <Image Source="pack://application:,,,/TTSToVideo.WPF;component/Resources/remove-icon.png" Width="16" Height="16"/>
+                                    </Button>
+                                    <Button 
+                                            Grid.Row="1"
+                                            Command="{Binding DataContext.DeleteVoiceCommand, RelativeSource={RelativeSource AncestorType={x:Type Page}}}" 
+                                            CommandParameter="{Binding}">
+                                        Delete Voice
+                                    </Button>
+                                    <Button 
+                                     Grid.Row="1"
+                                     Grid.Column="1"
+                                            Command="{Binding DataContext.OpenVoiceCommand, RelativeSource={RelativeSource AncestorType={x:Type Page}}}" 
+                                            CommandParameter="{Binding}">
+                                        Open Voice
+                                    </Button>
+
+                                    <Button 
+                                    Grid.Row="2" 
+                                           Click="OpenFontStyleWindow">Open Font Style Window</Button>
+                                </Grid>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                </DataGrid.Columns>
+            </DataGrid>
+        </Grid>
+    </Grid>
+</Page>

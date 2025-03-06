@@ -1,0 +1,144 @@
+﻿<Window x:Class="TTSToVideo.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
+        xmlns:local="clr-namespace:TTSToVideo" 
+        xmlns:converters="clr-namespace:TTSToVideo.WPF.Converters"
+        xmlns:implementations="clr-namespace:TTSToVideo.WPF.ViewsModels" 
+        d:DataContext="{d:DesignInstance Type=implementations:MainWindowViewModel}"
+        mc:Ignorable="d"
+        Title="{Binding Title}" Height="450" Width="1500" >
+    <Window.Resources>
+        <converters:IsNotNullConverter x:Key="IsNotNullConverter" />
+    </Window.Resources>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="auto"></RowDefinition>
+            <RowDefinition Height="*"></RowDefinition>
+            <RowDefinition Height="auto"></RowDefinition>
+        </Grid.RowDefinitions>
+        <Ribbon Grid.Row="0" x:Name="RibbonWin"  SelectedIndex="0" SelectionChanged="RibbonWin_SelectionChanged" >
+            <Ribbon.ApplicationMenu>
+                <RibbonApplicationMenu KeyTip="F">
+                    <RibbonApplicationMenuItem Header="Options"  />
+                    <RibbonApplicationMenuItem Header="Exit" />
+                </RibbonApplicationMenu>
+            </Ribbon.ApplicationMenu>
+
+            <!-- Ribbon Tab #1: TTSToVideo -->
+            <RibbonTab Name="tabHome" Header="TTSToVideo" KeyTip="T" >
+                <!-- Home  group-->
+                <RibbonGroup Header="Project">
+                    <Label>Categories</Label>
+                    <ComboBox   IsEditable="true"
+                                IsTextSearchEnabled="true"
+                                ItemsSource="{Binding TtsToVideoViewModel.NewProjectViewModel.Categories,Mode=TwoWay}"
+                                DisplayMemberPath="CategoryName"
+                                SelectedItem="{Binding TtsToVideoViewModel.NewProjectViewModel.SelectedCategory}"
+                                Width="200"
+                                Name="cbx">
+                        <i:Interaction.Triggers>
+                            <i:EventTrigger EventName="SelectionChanged">
+                                <i:InvokeCommandAction 
+                                    Command="{Binding TtsToVideoViewModel.CategorySelectionChangedCommand}"                            
+                                    CommandParameter="{Binding SelectedItem.DirectoryPath, RelativeSource={RelativeSource AncestorType={x:Type ComboBox}}}" />
+                            </i:EventTrigger>
+                        </i:Interaction.Triggers>
+                    </ComboBox>
+                    <Label>Project Name</Label>
+                    <ComboBox   IsEditable="true"
+                                IsTextSearchEnabled="true"
+                                ItemsSource="{Binding TtsToVideoViewModel.ProjectsNames,Mode=TwoWay}"
+                                DisplayMemberPath="FileName"
+                                SelectedItem="{Binding TtsToVideoViewModel.ProjectSelected}"
+                                Width="200"
+                                Name="cbxCategory">
+                        <i:Interaction.Triggers>
+                            <i:EventTrigger EventName="SelectionChanged">
+                                <i:InvokeCommandAction Command="{Binding TtsToVideoViewModel.ProjectSelectionChangedCommand}"                            
+           CommandParameter="{Binding SelectedItem, RelativeSource={RelativeSource AncestorType={x:Type ComboBox}}}" />
+                            </i:EventTrigger>
+                        </i:Interaction.Triggers>
+                    </ComboBox>
+
+
+                    <Separator></Separator>
+
+                    <RibbonButton Label="New Project" Click="OpenNewProjectWindow" ></RibbonButton>
+                    <RibbonButton Label="Generate Project" Command="{Binding TtsToVideoViewModel.ProcessCommand}" ></RibbonButton>
+                    <RibbonButton Label="Cancel Project Generation"  
+                                  Command="{Binding TtsToVideoViewModel.CancelCommand}" 
+                                  IsEnabled="{Binding TtsToVideoViewModel.ProcessCommand.IsRunning}"
+                                  ></RibbonButton>
+
+                    <RibbonButton Label="Save Project" Command="{Binding TtsToVideoViewModel.SaveCommand}" ></RibbonButton>
+                    <RibbonButton Label="Open Project Video" 
+                                  Command="{Binding TtsToVideoViewModel.OpenVideoCommand}" 
+                                  IsEnabled="{Binding ElementName=cbx, Path=SelectedItem, Converter={StaticResource IsNotNullConverter}}"/>
+
+                    <RibbonButton Command="{Binding TtsToVideoViewModel.OpenExplorerCommand}" 
+                                  Label="Open Project Folder" 
+                                  IsEnabled="{Binding ElementName=cbx, Path=SelectedItem, Converter={StaticResource IsNotNullConverter}}"/>
+                </RibbonGroup>
+
+                <RibbonGroup Name="Picture"  Header="Images" >
+                    <ComboBox ItemsSource="{Binding TtsToVideoViewModel.ImagesModels}"
+                              SelectedValue="{Binding TtsToVideoViewModel.Model.ImageModelSelected}"
+                              Width="220">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Width="120" Text="{Binding Name}" Margin="5"/>
+                                    <Image Source="{Binding ImageUrl}" Width="60"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <CheckBox IsChecked="{Binding TtsToVideoViewModel.Model.UseOnlyFirstImage}" Content="Use first image to all"></CheckBox>
+                    <CheckBox IsChecked="{Binding TtsToVideoViewModel.Model.UseTextForPrompt}" Content="Use paragraph for prompt"></CheckBox>
+                    <CheckBox IsChecked="{Binding TtsToVideoViewModel.Model.CreateVideo}" Content="Create a video"></CheckBox>
+                </RibbonGroup>
+
+                <RibbonGroup Name="Voices" Header="Voice">
+                    <!--SelectedValuePath="GeneratedImage.ImageUrl"-->
+                    <ComboBox ItemsSource="{Binding TtsToVideoViewModel.VoicesModels}"
+                              SelectedValue="{Binding TtsToVideoViewModel.Model.VoiceModelSelected}"
+                              DisplayMemberPath="Display"
+                              Width="220">
+                    </ComboBox>
+                </RibbonGroup>
+                <RibbonGroup Name="Music" Header="Music">
+                    <!-- SelectedValuePath="GeneratedImage.ImageUrl" -->
+                    <ComboBox ItemsSource       ="{Binding TtsToVideoViewModel.MusicModels}" 
+                              SelectedValue     ="{Binding TtsToVideoViewModel.Model.MusicModelSelected}" 
+                              DisplayMemberPath ="Display" 
+                              Width="220" 
+                              >
+                    </ComboBox>
+                    <Slider Value="{Binding TtsToVideoViewModel.Model.MusicVolume, Mode=TwoWay}" 
+                            Minimum             ="-60" Maximum="0" 
+                            Width               ="150" 
+                            TickFrequency       ="10" 
+                            TickPlacement       ="BottomRight" 
+                            IsSnapToTickEnabled ="True" 
+                            AutoToolTipPlacement="BottomRight" 
+                            AutoToolTipPrecision="0" 
+                            Margin="10"/>
+                </RibbonGroup>
+            </RibbonTab>
+            <!-- Ribbon Tab #2: -->
+            <RibbonTab Name="tabConfiguration" Header="Configuration" KeyTip="C" >
+                <RibbonButton Label="Save" Command="{Binding VMConf.SaveCommand}" ></RibbonButton>
+            </RibbonTab>
+        </Ribbon>
+        <Frame Grid.Row="1" x:Name="mainFrame" NavigationUIVisibility="Hidden"  />
+        <StatusBar Grid.Row="2" DockPanel.Dock="Bottom" >
+            <ProgressBar Value="{Binding ProgressBarValue}" Minimum="0" Maximum="100" Height="10" Width="200"/>
+            <StatusBarItem>
+                <Label Content="{Binding Message}"></Label>
+            </StatusBarItem>
+        </StatusBar>
+    </Grid>
+</Window>
