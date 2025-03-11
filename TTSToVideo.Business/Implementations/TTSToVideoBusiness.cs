@@ -269,12 +269,14 @@ namespace TTSToVideo.Business.Implementations
                         {
                             notExistsOneImage = true;
                         }
-
-                        statement.Images.Clear();
-                        statement.Images.Add(new StatementImage
+                        else
                         {
-                            Path = imageFileName
-                        });
+                            statement.Images.Clear();
+                            statement.Images.Add(new StatementImage
+                            {
+                                Path = imageFileName
+                            });
+                        }
                     }
 
                     if (options.ImageOptions.UseOnlyFirstImage && statement != firstStatement)

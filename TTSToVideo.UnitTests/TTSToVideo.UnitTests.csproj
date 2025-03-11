@@ -20,7 +20,6 @@
     </PackageReference>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="pythonnet" Version="3.0.3" />
-    <PackageReference Include="RestSharp" Version="111.0.0" />
   </ItemGroup>
 
   <ItemGroup>

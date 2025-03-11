@@ -403,6 +403,8 @@ namespace TTSToVideo.WPF.ViewsModels
 
         private async Task OpenVideo()
         {
+            this.FinalProjectVideoPathWithVoice = Path.Combine(ProjectSelected.FullPath, $"{ProjectSelected.FileName}-Final.mp4");
+
             if (!File.Exists(this.FinalProjectVideoPathWithVoice))
             {
                 throw new CustomApplicationException("Video not created.");

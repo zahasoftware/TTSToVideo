@@ -13,7 +13,12 @@ dotnet user-secrets set "LeonardoAIToken" "<your token>"
 dotnet user-secrets set "ElevenLabsToken" "<your token>"
 ```
 
-## You need to install ffmpeg and add it tho PATH enviroment variable https://www.gyan.dev/ffmpeg/builds/
+## Install ffmpeg
+
+```pwsh
+winget install ffmpeg
+```
+
 
 
 # How to use app
