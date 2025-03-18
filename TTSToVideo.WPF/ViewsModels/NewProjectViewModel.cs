@@ -88,7 +88,7 @@ namespace TTSToVideo.WPF.ViewsModels
             }
 
             //Validate ProjectName
-            if (string.IsNullOrEmpty(Model.ProjectName))
+            if (string.IsNullOrEmpty(Model?.ProjectName))
             {
                 throw new CustomApplicationException("Please enter a project name");
             }
@@ -100,7 +100,7 @@ namespace TTSToVideo.WPF.ViewsModels
             }
 
             //Validate if directory already exists
-            var projectDir = Path.Combine(SelectedCategory.DirectoryPath, Model.ProjectName);
+            var projectDir = Path.Combine(SelectedCategory.DirectoryPath ?? throw new CustomApplicationException("Selected category directory path is null"), Model.ProjectName);
             if (Directory.Exists(projectDir))
             {
                 throw new CustomApplicationException("Project directory already exists");
@@ -114,8 +114,10 @@ namespace TTSToVideo.WPF.ViewsModels
             {
                 FullPath = projectDir,
                 FileName = Path.GetFileName(projectDir),
-                ProjectName = Model.ProjectName,
+                ProjectName = Model.ProjectName.Trim(),
             });
+
+            await Task.Delay(0);
         }
 
 

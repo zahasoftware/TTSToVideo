@@ -33,8 +33,7 @@ namespace TTSToVideo.WPF.Models
         public ImageModel? ImageModelSelected { get; set; }
         public VoiceModel? VoiceModelSelected { get; set; }
         public MusicModel? MusicModelSelected { get; set; }
-
-
+        public VideoModel? VideoModel { get; set; }
 
         [JsonIgnore]
         public ObservableCollection<StatementModel>? Statements { get; set; } = [];

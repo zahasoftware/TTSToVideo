@@ -25,5 +25,6 @@ namespace TTSToVideo.Business.Models
         public string? VideoPath { get; internal set; }
         public FfmpegFontStyle? FontStyle { get; set; }
         public PromptPatternsEnum PropmtPatterType { get; internal set; }
+        public string OutputVideoPath { get; internal set; }
     }
 }
