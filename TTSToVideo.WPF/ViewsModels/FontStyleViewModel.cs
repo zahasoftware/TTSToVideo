@@ -18,9 +18,9 @@ namespace TTSToVideo.WPF.ViewsModels
         public FontStyleViewModel()
         {
             this.FontPosition = [];
-            this.FontSize = 12;
+            this.FontSize = null;
 
-            foreach (var id in Enum.GetValues(typeof(FfmpegAlignment)))
+            foreach (var id in Enum.GetValues<FfmpegAlignment>())
             {
                 this.FontPosition.Add(new FontPositionModel { Id = (int)id, Name = id.ToString() });
             }
@@ -40,6 +40,9 @@ namespace TTSToVideo.WPF.ViewsModels
 
             this.SelectedFontPosition = this.FontPosition?.FirstOrDefault(x => x.Id == alignmentInt)
                 ?? throw new ArgumentNullException("Font position not found");
+
+            this.FontSize = Statement?.FontStyle?.FontSize;
+            this.SubtitleVisible = Statement?.FontStyle?.SubtitleVisible ?? true;
         }
 
         private async Task WindowClosed()
@@ -47,17 +50,20 @@ namespace TTSToVideo.WPF.ViewsModels
             if (Statement != null)
             {
                 if (Statement.FontStyle?.Alignment != (FfmpegAlignment)this.SelectedFontPosition.Id
-                    || Statement.FontStyle?.FontSize != this.FontSize) 
+                    || Statement.FontStyle?.FontSize != this.FontSize
+                    || Statement.FontStyle?.SubtitleVisible != this.SubtitleVisible
+                    )
                 {
                     var path = Statement?.Images?.FirstOrDefault()?.Path;
                     if (path != null)
                     {
-                        File.Delete($"{path}.mp4");
-                        File.Delete($"{path}.wav.mp4");
+                        path = $"{Path.Combine(Path.GetDirectoryName(path), "v-" + Path.GetFileNameWithoutExtension(path))}.wav.mp4";
+                        File.Delete(path);
                     }
                 }
                 Statement.FontStyle.Alignment = (FfmpegAlignment)this.SelectedFontPosition.Id;
                 Statement.FontStyle.FontSize = this.FontSize;
+                Statement.FontStyle.SubtitleVisible = this.SubtitleVisible;
             }
             await Task.Delay(1);
         }
@@ -67,6 +73,7 @@ namespace TTSToVideo.WPF.ViewsModels
         public AsyncRelayCommand WindowOpenedCommand { get; }
         public FontPositionModel SelectedFontPosition { get; set; }
         public int? FontSize { get; set; }
+        public bool SubtitleVisible { get; set; } = true;
         public StatementModel? Statement { get; set; }
     }
 }

@@ -33,3 +33,6 @@ Prompt example:
 
 In this example the video will have 10 minutes aways between the text "Hello World" and "How are you today."
 
+# Board
+
+

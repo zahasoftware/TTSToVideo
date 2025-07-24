@@ -11,14 +11,15 @@ namespace System.IO
 
     public class PathHelper
     {
-        public static string CleanFileName(string fileName) 
+        public static string CleanFileName(string fileName)
         {
             string safeFileName = fileName;
-            char[] invalidChars = Path.GetInvalidFileNameChars();
+            char[] invalidChars = [.. Path.GetInvalidFileNameChars(), '"', '”', '“'];
 
-            foreach (char invalidChar in invalidChars) 
+            foreach (char invalidChar in invalidChars)
             {
                 safeFileName = safeFileName.Replace(invalidChar.ToString(), "_");
+
             }
 
             return safeFileName;

@@ -51,5 +51,14 @@ namespace TTSToVideo.WPF
             (window.DataContext as FontStyleViewModel).Statement = item;
             window.ShowDialog();
         }
+
+private void IncreaseFontSize_Click(object sender, RoutedEventArgs e)  
+            {  
+               if (this.PromptTextBox.FontSize < 30) // Set a maximum font size limit  
+               {  
+                   this.PromptTextBox.FontSize += 2;  
+               }  
+            }
+
     }
 }

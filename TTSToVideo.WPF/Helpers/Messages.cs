@@ -5,11 +5,13 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
+using TTSToVideo.Helpers;
 
 namespace TTSToVideo.WPF.Helpers.Implementations
 {
-    public class Messages : IMessage
+    public class Messages (IProgressBar progressBar): IMessage
     {
+
         public async Task<bool> Confirm(string message)
         {
             await Task.Yield();
@@ -29,7 +31,7 @@ namespace TTSToVideo.WPF.Helpers.Implementations
 
         public void Info(string message)
         {
-            MessageBox.Show(message, "Information", MessageBoxButton.OK, MessageBoxImage.Information);
+            progressBar.ShowMessage(message);
         }
 
         public void Warn(string message)

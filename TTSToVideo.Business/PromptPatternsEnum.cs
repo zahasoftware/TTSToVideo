@@ -6,5 +6,6 @@
         SilentVoice,
         NewParagraph,
         NewParagraph2,
+        NewParagraph3,
     }
 }

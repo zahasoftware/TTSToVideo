@@ -1,4 +1,5 @@
-﻿using System;
+﻿using NetXP.IAs.Chat;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -63,6 +64,7 @@ namespace TTSToVideo
             {
                 this.ViewModel.Message = e;
             };
+
         }
 
         private void RibbonWin_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -85,8 +87,9 @@ namespace TTSToVideo
             }
         }
 
-        private void OpenNewProjectWindow(object sender, RoutedEventArgs e)
+        private async void OpenNewProjectWindow(object sender, RoutedEventArgs e)
         {
+
             NewProjectWindow? newProjectWindow = ServiceProvider.GetService(typeof(NewProjectWindow)) as NewProjectWindow;
             if (newProjectWindow != null)
             {
@@ -101,5 +104,37 @@ namespace TTSToVideo
             }
         }
 
+       
+        private void OpenNewCategoryWindow(object sender, RoutedEventArgs e)
+        {
+            if (ServiceProvider.GetService(typeof(NewCategoryView)) is NewCategoryView newCategoryWindow)
+            {
+                newCategoryWindow.Owner = this;
+                newCategoryWindow.WindowStartupLocation = WindowStartupLocation.CenterOwner;
+                newCategoryWindow.ShowDialog();
+            }
+            else
+            {
+                // Handle the case where the service is not available
+                MessageBox.Show("Unable to open new category window. Service not available.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void OpenConfigCategoryWindow(object sender, RoutedEventArgs e)
+        {
+            //Open CategoryConfigurationView
+            if (ServiceProvider.GetService(typeof(CategoryConfigurationView)) is CategoryConfigurationView categoryConfigurationWindow)
+            {
+                categoryConfigurationWindow.Owner = this;
+                categoryConfigurationWindow.WindowStartupLocation = WindowStartupLocation.CenterOwner;
+                categoryConfigurationWindow.ShowDialog();
+            }
+            else
+            {
+                // Handle the case where the service is not available
+                MessageBox.Show("Unable to open category configuration window. Service not available.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+
+        }
     }
 }

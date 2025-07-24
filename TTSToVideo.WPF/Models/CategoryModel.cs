@@ -8,5 +8,9 @@ namespace TTSToVideo.WPF.Models
     {
         public string? CategoryName { get; set; }
         public string? DirectoryPath { get; set; }
+        public string? IAChatInstructions { get; set; } 
+        public string? HashTags { get; set; }
+        public ChatAIModel? ChatAIModelSelected { get; set; } 
+
     }
 }

@@ -34,6 +34,7 @@ namespace TTSToVideo.WPF.Models
             get => fontStyle ??= new FfmpegFontStyle();
             set => fontStyle = value;
         }
+        public string? ImageAnimatedPath { get; internal set; }
 
         internal Statement ToStatement()
         {
@@ -42,10 +43,10 @@ namespace TTSToVideo.WPF.Models
                 Prompt = Text,
                 IsFinalParagraph = IsFinalParagraph,
                 ImageId = ImageId,
-                Images = Images.Select(i => i.ToStatementImage()).ToList(),
-                VoiceAudioPath = AudioPath,
+                Images = [.. Images.Select(i => i.ToStatementImage())],
+                AudioPath = AudioPath,
                 AudioDuration = AudioDuration,
-                FontStyle = FontStyle
+                FontStyle = FontStyle,
             };
         }
     }

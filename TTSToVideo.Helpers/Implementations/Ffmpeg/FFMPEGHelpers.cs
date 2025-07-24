@@ -13,75 +13,86 @@ namespace TTSToVideo.Helpers.Implementations.Ffmpeg
     {
         public static async Task CreateVideoWithSubtitle(string outputPath, string text, string imagePath, TimeSpan duration, FfmpegOptions ffmpegOptions, CancellationToken token)
         {
-            if (!File.Exists(outputPath))
+            //if (!File.Exists(outputPath))
             {
-                string subtitleFilePath = Path.GetTempFileName();
+                string subtitleFilePathRare = "";
+                Process process;
+                string error;
+                string forceStyle = "";
+                string subtitleFilePath = "";
 
-                File.WriteAllText(subtitleFilePath, $"1{Environment.NewLine}0:0:0.000 --> {duration:h\\:m\\:s\\.fff}{Environment.NewLine}{text}");
-
-                // Subtitles to ASS
-                Process process = new();
-                process.StartInfo.FileName = "ffmpeg";
-                process.StartInfo.Arguments = $" -i {subtitleFilePath} {subtitleFilePath}.ass";
-
-                process.StartInfo.CreateNoWindow = true;
-                process.StartInfo.UseShellExecute = false;
-                process.StartInfo.RedirectStandardOutput = true;
-                process.StartInfo.RedirectStandardError = true;
-
-                process.Start();
-                await process.WaitForExitAsync(token);
-
-                var error = process.StandardError.ReadToEnd();
-
-                Console.WriteLine("Error: " + error);
-
-                var subtitleFilePathRare = subtitleFilePath
-                            .Replace("\\", "\\\\\\\\")
-                            .Replace(":", "\\:");
-
-                //Force_Style for ffmpeg
-                var options = new List<string>();
-                if (ffmpegOptions.FontStyle.Alignment != null)
+                if (ffmpegOptions.FontStyle.SubtitleVisible == true)
                 {
-                    options.Add($"Alignment={(byte)ffmpegOptions.FontStyle.Alignment.Value}");
+                    subtitleFilePath = Path.GetTempFileName();
+
+                    File.WriteAllText(subtitleFilePath, $"1{Environment.NewLine}0:0:0.000 --> {duration:h\\:m\\:s\\.fff}{Environment.NewLine}{text}");
+
+                    // Subtitles to ASS
+                    process = new();
+                    process.StartInfo.FileName = "ffmpeg";
+                    process.StartInfo.Arguments = $" -i {subtitleFilePath} {subtitleFilePath}.ass";
+
+                    process.StartInfo.CreateNoWindow = true;
+                    process.StartInfo.UseShellExecute = false;
+                    process.StartInfo.RedirectStandardOutput = true;
+                    process.StartInfo.RedirectStandardError = true;
+
+                    process.Start();
+                    await process.WaitForExitAsync(token);
+
+                    error = process.StandardError.ReadToEnd();
+
+                    Console.WriteLine("Error: " + error);
+
+                    subtitleFilePathRare = subtitleFilePath
+                                .Replace("\\", "\\\\\\\\")
+                                .Replace(":", "\\:");
+
+                    //Force_Style for ffmpeg
+                    var options = new List<string>();
+                    if (ffmpegOptions.FontStyle.Alignment != null)
+                    {
+                        options.Add($"Alignment={(byte)ffmpegOptions.FontStyle.Alignment.Value}");
+                    }
+
+
+                    if (ffmpegOptions.FontStyle.FontSize != null)
+                    {
+                        options.Add($"Fontsize={(byte)ffmpegOptions.FontStyle.FontSize.Value}");
+                    }
+
+                    if (ffmpegOptions.FontStyle.MarginV != null)
+                    {
+                        options.Add($"MarginV={(byte)ffmpegOptions.FontStyle.MarginV.Value}");
+                    }
+
+                    if (ffmpegOptions.FontStyle.MarginV != null)
+                    {
+                        options.Add($"MarginL={(byte)ffmpegOptions.FontStyle.MarginV.Value}");
+                    }
+
+                    if (ffmpegOptions.FontStyle.MarginR != null)
+                    {
+                        options.Add($"MarginR={(byte)ffmpegOptions.FontStyle.MarginR.Value}");
+                    }
+
+                    forceStyle = string.Join(",", options);
+
+                    if (!string.IsNullOrEmpty(forceStyle))
+                    {
+                        forceStyle = $":force_style={forceStyle}";
+                    }
                 }
 
-
-                if (ffmpegOptions.FontStyle.FontSize != null)
-                {
-                    options.Add($"Fontsize={(byte)ffmpegOptions.FontStyle.FontSize.Value}");
-                }
-
-                if (ffmpegOptions.FontStyle.MarginV != null)
-                {
-                    options.Add($"MarginV={(byte)ffmpegOptions.FontStyle.MarginV.Value}");
-                }
-
-                if (ffmpegOptions.FontStyle.MarginV != null)
-                {
-                    options.Add($"MarginL={(byte)ffmpegOptions.FontStyle.MarginV.Value}");
-                }
-
-                if (ffmpegOptions.FontStyle.MarginR != null)
-                {
-                    options.Add($"MarginR={(byte)ffmpegOptions.FontStyle.MarginR.Value}");
-                }
-
-                var forceStyle = string.Join(",", options);
-
-                if (!string.IsNullOrEmpty(forceStyle))
-                {
-                    forceStyle = $":force_style={forceStyle}";
-                }
                 var isVideo = Path.GetExtension(imagePath) == ".mp4";
 
-                var videoDuration = duration + (ffmpegOptions.MarginEndDuration ?? new TimeSpan());
 
-                double inputVideoDuration = 0;
+                var videoDuration = duration;
+
+                double inputVideoDuration = 0; 
                 if (isVideo)
                 {
-                    inputVideoDuration = videoDuration.TotalSeconds / GetVideoDuration(imagePath).TotalSeconds + 1;
+                    inputVideoDuration = duration.TotalSeconds / GetVideoDuration(imagePath).TotalSeconds + 1;
                     inputVideoDuration = Math.Ceiling(inputVideoDuration);
                 }
 
@@ -96,7 +107,7 @@ namespace TTSToVideo.Helpers.Implementations.Ffmpeg
                                               $" -f lavfi " +
                                               $" -i anullsrc=r=44100:cl=stereo " +
                                               $" -t \"{videoDuration:h\\:m\\:s\\.fff}\" " +
-                                              $"-vf \"subtitles='{subtitleFilePathRare}.ass':force_style='{forceStyle}'\" " +
+                                              (ffmpegOptions.FontStyle.SubtitleVisible == true ? $"-vf \"subtitles='{subtitleFilePathRare}.ass':force_style='{forceStyle}'\" " : "") +
                                               $"-r 30 " +
                                               $"-c:v libx264 " +
                                               $"-shortest \"{outputPath}\"";
@@ -117,7 +128,10 @@ namespace TTSToVideo.Helpers.Implementations.Ffmpeg
 
                 await process.WaitForExitAsync(token);
 
-                File.Delete(subtitleFilePath);
+                if (!string.IsNullOrEmpty(subtitleFilePath))
+                {
+                    File.Delete(subtitleFilePath);
+                }
             }
         }
 
@@ -229,20 +243,29 @@ namespace TTSToVideo.Helpers.Implementations.Ffmpeg
                 throw new ArgumentException("At least two video files are required.", nameof(videoPaths));
             }
 
+            // for each outputPath maps their file names on temp files to reduce the fiel path size 
+            List<string> tempFiles = [];
+            for(int i = 0; i < videoPaths.Length; i++)
+            {
+                var tempFile = Path.Combine(Path.GetTempPath(), $"vid_{i}");
+                File.Copy(videoPaths[i], tempFile, true);
+                tempFiles.Add(tempFile);
+            }
+
             // Build input arguments
-            string inputArgs = string.Join(" ", videoPaths.Select(v => $"-i \"{v}\""));
+            string inputArgs = string.Join(" ", tempFiles.Select(v => $"-i \"{v}\""));
 
             // Generate filter_complex for concatenation
             string scale = $"{options.WidthResolution}:{options.HeightResolution}";
             var filterParts = new List<string>();
-            for (int i = 0; i < videoPaths.Length; i++)
+            for (int i = 0; i < tempFiles.Count; i++)
             {
                 filterParts.Add($"[{i}:v]scale={scale},setsar=1[v{i}]");
             }
 
-            string videoInputs = string.Join("", videoPaths.Select((_, i) => $"[v{i}][{i}:a]"));
+            string videoInputs = string.Join("", tempFiles.Select((_, i) => $"[v{i}][{i}:a]"));
             string filterComplex = string.Join(";", filterParts) +
-                                   $";{videoInputs}concat=n={videoPaths.Length}:v=1:a=1[vv][a];" +
+                                   $";{videoInputs}concat=n={tempFiles.Count}:v=1:a=1[vv][a];" +
                                    $"[vv]fps=30,format=yuv420p[v]";
 
             // Construct FFmpeg command
@@ -267,7 +290,7 @@ namespace TTSToVideo.Helpers.Implementations.Ffmpeg
 
             process.Start();
             process.BeginOutputReadLine();
-            string errorOutput = await process.StandardError.ReadToEndAsync();
+            string errorOutput = await process.StandardError.ReadToEndAsync(token);
 
             if (errorOutput.Contains("Error"))
             {
@@ -275,6 +298,22 @@ namespace TTSToVideo.Helpers.Implementations.Ffmpeg
             }
 
             await process.WaitForExitAsync(token);
+
+            // Remove each temp file after processing
+            foreach (var tempFile in tempFiles)
+            {
+                try
+                {
+                    if (File.Exists(tempFile))
+                    {
+                        File.Delete(tempFile);
+                    }
+                }
+                catch
+                {
+                    // Ignore errors on cleanup
+                }
+            }
         }
 
 

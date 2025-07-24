@@ -5,6 +5,8 @@
              DispatcherUnhandledException="Application_DispatcherUnhandledException"
              >
     <Application.Resources>
-         
+      <Style TargetType="Label">
+          <Setter Property="FontWeight" Value="Bold" />
+      </Style>
     </Application.Resources>
 </Application>

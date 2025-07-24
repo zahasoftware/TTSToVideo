@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows7.0</TargetFramework>
+    <TargetFramework>net9.0-windows7.0</TargetFramework>
     <Nullable>enable</Nullable>
     <UseWPF>true</UseWPF>
     <UserSecretsId>4606b24a-a9d1-4121-ac23-76aed86aea50</UserSecretsId>
@@ -11,34 +11,54 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="bin\Debug\net8.0-windows7.0\Projects\NewFolder\**" />
-    <EmbeddedResource Remove="bin\Debug\net8.0-windows7.0\Projects\NewFolder\**" />
-    <None Remove="bin\Debug\net8.0-windows7.0\Projects\NewFolder\**" />
-    <Page Remove="bin\Debug\net8.0-windows7.0\Projects\NewFolder\**" />
+    <None Remove="Images\config.png" />
+    <None Remove="Images\regenerate-image16x16.png" />
+    <None Remove="Images\regenerate-image32x32.png" />
+    <None Remove="Images\save.png" />
   </ItemGroup>
 
-  <ItemGroup>
-    <None Remove="Images\remove-icon.png" />
-  </ItemGroup>
+  <!--<ItemGroup>
+    <Compile Remove="bin\Debug\net9.0-windows7.0\Projects\NewFolder\**" />
+    <EmbeddedResource Remove="bin\Debug\net9.0-windows7.0\Projects\NewFolder\**" />
+    <None Remove="bin\Debug\net9.0-windows7.0\Projects\NewFolder\**" />
+    <Page Remove="bin\Debug\net9.0-windows7.0\Projects\NewFolder\**" />
+  </ItemGroup>-->
 
   <ItemGroup>
     <Content Include="icon.ico" />
+    <Content Include="Images\add32x32.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Images\config.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Images\regenerate-image16x16.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Images\regenerate-image32x32.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="Images\remove-icon.png" />
+    <Content Include="Images\remove-icon.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Images\save.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="AutoMapper" Version="13.0.1" />
+    <PackageReference Include="AutoMapper" Version="14.0.0" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
     <PackageReference Include="Costura.Fody" Version="6.0.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; compile; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Extended.Wpf.Toolkit" Version="4.7.25103.5738" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="8.0.1" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
+    <PackageReference Include="Extended.Wpf.Toolkit" Version="4.7.25104.5739" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="9.0.3" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.3" />
     <PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" Version="1.1.135" />
     <PackageReference Include="NAudio" Version="2.2.1" />
     <PackageReference Include="NAudio.Core" Version="2.2.1" />
@@ -46,10 +66,11 @@
     <PackageReference Include="NAudio.Lame" Version="2.1.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="PropertyChanged.Fody" Version="4.1.0" />
-    <PackageReference Include="Xabe.FFmpeg" Version="5.2.6" />
+    <PackageReference Include="Xabe.FFmpeg" Version="6.0.1" />
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\..\NetXP\NetXP.IAs.Chats.Ollama\NetXP.IAs.Chats.Ollama.csproj" />
     <ProjectReference Include="..\..\..\NetXP\NetXP.ImageGeneratorAI.LeonardoAI\NetXP.ImageGeneratorAI.LeonardoAI.csproj" />
     <ProjectReference Include="..\..\..\NetXP\NetXP.TTS.ElevenLabs\NetXP.Tts.ElevenLabs.csproj" />
     <ProjectReference Include="..\..\..\NetXP\NetXP\NetXP.csproj" />
@@ -64,10 +85,6 @@
 
   <ItemGroup>
     <Page Include="App.xaml" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="bin\Debug\net8.0-windows7.0\Projects\" />
   </ItemGroup>
 
 </Project>

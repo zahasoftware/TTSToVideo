@@ -30,24 +30,34 @@
             <!-- Ribbon Tab #1: TTSToVideo -->
             <RibbonTab Name="tabHome" Header="TTSToVideo" KeyTip="T" >
                 <!-- Home  group-->
-                <RibbonGroup Header="Project">
-                    <Label>Categories</Label>
+                <RibbonGroup Header="Category">
                     <ComboBox   IsEditable="true"
-                                IsTextSearchEnabled="true"
-                                ItemsSource="{Binding TtsToVideoViewModel.NewProjectViewModel.Categories,Mode=TwoWay}"
-                                DisplayMemberPath="CategoryName"
-                                SelectedItem="{Binding TtsToVideoViewModel.NewProjectViewModel.SelectedCategory}"
-                                Width="200"
-                                Name="cbx">
+                               IsTextSearchEnabled="true"
+                               ItemsSource="{Binding TtsToVideoViewModel.NewProjectViewModel.Categories,Mode=TwoWay}"
+                               DisplayMemberPath="CategoryName"
+                               SelectedItem="{Binding TtsToVideoViewModel.NewProjectViewModel.SelectedCategory}"
+                               Width="200"
+                               Name="cbx">
                         <i:Interaction.Triggers>
                             <i:EventTrigger EventName="SelectionChanged">
                                 <i:InvokeCommandAction 
-                                    Command="{Binding TtsToVideoViewModel.CategorySelectionChangedCommand}"                            
-                                    CommandParameter="{Binding SelectedItem.DirectoryPath, RelativeSource={RelativeSource AncestorType={x:Type ComboBox}}}" />
+                                   Command="{Binding TtsToVideoViewModel.CategorySelectionChangedCommand}"                            
+                                   CommandParameter="{Binding SelectedItem.DirectoryPath, RelativeSource={RelativeSource AncestorType={x:Type ComboBox}}}" />
                             </i:EventTrigger>
                         </i:Interaction.Triggers>
                     </ComboBox>
-                    <Label>Project Name</Label>
+
+                    <RibbonButton ToolTip="New" Click="OpenNewCategoryWindow" LargeImageSource="/Images/add32x32.png"  
+                    SmallImageSource="/Images/add32x32.png"
+                                  ></RibbonButton>
+                    <RibbonButton ToolTip="Config" 
+                                 Click="OpenConfigCategoryWindow" 
+                                 IsEnabled="{Binding TtsToVideoViewModel.NewProjectViewModel.SelectedCategory, Converter={StaticResource IsNotNullConverter}}" 
+                                 SmallImageSource="/Images/config.png"
+                                  />
+                </RibbonGroup>
+
+                <RibbonGroup Header="Project">
                     <ComboBox   IsEditable="true"
                                 IsTextSearchEnabled="true"
                                 ItemsSource="{Binding TtsToVideoViewModel.ProjectsNames,Mode=TwoWay}"
@@ -66,21 +76,27 @@
 
                     <Separator></Separator>
 
-                    <RibbonButton Label="New Project" Click="OpenNewProjectWindow" ></RibbonButton>
-                    <RibbonButton Label="Generate Project" Command="{Binding TtsToVideoViewModel.ProcessCommand}" ></RibbonButton>
-                    <RibbonButton Label="Cancel Project Generation"  
+                    <RibbonButton Label="New" Click="OpenNewProjectWindow" LargeImageSource="/Images/add32x32.png" ></RibbonButton>
+                    <RibbonButton Label="Generate " Command="{Binding TtsToVideoViewModel.ProcessCommand}" ></RibbonButton>
+                    <RibbonButton Label="Cancel Generation"  
                                   Command="{Binding TtsToVideoViewModel.CancelCommand}" 
                                   IsEnabled="{Binding TtsToVideoViewModel.ProcessCommand.IsRunning}"
                                   ></RibbonButton>
 
-                    <RibbonButton Label="Save Project" Command="{Binding TtsToVideoViewModel.SaveCommand}" ></RibbonButton>
-                    <RibbonButton Label="Open Project Video" 
-                                  Command="{Binding TtsToVideoViewModel.OpenVideoCommand}" 
+                    <RibbonButton ToolTip="Save" Content="Save"  Command="{Binding TtsToVideoViewModel.SaveCommand}"  LargeImageSource="pack://application:,,,/Images/save.png"
+                                  ></RibbonButton>
+                    <RibbonButton Label="Open Video" 
+                                  Command="{Binding TtsToVideoViewModel.OpenFinalVideoCommand}" 
                                   IsEnabled="{Binding ElementName=cbx, Path=SelectedItem, Converter={StaticResource IsNotNullConverter}}"/>
 
                     <RibbonButton Command="{Binding TtsToVideoViewModel.OpenExplorerCommand}" 
-                                  Label="Open Project Folder" 
+                                  Label="Open Folder" 
                                   IsEnabled="{Binding ElementName=cbx, Path=SelectedItem, Converter={StaticResource IsNotNullConverter}}"/>
+
+                    <RibbonButton Command="{Binding TtsToVideoViewModel.CopyDescriptionToClipboardCommand}" ToolTip="Copy Description to ClipBoard" Label="Copy Description"></RibbonButton>
+                    <RibbonButton Command="{Binding TtsToVideoViewModel.CopyFullPathVideoCommand}" ToolTip="Copy Full Path Video To ClipBoard" Label="Copy Full Path Video"></RibbonButton>
+
+
                 </RibbonGroup>
 
                 <RibbonGroup Name="Picture"  Header="Images" >
@@ -118,7 +134,7 @@
                               >
                     </ComboBox>
                     <Slider Value="{Binding TtsToVideoViewModel.Model.MusicVolume, Mode=TwoWay}" 
-                            Minimum             ="-60" Maximum="0" 
+                            Minimum             ="-60" Maximum="10" 
                             Width               ="150" 
                             TickFrequency       ="10" 
                             TickPlacement       ="BottomRight" 
@@ -127,9 +143,22 @@
                             AutoToolTipPrecision="0" 
                             Margin="10"/>
                 </RibbonGroup>
+                <RibbonGroup Header="Sub title">
+                    <Label Content="{Binding  TtsToVideoViewModel.Model.SubtitleSize}" ></Label>
+                    <Slider Value="{Binding TtsToVideoViewModel.Model.SubtitleSize, Mode=TwoWay}" 
+                               Name="SliderSubtitleSize"
+        Minimum             ="1" Maximum="50" 
+        Width               ="150" 
+        TickFrequency       ="1" 
+        TickPlacement       ="BottomRight" 
+        IsSnapToTickEnabled ="True" 
+        AutoToolTipPlacement="BottomRight" 
+        AutoToolTipPrecision="0" 
+        Margin="10" 
+                            />
+                </RibbonGroup>
                 <RibbonGroup Header="Video">
-                    <Label>Duration (seconds)</Label>
-                    <Slider x:Name="sliderDuration" 
+                    <!--<Slider x:Name="sliderDuration" 
                             Minimum="0" 
                             Maximum="{Binding TtsToVideoViewModel.MaxDuration}" 
                             Value="{Binding TtsToVideoViewModel.Model.VideoDuration, Mode=TwoWay}" 
@@ -139,12 +168,14 @@
                             IsSnapToTickEnabled="True" 
                             AutoToolTipPlacement="BottomRight" 
                             AutoToolTipPrecision="0" 
-                            Margin="10"/>
+                            Margin="10"/>-->
                 </RibbonGroup>
             </RibbonTab>
             <!-- Ribbon Tab #2: -->
-            <RibbonTab Name="tabConfiguration" Header="Configuration" KeyTip="C" >
-                <RibbonButton Label="Save" Command="{Binding VMConf.SaveCommand}" ></RibbonButton>
+            <RibbonTab Name="tabConfiguration" Header="Configuration" KeyTip="C">
+                <RibbonGroup>
+                    <RibbonButton ToolTip="Save" Content="Save" Command="{Binding VMConf.SaveCommand}" LargeImageSource="/Images/save.png" ></RibbonButton>
+                </RibbonGroup>
             </RibbonTab>
         </Ribbon>
         <Frame Grid.Row="1" x:Name="mainFrame" NavigationUIVisibility="Hidden"  />

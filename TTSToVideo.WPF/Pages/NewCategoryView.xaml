@@ -3,9 +3,10 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:TTSToVideo.WPF.Pages" xmlns:viewsmodels="clr-namespace:TTSToVideo.WPF.ViewsModels"
+        xmlns:local="clr-namespace:TTSToVideo.WPF.Pages" 
+        xmlns:viewsmodels="clr-namespace:TTSToVideo.WPF.ViewsModels"
         mc:Ignorable="d"
-        Title="NewCategory" Width="300" Height="150"
+        Title="New Category" Width="500" 
         d:DataContext="{d:DesignInstance Type=viewsmodels:NewCategoryViewModel}"
         >
     <StackPanel>

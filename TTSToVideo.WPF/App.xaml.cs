@@ -3,7 +3,10 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using NetXP;
 using NetXP.Exceptions;
-using NetXP.ImageGeneratorAI;
+using NetXP.IAs.Chat;
+using NetXP.IAs.Chats.Ollama;
+using NetXP.IAs.ImageGeneratorAI;
+using NetXP.ImageGeneratorAI.LeonardoAI;
 using NetXP.Processes;
 using NetXP.Tts;
 using NetXP.Tts.ElevenLabs;
@@ -48,23 +51,30 @@ namespace TTSToVideo
                 .Build();
 
             services.AddSingleton<IConfiguration>(configuration);
-            services.AddHttpClient();
+
 
             services.AddOptions<TtsElevenlabsOptions>().Configure((o) =>
             {
                 configuration.GetSection("TTSOptions").Bind(o);
                 o.APIKey = configuration.GetSection("ElevenLabsToken").Value!;
             });
+            services.AddHttpClient<TtsEvenLabs>();
 
             services.AddOptions<ImageGeneratorAIOptions>().Configure((o) =>
             {
                 configuration.GetSection("ImageGeneratorAIOptions").Bind(o);
                 o.Token = configuration.GetSection("LeonardoAIToken").Value;
             });
+            services.AddHttpClient<ImageGeneratorAILeonardoAI>();
+
+            services.AddOptions<AIChatConfig>().Configure((o) => configuration.GetSection("AIChatConfig").Bind(o));
+            services.AddHttpClient<OllamaChatService>();
 
             var mapperConfig = new MapperConfiguration(cfg =>
             {
                 cfg.CreateMap<TtsToVideoModel, TtsToVideoModel>();
+                cfg.CreateMap<StatementImageModel, StatementImage>();
+                cfg.CreateMap<StatementImage, StatementImageModel>();
             });
 
             mapperConfig.AssertConfigurationIsValid();
@@ -76,6 +86,7 @@ namespace TTSToVideo
             //Framework NetXP
             services.AddSingleton<IImageGeneratorAI, NetXP.ImageGeneratorAI.LeonardoAI.ImageGeneratorAILeonardoAI>();
             services.AddSingleton<ITts, TtsEvenLabs>();
+            services.AddSingleton<IAIChatService, OllamaChatService>();
             services.AddSingleton<IIOTerminal, NetXP.Processes.Implementations.IOTerminal>();
 
             services.AddSingleton<IProgressBar, ProgressBar>();
@@ -99,6 +110,7 @@ namespace TTSToVideo
             services.AddSingleton<ConfigurationPage>();
             services.AddTransient<NewProjectWindow>();
             services.AddTransient<NewCategoryView>();
+            services.AddTransient<CategoryConfigurationView>();
 
 
             var serviceProvider = services.BuildServiceProvider();

@@ -11,5 +11,7 @@
         public TimeSpan? DurationEndVideo { get; set; }
         public string? MusicDir { get; set; }
         public double MusicVolume { get; set; }
+        public TtsTVideoSubtitleOptions SubtitleOptions { get; set; } = new ();
+        public bool IsPortrait { get; internal set; }
     }
 }

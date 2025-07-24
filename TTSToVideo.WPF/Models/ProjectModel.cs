@@ -1,4 +1,5 @@
 ﻿using PropertyChanged;
+using System;
 using System.Collections.ObjectModel;
 
 namespace TTSToVideo.WPF.Models
@@ -9,6 +10,7 @@ namespace TTSToVideo.WPF.Models
         public string? FullPath { get; set; }
         public string? FileName { get; set; }
         public string? ProjectName { get; set; }
+        public DateTime CreatedAt { get; set; }
 
     }
 }

@@ -14,5 +14,12 @@
         public int? MarginR { get; set; }
 
         public int? FontSize { get; set; }
+
+        public bool? SubtitleVisible { get; set; } = true;
+
+        public override string ToString()
+        {
+            return $"Alignment: {Alignment}, MarginV: {MarginV}, MarginL: {MarginL}, MarginR: {MarginR}, FontSize: {FontSize}, SubtitleVisible: {SubtitleVisible}";
+        }
     }
 }

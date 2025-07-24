@@ -6,5 +6,6 @@ namespace TTSToVideo.Business.Models
     {
         public FfmpegFontStyle? FontStyle { get; set; }
         public int Index { get; set; }
+        public string Id { get; set; }
     }
 }

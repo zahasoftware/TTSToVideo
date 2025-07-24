@@ -19,7 +19,7 @@
             <Setter Property="Margin" Value="5 0 0 0" />
         </Style>
         <Style TargetType="{x:Type GridSplitter}" x:Key="GridSplitterBase" >
-            <Setter Property="Background" Value="Violet"></Setter>
+            <Setter Property="Background" Value="DeepSkyBlue"></Setter>
             <Setter Property="ShowsPreview" Value="True"></Setter>
         </Style>
         <Style TargetType="{x:Type GridSplitter}" x:Key="GridSplitterHeight" BasedOn="{StaticResource GridSplitterBase}" >
@@ -40,123 +40,226 @@
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="auto"></RowDefinition>
+            <RowDefinition Height="*"  ></RowDefinition>
+            <RowDefinition Height="3"></RowDefinition>
             <RowDefinition Height="auto"></RowDefinition>
-            <RowDefinition Height="3*"></RowDefinition>
-            <RowDefinition Height="auto"></RowDefinition>
-            <RowDefinition Height="7*"></RowDefinition>
+            <RowDefinition Height="*"></RowDefinition>
         </Grid.RowDefinitions>
-        <StackPanel Grid.Row="0" HorizontalAlignment="Stretch" Orientation="Vertical">
-        </StackPanel>
-        <Label Grid.Row="1">Prompt</Label>
-        <TextBox  Grid.Row="2"
+        <DockPanel Grid.Row="0" HorizontalAlignment="Stretch">
+            <Label Margin="5,0,5,0">Prompt</Label>
+            <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
+                <Slider x:Name="fontSizeSlider"  HorizontalAlignment="Right"
+              Minimum             ="5" Maximum="50" 
+              Width               ="150" 
+              TickFrequency       ="1" 
+              TickPlacement       ="BottomRight" 
+              IsSnapToTickEnabled ="True" 
+              AutoToolTipPlacement="BottomRight" 
+              AutoToolTipPrecision="0" 
+              Margin="0 0 10 0"
+              Value="15"
+                    ></Slider>
+                <Label HorizontalAlignment="Right" Content="{Binding Value, ElementName=fontSizeSlider}"></Label>
+            </StackPanel>
+        </DockPanel>
+        <TextBox  Grid.Row="1"
+                   TextWrapping="Wrap" 
+                   AcceptsReturn="True" 
+                   VerticalScrollBarVisibility="Visible" 
+                   Text="{Binding Model.Prompt, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                   x:Name="PromptTextBox"
+                   FontSize="{Binding Value, ElementName=fontSizeSlider}"
+                   FontFamily="Arial"
+                 />
+
+        <GridSplitter Grid.Row="2" Style="{StaticResource GridSplitterHeight}" />
+        <!-- Chat IA Sender -->
+        <StackPanel Grid.Row="3">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="120"></ColumnDefinition>
+                    <ColumnDefinition Width="*"></ColumnDefinition>
+                    <ColumnDefinition Width="auto"></ColumnDefinition>
+                </Grid.ColumnDefinitions>
+                <Label  Width="120" >Chat IA</Label>
+                <TextBox Grid.Column="1" 
                      TextWrapping="Wrap" 
                      AcceptsReturn="True" 
                      VerticalScrollBarVisibility="Visible" 
-                     Text="{Binding Model.Prompt, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-        <StackPanel Grid.Row="3">
-            <Label >Aditional Prompt</Label>
-            <TextBox VerticalAlignment="Stretch"
+                     Text="{Binding Model.ChatPrompt, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                <StackPanel Orientation="Horizontal" Grid.Column="2">
+                    <ComboBox   IsEditable="true"
+                     IsTextSearchEnabled="true"
+                     ItemsSource="{Binding ChatAIModels,Mode=TwoWay}"
+                     DisplayMemberPath="Description"
+                     SelectedItem="{Binding CategoryViewModel.Model.ChatAIModelSelected}"
+                     Width="200"
+                     >
+                    </ComboBox>
+                    <Button Grid.Column="2" HorizontalAlignment="Right"  Command="{Binding DataContext.ChatSendCommand, RelativeSource={RelativeSource AncestorType={x:Type Page}}}" 
+                        CommandParameter="{Binding Model.ChatPrompt}">
+                        Send
+                    </Button>
+                </StackPanel>
+            </Grid>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="120"></ColumnDefinition>
+                    <ColumnDefinition></ColumnDefinition>
+                </Grid.ColumnDefinitions>
+                <Label >Aditional Prompt</Label>
+                <TextBox Grid.Column="1" VerticalAlignment="Stretch"
                      TextWrapping="Wrap" 
                      AcceptsReturn="True" 
                      VerticalScrollBarVisibility="Visible" 
                      Text="{Binding Model.AditionalPrompt, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-            <Label >Negative Prompt</Label>
-            <TextBox VerticalAlignment="Stretch"
+            </Grid>
+            <Grid >
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="120"></ColumnDefinition>
+                    <ColumnDefinition></ColumnDefinition>
+                </Grid.ColumnDefinitions>
+                <Label >Negative Prompt</Label>
+                <TextBox Grid.Column="1" VerticalAlignment="Stretch"
                      TextWrapping="Wrap" 
                      AcceptsReturn="True" 
                      VerticalScrollBarVisibility="Visible" 
                      Text="{Binding Model.NegativePrompt, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+            </Grid>
         </StackPanel>
-        <GridSplitter Grid.Row="3" Style="{StaticResource GridSplitterHeight}" />
-        <Grid Grid.Row="4">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"></ColumnDefinition>
-            </Grid.ColumnDefinitions>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="auto"></RowDefinition>
-                <RowDefinition Height="*"></RowDefinition>
-            </Grid.RowDefinitions>
-            <StackPanel Grid.ColumnSpan="2" Orientation="Horizontal" HorizontalAlignment="Left">
-            </StackPanel>
-            <GridSplitter  Style="{StaticResource GridSplitterWidth}" Grid.RowSpan="2" />
-
-            <DataGrid Grid.Row="1" Grid.Column="1" 
-                      ScrollViewer.CanContentScroll="False"
-                      ItemsSource="{Binding Model.Statements}"
-                      AutoGenerateColumns="False"
-                      CanUserAddRows="False"
-                      CanUserDeleteRows="False"
-                      >
-                <DataGrid.Columns>
-                    <DataGridTemplateColumn Header="Pictures">
-                        <DataGridTemplateColumn.CellTemplate>
-                            <DataTemplate>
-                                <ItemsControl ItemsSource="{Binding Images}">
-                                    <ItemsControl.ItemsPanel>
-                                        <ItemsPanelTemplate>
-                                            <StackPanel Orientation="Horizontal" />
-                                        </ItemsPanelTemplate>
-                                    </ItemsControl.ItemsPanel>
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <Image Source="{Binding Path, Converter={StaticResource ImageCollectionConverter}}" Width="200" Height="200"/>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </DataTemplate>
-                        </DataGridTemplateColumn.CellTemplate>
-                    </DataGridTemplateColumn>
-                    <DataGridTemplateColumn Width="*" Header="Text">
-                        <DataGridTemplateColumn.CellTemplate>
-                            <DataTemplate>
-                                <TextBlock Text="{Binding Text}" TextWrapping="Wrap" />
-                            </DataTemplate>
-                        </DataGridTemplateColumn.CellTemplate>
-                    </DataGridTemplateColumn>
-                    <DataGridTemplateColumn Header="Actions">
-                        <DataGridTemplateColumn.CellTemplate>
-                            <DataTemplate>
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"></ColumnDefinition>
-                                        <ColumnDefinition Width="*"></ColumnDefinition>
-                                    </Grid.ColumnDefinitions>
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition Height="auto"></RowDefinition>
-                                        <RowDefinition Height="auto"></RowDefinition>
-                                        <RowDefinition Height="auto"></RowDefinition>
-                                    </Grid.RowDefinitions>
-                                    <Button Command="{Binding DataContext.OpenPictureCommand, RelativeSource={RelativeSource AncestorType={x:Type Page}}}" 
+        <DataGrid Grid.Row="4" Grid.Column="1" 
+                     ScrollViewer.CanContentScroll="False"
+                     ScrollViewer.VerticalScrollBarVisibility="Auto"
+                     ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                     ItemsSource="{Binding Model.Statements}"
+                     AutoGenerateColumns="False"
+                     CanUserAddRows="False"
+                     CanUserDeleteRows="False">
+            <DataGrid.Columns>
+                <DataGridTemplateColumn Header="Pictures">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <ItemsControl ItemsSource="{Binding Images}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Horizontal" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Image HorizontalAlignment="Center" Source="{Binding Path, Converter={StaticResource ImageCollectionConverter}}" Width="200" Height="250"/>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Width="*" Header="Text">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Text}" TextWrapping="Wrap" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="Actions">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"></ColumnDefinition>
+                                    <ColumnDefinition Width="*"></ColumnDefinition>
+                                    <ColumnDefinition Width="*"></ColumnDefinition>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="auto"></RowDefinition>
+                                    <RowDefinition Height="auto"></RowDefinition>
+                                    <RowDefinition Height="auto"></RowDefinition>
+                                    <RowDefinition Height="auto"></RowDefinition>
+                                    <RowDefinition Height="auto"></RowDefinition>
+                                    <RowDefinition Height="auto"></RowDefinition>
+                                    <RowDefinition Height="auto"></RowDefinition>
+                                    <RowDefinition Height="auto"></RowDefinition>
+                                </Grid.RowDefinitions>
+                                <!-- Action command:Picture -->
+                                <Label Grid.ColumnSpan="3">Picture</Label>
+                                <Button Grid.Row="1" Command="{Binding DataContext.OpenPictureCommand, RelativeSource={RelativeSource AncestorType={x:Type Page}}}" 
                                             CommandParameter="{Binding}">
-                                        Open Picture
-                                    </Button>
-                                    <Button Grid.Column="1" Command="{Binding DataContext.DeletePictureCommand, RelativeSource={RelativeSource AncestorType={x:Type Page}}}" 
-                                            CommandParameter="{Binding}">
-                                        <Image Source="pack://application:,,,/TTSToVideo.WPF;component/Resources/remove-icon.png" Width="16" Height="16"/>
-                                    </Button>
-                                    <Button 
-                                            Grid.Row="1"
-                                            Command="{Binding DataContext.DeleteVoiceCommand, RelativeSource={RelativeSource AncestorType={x:Type Page}}}" 
-                                            CommandParameter="{Binding}">
-                                        Delete Voice
-                                    </Button>
-                                    <Button 
-                                     Grid.Row="1"
-                                     Grid.Column="1"
+                                    Open
+                                </Button>
+                                <Button Grid.Row="1" Grid.Column="1" 
+                                       ToolTip="Regenerate"
+                                       Command="{Binding DataContext.RegeneratePictureCommand, RelativeSource={RelativeSource AncestorType={x:Type Page}}}" 
+                                       CommandParameter="{Binding}" >
+                                    <StackPanel>
+                                        <Image Source="/Images/regenerate-image16x16.png" Height="32" />
+                                    </StackPanel>
+                                </Button>
+                                <Button ToolTip="Delete"
+                                        Grid.Row="1"
+                                        Grid.Column="2" 
+                                        Command="{Binding DataContext.DeletePictureCommand, RelativeSource={RelativeSource AncestorType={x:Type Page}}}" 
+                                        CommandParameter="{Binding}">
+                                    <StackPanel>
+                                        <Image Source="/Images/remove-icon.png" Height="32"/>
+                                    </StackPanel>
+                                </Button>
+                                <!-- Action commands:Voice-->
+                                <Label Grid.ColumnSpan="3" Grid.Row="2">Voice</Label>
+                                <Button 
+                                     Grid.Row="3"
+                                     Grid.Column="0"
                                             Command="{Binding DataContext.OpenVoiceCommand, RelativeSource={RelativeSource AncestorType={x:Type Page}}}" 
                                             CommandParameter="{Binding}">
-                                        Open Voice
-                                    </Button>
+                                    Open
+                                </Button>
+                                <Button 
+                                            Grid.Row="3"
+                                            Grid.Column="2"
+                                            Command="{Binding DataContext.DeleteVoiceCommand, RelativeSource={RelativeSource AncestorType={x:Type Page}}}" 
+                                            CommandParameter="{Binding}">
+                                    <StackPanel>
+                                        <Image Source="/Images/remove-icon.png" Height="32"/>
+                                    </StackPanel>
+                                </Button>
 
-                                    <Button 
-                                    Grid.Row="2" 
-                                           Click="OpenFontStyleWindow">Open Font Style Window</Button>
-                                </Grid>
-                            </DataTemplate>
-                        </DataGridTemplateColumn.CellTemplate>
-                    </DataGridTemplateColumn>
-                </DataGrid.Columns>
-            </DataGrid>
-        </Grid>
+                                <!-- Action command:Video -->
+                                <Label Grid.ColumnSpan="3" Grid.Row="4">Video</Label>
+                                <Button Grid.Column="0"
+                                    Grid.Row="5"
+                                    ToolTip="Open Video"
+                                    Command="{Binding DataContext.OpenVideoCommand, RelativeSource={RelativeSource AncestorType={x:Type Page}}}" 
+                                    CommandParameter="{Binding}"
+                                        >
+                                        O
+                                </Button>
+
+                                <Button Grid.Column="1"
+                                    Grid.Row="5"
+                                    ToolTip="Regenerate Video"
+                                    Command="{Binding DataContext.RegenerateVideoCommand, RelativeSource={RelativeSource AncestorType={x:Type Page}}}" 
+                                    CommandParameter="{Binding}">
+                                    R
+                                </Button>
+                                <Button Grid.Column="2" 
+                                    Grid.Row="5"
+                                    ToolTip="Remove Video"
+                                    Command="{Binding DataContext.DeleteVideoCommand, RelativeSource={RelativeSource AncestorType={x:Type Page}}}" 
+                                    CommandParameter="{Binding}">
+                                    <StackPanel>
+                                        <Image Source="/Images/remove-icon.png" Height="32"/>
+                                    </StackPanel>
+                                </Button>
+
+                                <!-- Font -->
+                                <Label Grid.ColumnSpan="3" Grid.Row="6" >Fonts</Label>
+                                <Button 
+                                    Grid.Row="7" 
+                                           Click="OpenFontStyleWindow">Open</Button>
+                            </Grid>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+            </DataGrid.Columns>
+        </DataGrid>
     </Grid>
 </Page>
