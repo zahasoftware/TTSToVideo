@@ -14,6 +14,7 @@ namespace TTSToVideo.Helpers
         // Generate a hash from a string  
         public static string GenerateHash(string input)
         {
+
             // Remove all substrings matching the pattern <XXX> where XXX is any content  
             input = RemoveTagsRegex().Replace(input, string.Empty);
 

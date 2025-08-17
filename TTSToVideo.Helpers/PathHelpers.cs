@@ -14,7 +14,7 @@ namespace System.IO
         public static string CleanFileName(string fileName)
         {
             string safeFileName = fileName;
-            char[] invalidChars = [.. Path.GetInvalidFileNameChars(), '"', '”', '“'];
+            char[] invalidChars = [.. Path.GetInvalidFileNameChars(), '"', '”', '“', '’'];
 
             foreach (char invalidChar in invalidChars)
             {

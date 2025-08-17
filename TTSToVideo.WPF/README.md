@@ -2,7 +2,7 @@
 ## You need to use secrets to configure Leonardo.AI Token
 
 ```pwsh
-dotnet user-secrets init https://app.leonardo.ai/api-access
+dotnet user-secrets init 
 dotnet user-secrets set "LeonardoAIToken" "<your token>"
 ```
 
@@ -12,6 +12,13 @@ dotnet user-secrets set "LeonardoAIToken" "<your token>"
 ```pwsh
 dotnet user-secrets set "ElevenLabsToken" "<your token>"
 ```
+
+## Translator
+### Azure
+```pwsd
+dotnet user-secrets set "AzureTranslator:Token" "<azure token translator>"
+```
+
 
 ## Install ffmpeg
 

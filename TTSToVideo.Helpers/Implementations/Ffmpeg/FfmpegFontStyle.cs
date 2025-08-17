@@ -2,7 +2,7 @@
 {
     public class FfmpegFontStyle
     {
-        public FfmpegAlignment? Alignment { get; set; }
+        public FfmpegAlignment? Alignment { get; set; } = FfmpegAlignment.TopCenter;
 
         //MarginV is the vertical margin from the bottom or top of the screen
         public int? MarginV { get; set; } = 20;

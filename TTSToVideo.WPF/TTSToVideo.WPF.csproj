@@ -72,6 +72,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\..\NetXP\NetXP.IAs.Chats.Ollama\NetXP.IAs.Chats.Ollama.csproj" />
     <ProjectReference Include="..\..\..\NetXP\NetXP.ImageGeneratorAI.LeonardoAI\NetXP.ImageGeneratorAI.LeonardoAI.csproj" />
+    <ProjectReference Include="..\..\..\NetXP\NetXP.Translators.AzureTranslator\NetXP.Translators.AzureTranslator.csproj" />
     <ProjectReference Include="..\..\..\NetXP\NetXP.TTS.ElevenLabs\NetXP.Tts.ElevenLabs.csproj" />
     <ProjectReference Include="..\..\..\NetXP\NetXP\NetXP.csproj" />
     <ProjectReference Include="..\TTSToVideo.Business\TTSToVideo.Business.csproj" />

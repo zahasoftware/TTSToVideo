@@ -35,5 +35,7 @@ namespace TTSToVideo.WPF.ViewsModels
 
         public int ProgressBarValue { get; set; }
 
-           }
+        public string MessageRight { get; set; }
+
+    }
 }

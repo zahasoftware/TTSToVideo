@@ -4,13 +4,18 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
+using System.Linq;
+using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using static TTSToVideo.Helpers.Implementations.Ffmpeg.FFMPEGHelpers;
 
 namespace TTSToVideo.Helpers.Implementations.Ffmpeg
 {
     public static class FFMPEGHelpers
     {
+
         public static async Task CreateVideoWithSubtitle(string outputPath, string text, string imagePath, TimeSpan duration, FfmpegOptions ffmpegOptions, CancellationToken token)
         {
             //if (!File.Exists(outputPath))
@@ -52,7 +57,7 @@ namespace TTSToVideo.Helpers.Implementations.Ffmpeg
                     var options = new List<string>();
                     if (ffmpegOptions.FontStyle.Alignment != null)
                     {
-                        options.Add($"Alignment={(byte)ffmpegOptions.FontStyle.Alignment.Value}");
+                        options.Add($"Alignment={MapToAssAlignment(ffmpegOptions.FontStyle.Alignment)}");
                     }
 
 
@@ -89,7 +94,7 @@ namespace TTSToVideo.Helpers.Implementations.Ffmpeg
 
                 var videoDuration = duration;
 
-                double inputVideoDuration = 0; 
+                double inputVideoDuration = 0;
                 if (isVideo)
                 {
                     inputVideoDuration = duration.TotalSeconds / GetVideoDuration(imagePath).TotalSeconds + 1;
@@ -135,6 +140,60 @@ namespace TTSToVideo.Helpers.Implementations.Ffmpeg
             }
         }
 
+        public static async Task CreateVideo(string outputPath, string imagePath, TimeSpan duration, CancellationToken token)
+        {
+            //if (!File.Exists(outputPath))
+            {
+                Process process;
+                string error;
+
+
+                var isVideo = Path.GetExtension(imagePath) == ".mp4";
+
+
+                var videoDuration = duration;
+
+                double inputVideoDuration = 0;
+                if (isVideo)
+                {
+                    inputVideoDuration = duration.TotalSeconds / GetVideoDuration(imagePath).TotalSeconds + 1;
+                    inputVideoDuration = Math.Ceiling(inputVideoDuration);
+                }
+
+                //If image path extension is a video, then i assing -loop option in a string
+                string loop = isVideo ? $"-stream_loop {inputVideoDuration}" : "-loop 1";
+
+                // Run FFmpeg process
+                process = new Process();
+                process.StartInfo.FileName = "ffmpeg";
+                process.StartInfo.Arguments = $"{loop} -y" +
+                                              $" -i \"{imagePath}\" " +
+                                              $" -f lavfi " +
+                                              $" -i anullsrc=r=44100:cl=stereo " +
+                                              $" -t \"{videoDuration:h\\:m\\:s\\.fff}\" " +
+                                              $"-r 30 " +
+                                              $"-c:v libx264 " +
+                                              $"-shortest \"{outputPath}\"";
+
+                process.StartInfo.CreateNoWindow = true;
+                process.StartInfo.UseShellExecute = false;
+                process.StartInfo.RedirectStandardOutput = true;
+                process.StartInfo.RedirectStandardError = true;
+                process.Start();
+
+                process.BeginOutputReadLine();
+                error = process.StandardError.ReadToEnd();
+
+                if (error.Contains("Error"))
+                {
+                    throw new Exception("Error when try to create video with image", new Exception(error));
+                }
+
+                await process.WaitForExitAsync(token);
+
+            }
+        }
+
         public static async Task MixAudioWithVideo(string videoFilePath, string audioFilePath, string outputFilePath, CancellationToken token)
         {
             // Check if ffmpeg executable exists in the system PATH
@@ -161,7 +220,7 @@ namespace TTSToVideo.Helpers.Implementations.Ffmpeg
             process.Start();
 
             process.BeginOutputReadLine();
-            string tmpErrorOut = process.StandardError.ReadToEnd();
+            string tmpErrorOut = await process.StandardError.ReadToEndAsync(token);
 
             await process.WaitForExitAsync(token);
 
@@ -238,14 +297,15 @@ namespace TTSToVideo.Helpers.Implementations.Ffmpeg
             CancellationToken token
         )
         {
-            if (videoPaths.Length < 2)
+            if (videoPaths.Length == 1)
             {
-                throw new ArgumentException("At least two video files are required.", nameof(videoPaths));
+                File.Copy(videoPaths[0], outputPath, true);
+                return;
             }
 
             // for each outputPath maps their file names on temp files to reduce the fiel path size 
             List<string> tempFiles = [];
-            for(int i = 0; i < videoPaths.Length; i++)
+            for (int i = 0; i < videoPaths.Length; i++)
             {
                 var tempFile = Path.Combine(Path.GetTempPath(), $"vid_{i}");
                 File.Copy(videoPaths[i], tempFile, true);
@@ -315,9 +375,6 @@ namespace TTSToVideo.Helpers.Implementations.Ffmpeg
                 }
             }
         }
-
-
-
 
         public static async Task GenerateVideoWithImage(string outputPath, string inputImagePath, TimeSpan? duration, CancellationToken token)
         {
@@ -390,6 +447,228 @@ namespace TTSToVideo.Helpers.Implementations.Ffmpeg
             return TimeSpan.ParseExact(duration, @"hh\:mm\:ss\.ff", CultureInfo.InvariantCulture);
         }
 
+        public record AssSubtitleSegment(TimeSpan Duration, string Text, FfmpegFontStyle? Style = null);
 
+
+        private static string FormatAssTime(TimeSpan t) =>
+            $"{(int)t.TotalHours}:{t.Minutes:D2}:{t.Seconds:D2}.{t.Milliseconds / 10:D2}";
+
+        // Add a helper to compute dynamic ASS subtitle sizing based on target resolution.
+        private static (int playResX, int playResY, int fontSize, int marginV, int marginLH) ComputeSubtitleScale(
+            int targetWidth,
+            int targetHeight,
+            int? requestedFontSize,
+            int? marginV,
+            int? marginL,
+            int? marginR)
+        {
+            int playResX = targetWidth;
+            int playResY = targetHeight;
+
+            requestedFontSize += 50;
+            marginL += 50;
+            marginV += 50;
+
+            // Larger default: ~7% of height (was 4.8%). 1080x1920 => ~134px.
+            // If caller passed an explicit FontSize use it verbatim (still clamped to sane limits).
+            int defaultPercentHeight = 7; // percent
+            int fs = requestedFontSize ?? (int)Math.Round(playResY * (defaultPercentHeight / 100.0));
+
+            // Allow bigger upper bound so it’s really visible (esp. single‑line captions).
+            fs = Math.Clamp(fs, 50, 220);
+
+            // Vertical margin ~6% (was 7% which can push text too high when font bigger)
+            int mv = marginV ?? (int)Math.Round(playResY * 0.06);   // ≈115 for 1920
+            // Horizontal margins ~4% (was 5%) so long lines fit better with bigger font
+            int ml = marginL ?? (int)Math.Round(playResX * 0.04);   // ≈43 for 1080
+            int mr = marginR ?? ml;
+
+            return (playResX, playResY, fs, mv, Math.Min(ml, mr));
+        }
+
+        // Modify CreateAssSubtitleFile to use the new scaling logic.
+        public static string CreateAssSubtitleFile(IEnumerable<AssSubtitleSegment> segments, string outputPath = null, int targetWidth = 1080, int targetHeight = 1920)
+        {
+            if (segments == null || !segments.Any())
+                throw new ArgumentException("No subtitle segments provided", nameof(segments));
+
+            string path = outputPath;
+            if (string.IsNullOrWhiteSpace(path))
+                path = Path.ChangeExtension(Path.GetTempFileName(), ".ass");
+            else
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+                path = Path.ChangeExtension(path, ".ass");
+            }
+
+            // Derive a “global” representative style (first visible segment that has a style).
+            var firstStyled = segments.FirstOrDefault(s => s.Style is { SubtitleVisible: not false });
+
+            var (playResX, playResY, baseFontSize, baseMarginV, baseMarginLH) = ComputeSubtitleScale(
+                targetWidth,
+                targetHeight,
+                firstStyled?.Style?.FontSize,
+                firstStyled?.Style?.MarginV,
+                firstStyled?.Style?.MarginL,
+                firstStyled?.Style?.MarginR);
+
+            var sb = new StringBuilder();
+            sb.AppendLine("[Script Info]");
+            sb.AppendLine("ScriptType: v4.00+");
+            sb.AppendLine($"PlayResX: {playResX}");
+            sb.AppendLine($"PlayResY: {playResY}");
+            sb.AppendLine("ScaledBorderAndShadow: yes");
+            sb.AppendLine();
+
+            sb.AppendLine("[V4+ Styles]");
+            sb.AppendLine("Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding");
+
+            // Base style (Alignment default bottom center = 2)
+            sb.AppendLine($"Style: Default,Arial,{baseFontSize},&H00FFFFFF,&H000000FF,&H00000000,&H64000000," +
+                          "0,0,0,0,100,100,0,0,1,2,0," +
+                          $"{MapToAssAlignment(firstStyled?.Style?.Alignment ?? FfmpegAlignment.BottomCenter)},{baseMarginLH},{baseMarginLH},{baseMarginV},1");
+
+            sb.AppendLine();
+            sb.AppendLine("[Events]");
+            sb.AppendLine("Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text");
+
+            TimeSpan currentTime = TimeSpan.Zero;
+            int styleCounter = 1;
+            var styleMap = new Dictionary<string, string>();
+
+            foreach (var seg in segments)
+            {
+                var start = currentTime;
+                var end = currentTime + seg.Duration;
+                currentTime = end;
+
+                if (seg.Style?.SubtitleVisible == false)
+                    continue;
+
+                string styleName = "Default";
+
+                if (seg.Style != null)
+                {
+                    var (prx, pry, fs, mv, mlh) = ComputeSubtitleScale(
+                        targetWidth,
+                        targetHeight,
+                        seg.Style.FontSize,
+                        seg.Style.MarginV,
+                        seg.Style.MarginL,
+                        seg.Style.MarginR);
+
+                    string key = $"{fs}-{mv}-{mlh}-{seg.Style.Alignment}";
+                    if (!styleMap.TryGetValue(key, out styleName))
+                    {
+                        styleName = $"Style_{styleCounter++}";
+                        styleMap[key] = styleName;
+                        sb.Insert(sb.ToString().IndexOf("[Events]"),
+                            $"Style: {styleName},Arial,{fs},&H00FFFFFF,&H000000FF,&H00000000,&H64000000," +
+                            "0,0,0,0,100,100,0,0,1,2,0," +
+                            $"{MapToAssAlignment(seg.Style?.Alignment ?? FfmpegAlignment.BottomCenter)}," +
+                            $"{mlh},{mlh},{mv},1\n");
+                    }
+                }
+
+                sb.AppendLine($"Dialogue: 0,{FormatAssTime(start)},{FormatAssTime(end)},{styleName},,0,0,0,,{(string.IsNullOrEmpty(seg.Text) ? "" : seg.Text.Replace("\n"," "))}");
+            }
+
+            File.WriteAllText(path, sb.ToString(), Encoding.UTF8);
+            return path;
+        }
+
+        // Replace the existing InjectSubtitlesAsync (the 4‑parameter one) with this version
+        public static async Task<string> InjectSubtitlesAsync(
+            string inputVideo,
+            string subtitleFile,
+            string outputVideo,
+            bool burnIn = false)
+        {
+            if (!File.Exists(inputVideo))
+                throw new FileNotFoundException("Input video not found", inputVideo);
+            if (!File.Exists(subtitleFile))
+                throw new FileNotFoundException("Subtitle file not found", subtitleFile);
+
+            Directory.CreateDirectory(Path.GetDirectoryName(outputVideo)!);
+
+            string inputExt = Path.GetExtension(subtitleFile).ToLowerInvariant();
+            bool isAss = inputExt == ".ass";
+            bool wantsMp4 = outputVideo.EndsWith(".mp4", StringComparison.OrdinalIgnoreCase);
+
+            // 1. If ASS + soft subtitles + MP4 target → you CANNOT keep ASS styles. Either:
+            //    a) Burn-in, or
+            //    b) Downgrade to SRT (styles lost).
+            // We choose: if isAss && wantsMp4 && !burnIn -> auto burn-in unless caller overrides.
+            if (isAss && wantsMp4 && !burnIn)
+                burnIn = true; // avoids silent creation of a .mkv you never look at
+
+            string workingOutput = outputVideo;
+            string args;
+
+            if (burnIn)
+            {
+                // Burn-in path must be escaped for filter
+                string escaped = subtitleFile.Replace("\\", "\\\\\\\\")
+                                             .Replace(":", "\\:");
+                // (Optional) You could build force_style dynamically here
+                args = $"-y -i \"{inputVideo}\" -vf \"subtitles='{escaped}'\" -c:v libx264 -c:a copy \"{workingOutput}\"";
+            }
+            else if (isAss)
+            {
+                // Keep container consistent: if caller asked for .mp4, switch to .mkv AND return new path
+                if (wantsMp4)
+                {
+                    workingOutput = Path.ChangeExtension(outputVideo, ".mkv");
+                }
+                args = $"-y -i \"{inputVideo}\" -i \"{subtitleFile}\" -c copy -c:s ass \"{workingOutput}\"";
+            }
+            else
+            {
+                // SRT (or other) → soft mux
+                string subCodec = wantsMp4 ? "mov_text" : "copy";
+                args = $"-y -i \"{inputVideo}\" -i \"{subtitleFile}\" -c copy -c:s {subCodec} \"{workingOutput}\"";
+            }
+
+            using var process = new Process
+            {
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = "ffmpeg",
+                    Arguments = args,
+                    UseShellExecute = false,
+                    RedirectStandardError = true,
+                    RedirectStandardOutput = true,
+                    CreateNoWindow = true
+                }
+            };
+            process.Start();
+            _ = process.StandardOutput.ReadToEndAsync();
+            string err = await process.StandardError.ReadToEndAsync();
+            await process.WaitForExitAsync();
+
+            if (process.ExitCode != 0 || err.Contains("Error", StringComparison.OrdinalIgnoreCase))
+                throw new Exception($"ffmpeg failed injecting subtitles. ExitCode={process.ExitCode}. Details: {err}");
+
+            return workingOutput;
+        }
+
+        // Add near other private helpers (e.g., above CreateAssSubtitleFile)
+        private static int MapToAssAlignment(FfmpegAlignment? a)
+        {
+            if (a is null) return 2; // BottomCenter default
+            return a switch
+            {
+                FfmpegAlignment.BottomLeft   => 1,
+                FfmpegAlignment.BottomCenter => 2,
+                FfmpegAlignment.BottomRight  => 3,
+                FfmpegAlignment.MiddleLeft   => 4,
+                FfmpegAlignment.MiddleCenter => 5,
+                FfmpegAlignment.MiddleRight  => 6,
+                FfmpegAlignment.TopLeft      => 7,
+                FfmpegAlignment.TopCenter    => 8,
+                FfmpegAlignment.TopRight     => 9,
+                _ => 2
+            };
+        }
     }
 }

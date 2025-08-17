@@ -41,5 +41,6 @@ namespace TTSToVideo.WPF.Models
 
         [JsonIgnore]
         public ObservableCollection<StatementModel>? Statements { get; set; } = [];
+        public string PromptOriginal { get; internal set; }
     }
 }

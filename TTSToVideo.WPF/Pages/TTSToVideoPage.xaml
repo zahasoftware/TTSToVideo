@@ -46,20 +46,23 @@
             <RowDefinition Height="*"></RowDefinition>
         </Grid.RowDefinitions>
         <DockPanel Grid.Row="0" HorizontalAlignment="Stretch">
+            <!-- Search UI -->
+            <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" Margin="0,0,15,0">
+                <Label Margin="5,0,5,0">Search</Label>
+                <TextBox x:Name="SearchTextBox" Width="180" VerticalAlignment="Center"
+                         ToolTip="Type text to search inside Prompt"/>
+                <Button Content="Find" Margin="5,0,0,0" Click="FindButton_Click"/>
+                <Button Content="Next" Margin="5,0,0,0" Click="FindNextButton_Click"/>
+            </StackPanel>
+
             <Label Margin="5,0,5,0">Prompt</Label>
+
             <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
-                <Slider x:Name="fontSizeSlider"  HorizontalAlignment="Right"
-              Minimum             ="5" Maximum="50" 
-              Width               ="150" 
-              TickFrequency       ="1" 
-              TickPlacement       ="BottomRight" 
-              IsSnapToTickEnabled ="True" 
-              AutoToolTipPlacement="BottomRight" 
-              AutoToolTipPrecision="0" 
-              Margin="0 0 10 0"
-              Value="15"
-                    ></Slider>
-                <Label HorizontalAlignment="Right" Content="{Binding Value, ElementName=fontSizeSlider}"></Label>
+                <Slider x:Name="fontSizeSlider" Minimum="5" Maximum="50" Width="150"
+                        TickFrequency="1" TickPlacement="BottomRight"
+                        IsSnapToTickEnabled="True" AutoToolTipPlacement="BottomRight"
+                        AutoToolTipPrecision="0" Margin="0 0 10 0" Value="15"/>
+                <Label HorizontalAlignment="Right" Content="{Binding Value, ElementName=fontSizeSlider}"/>
             </StackPanel>
         </DockPanel>
         <TextBox  Grid.Row="1"

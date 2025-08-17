@@ -60,5 +60,68 @@ private void IncreaseFontSize_Click(object sender, RoutedEventArgs e)
                }  
             }
 
+        private int _lastMatchIndex = -1;
+        private int _lastMatchLength = 0;
+
+        private string GetPromptText()
+        {
+            var vm = DataContext as ViewsModels.TTSToVideoViewModel;
+            return vm?.Model?.Prompt ?? string.Empty;
+        }
+
+        private void SelectMatch(int index, int length)
+        {
+            if (index < 0 || length <= 0) return;
+            PromptTextBox.Focus();
+            PromptTextBox.SelectionStart = index;
+            PromptTextBox.SelectionLength = length;
+            _lastMatchIndex = index;
+            _lastMatchLength = length;
+        }
+
+        private void FindButton_Click(object sender, RoutedEventArgs e)
+        {
+            string query = SearchTextBox.Text;
+            if (string.IsNullOrWhiteSpace(query)) return;
+
+            string text = GetPromptText();
+            int idx = text.IndexOf(query, StringComparison.OrdinalIgnoreCase);
+            if (idx >= 0)
+            {
+                SelectMatch(idx, query.Length);
+            }
+            else
+            {
+                _lastMatchIndex = -1;
+                _lastMatchLength = 0;
+                System.Media.SystemSounds.Beep.Play();
+            }
+        }
+
+        private void FindNextButton_Click(object sender, RoutedEventArgs e)
+        {
+            string query = SearchTextBox.Text;
+            if (string.IsNullOrWhiteSpace(query)) return;
+
+            string text = GetPromptText();
+            int startPos = (_lastMatchIndex >= 0) ? _lastMatchIndex + _lastMatchLength : 0;
+            if (startPos >= text.Length) startPos = 0;
+
+            int idx = text.IndexOf(query, startPos, StringComparison.OrdinalIgnoreCase);
+            if (idx < 0 && startPos > 0)
+            {
+                // wrap
+                idx = text.IndexOf(query, 0, StringComparison.OrdinalIgnoreCase);
+            }
+
+            if (idx >= 0)
+            {
+                SelectMatch(idx, query.Length);
+            }
+            else
+            {
+                System.Media.SystemSounds.Beep.Play();
+            }
+        }
     }
 }

@@ -8,6 +8,7 @@ using NetXP.IAs.Chats.Ollama;
 using NetXP.IAs.ImageGeneratorAI;
 using NetXP.ImageGeneratorAI.LeonardoAI;
 using NetXP.Processes;
+using NetXP.Translators.AzureTranslator;
 using NetXP.Tts;
 using NetXP.Tts.ElevenLabs;
 using System;
@@ -70,6 +71,9 @@ namespace TTSToVideo
             services.AddOptions<AIChatConfig>().Configure((o) => configuration.GetSection("AIChatConfig").Bind(o));
             services.AddHttpClient<OllamaChatService>();
 
+            services.AddOptions<AzureTranslatorOptions>().Configure((o) => configuration.GetSection("AzureTranslator").Bind(o));
+            services.AddSingleton<ITranslator, AzureTranslatorImplementation>();
+
             var mapperConfig = new MapperConfiguration(cfg =>
             {
                 cfg.CreateMap<TtsToVideoModel, TtsToVideoModel>();
@@ -91,6 +95,8 @@ namespace TTSToVideo
 
             services.AddSingleton<IProgressBar, ProgressBar>();
             services.AddSingleton<IMessage, Messages>();
+
+
 
             //Business
             services.AddSingleton<Business.ITTSToVideoBusiness, Business.Implementations.TTSToVideoBusiness>();

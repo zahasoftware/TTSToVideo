@@ -12,6 +12,7 @@
         Title="{Binding Title}" Height="450" Width="1500" >
     <Window.Resources>
         <converters:IsNotNullConverter x:Key="IsNotNullConverter" />
+        <converters:IsRunningAndNotNullConverter x:Key="IsRunningAndNotNullConverter" />
     </Window.Resources>
     <Grid>
         <Grid.RowDefinitions>
@@ -72,6 +73,21 @@
                             </i:EventTrigger>
                         </i:Interaction.Triggers>
                     </ComboBox>
+                    <StackPanel Orientation="Horizontal">
+                        <Label>Translate to:</Label>
+                        <ComboBox IsEditable="False"
+                                  IsTextSearchEnabled="True"
+                                  ItemsSource="{Binding TtsToVideoViewModel.Languages}"
+                                  SelectedItem="{Binding TtsToVideoViewModel.SelectedLanguage}"
+                                  Width="121" >
+                            <i:Interaction.Triggers>
+                                <i:EventTrigger EventName="SelectionChanged">
+                                    <i:InvokeCommandAction Command="{Binding TtsToVideoViewModel.TranslateToChangedCommand}"                            
+CommandParameter="{Binding SelectedItem, RelativeSource={RelativeSource AncestorType={x:Type ComboBox}}}" />
+                                </i:EventTrigger>
+                            </i:Interaction.Triggers>
+                        </ComboBox>
+                    </StackPanel>
 
 
                     <Separator></Separator>
@@ -85,9 +101,15 @@
 
                     <RibbonButton ToolTip="Save" Content="Save"  Command="{Binding TtsToVideoViewModel.SaveCommand}"  LargeImageSource="pack://application:,,,/Images/save.png"
                                   ></RibbonButton>
-                    <RibbonButton Label="Open Video" 
-                                  Command="{Binding TtsToVideoViewModel.OpenFinalVideoCommand}" 
-                                  IsEnabled="{Binding ElementName=cbx, Path=SelectedItem, Converter={StaticResource IsNotNullConverter}}"/>
+                    <RibbonButton Label="Open Video"
+                        Command="{Binding TtsToVideoViewModel.OpenFinalVideoCommand}">
+                        <RibbonButton.IsEnabled>
+                            <MultiBinding Converter="{StaticResource IsRunningAndNotNullConverter}" Mode="OneWay">
+                                <Binding Path="TtsToVideoViewModel.ProcessCommand.IsRunning" />
+                                <Binding Path="TtsToVideoViewModel.ProjectSelected" />
+                            </MultiBinding>
+                        </RibbonButton.IsEnabled>
+                    </RibbonButton>
 
                     <RibbonButton Command="{Binding TtsToVideoViewModel.OpenExplorerCommand}" 
                                   Label="Open Folder" 
@@ -179,10 +201,13 @@
             </RibbonTab>
         </Ribbon>
         <Frame Grid.Row="1" x:Name="mainFrame" NavigationUIVisibility="Hidden"  />
-        <StatusBar Grid.Row="2" DockPanel.Dock="Bottom" >
+        <StatusBar Grid.Row="2"  >
             <ProgressBar Value="{Binding ProgressBarValue}" Minimum="0" Maximum="100" Height="10" Width="200"/>
-            <StatusBarItem>
-                <Label Content="{Binding Message}"></Label>
+            <StatusBarItem HorizontalAlignment="Center">
+                <Label Content="{Binding Message}" />
+            </StatusBarItem>
+            <StatusBarItem HorizontalAlignment="Right">
+                <Label Content="{Binding TtsToVideoViewModel.MessageRight}" />
             </StatusBarItem>
         </StatusBar>
     </Grid>

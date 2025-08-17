@@ -11,6 +11,6 @@ namespace TTSToVideo.WPF.Models
         public string? FileName { get; set; }
         public string? ProjectName { get; set; }
         public DateTime CreatedAt { get; set; }
-
+        public CategoryModel Category { get; internal set; }
     }
 }

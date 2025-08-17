@@ -43,10 +43,13 @@ namespace TTSToVideo.WPF.ViewsModels
                           FontStyleViewModel fontStyleViewModel,
                           NewProjectViewModel newProjectViewModel,
                           NewCategoryViewModel newCategoryViewModel,
-                          NetXP.IAs.Chat.IAIChatService aIChatService
+                          NetXP.IAs.Chat.IAIChatService aIChatService,
+                          ITranslator translator
         ) : ObservableRecipient
     {
         private static Regex RemoveTagsRegex() => new Regex("<.*?>", RegexOptions.Compiled); // Provide implementation for the partial method    
+
+
 
         /// <summary>
         /// Dont change this models to Model, because it will break the binding with the view, when json deserializes the model
@@ -57,14 +60,13 @@ namespace TTSToVideo.WPF.ViewsModels
         public ObservableCollection<VoiceModel>? VoicesModels { get; set; } = [];
         public ObservableCollection<ChatAIModel>? ChatAIModels { get; set; } = [];
 
-
         public AsyncRelayCommand<object?>? DeletePictureCommand { get; set; }
         public AsyncRelayCommand<StatementModel?>? OpenPictureCommand { get; set; }
         public AsyncRelayCommand<StatementModel?>? RegeneratePictureCommand { get; set; }
 
         public AsyncRelayCommand<StatementModel?>? OpenVideoCommand { get; set; }
         public AsyncRelayCommand<StatementModel?>? RegenerateVideoCommand { get; set; }
-        public AsyncRelayCommand<StatementModel?>? DeleteVideoCommand { get; set; }
+        public RelayCommand<StatementModel?>? DeleteVideoCommand { get; set; }
 
 
         public AsyncRelayCommand<object?>? OpenVoiceCommand { get; private set; }
@@ -79,6 +81,7 @@ namespace TTSToVideo.WPF.ViewsModels
         public AsyncRelayCommand? GeneratePortraitVideoCommand { get; set; }
         public AsyncRelayCommand<string>? CategorySelectionChangedCommand { get; set; }
         public AsyncRelayCommand<ProjectModel?>? ProjectSelectionChangedCommand { get; set; }
+        public AsyncRelayCommand<string>? TranslateToChangedCommand { get; set; }
         public AsyncRelayCommand<string>? ChatSendCommand { get; set; }
         public AsyncRelayCommand? CopyDescriptionToClipboardCommand { get; set; }
         public AsyncRelayCommand? CopyFullPathVideoCommand { get; set; }
@@ -86,6 +89,7 @@ namespace TTSToVideo.WPF.ViewsModels
         //Models
         public TtsToVideoModel? Model { get; set; }
         public ProjectModel? ProjectSelected { get; set; }
+        public string? MessageRight { get; set; }
 
         public string? FinalProjectVideoPathWithVoice { get; private set; }
         public CancellationTokenSource? CancellationTokenSource { get; private set; }
@@ -94,7 +98,14 @@ namespace TTSToVideo.WPF.ViewsModels
         public FontStyleViewModel FontStyleViewModel { get; } = fontStyleViewModel;
         public NewProjectViewModel NewProjectViewModel { get; set; } = newProjectViewModel;
         public NewCategoryViewModel CategoryViewModel { get; set; } = newCategoryViewModel;
+
         public bool IsInitialized { get; internal set; }
+
+        public List<string>? Languages { get; set; }
+        public string? SelectedLanguage { get; set; } = Constants.LANG_DEFAULT;
+        public List<SocialPlatforms>? SocialPlatforms { get; set; }
+        public SocialPlatforms? SelectedPlatform { get; set; } = WPF.SocialPlatforms.Tiktok;
+
 
         private async Task SaveCommandExecute()
         {
@@ -103,12 +114,13 @@ namespace TTSToVideo.WPF.ViewsModels
             if (ProjectSelected == null)
                 throw new CustomApplicationException("Select a project");
 
-            var path = this.ProjectSelected.FullPath;
-            ArgumentNullException.ThrowIfNull(path);
+            var fullPath = Path.Combine(ProjectSelected.FullPath, $"{SelectedPlatform}", SelectedLanguage);
 
-            Directory.CreateDirectory(path);
+            ArgumentNullException.ThrowIfNull(fullPath);
 
-            await SaveModel(path);
+            Directory.CreateDirectory(fullPath);
+
+            await SaveModel(fullPath);
             message.Info("Project saved.");
         }
 
@@ -128,12 +140,13 @@ namespace TTSToVideo.WPF.ViewsModels
             OpenVideoCommand = new AsyncRelayCommand<StatementModel?>(OpenVideoCommandExecute);
             DeletePictureCommand = new AsyncRelayCommand<object?>(DeletePictureCommandExecute);
             DeleteVoiceCommand = new AsyncRelayCommand<object?>(DeleteVoiceCommandExecute);
-            DeleteVideoCommand = new AsyncRelayCommand<StatementModel?>(DeleteVideoCommandExecute);
+            DeleteVideoCommand = new RelayCommand<StatementModel?>(DeleteVideoCommandExecute);
             RegeneratePictureCommand = new AsyncRelayCommand<StatementModel?>(RegeneratePictureCommandExecute);
             RegenerateVideoCommand = new AsyncRelayCommand<StatementModel?>(RegenerateVideoCommandExecute);
 
             CategorySelectionChangedCommand = new AsyncRelayCommand<string>(CategorySelectionChangedCommandExecute);
             ProjectSelectionChangedCommand = new AsyncRelayCommand<ProjectModel?>(ProjectSelectionChangedCommandExecute);
+            TranslateToChangedCommand = new AsyncRelayCommand<string>(TranslateToChangedCommandExecute);
             ChatSendCommand = new AsyncRelayCommand<string>(ChatSendCommandExecute);
             CopyDescriptionToClipboardCommand = new AsyncRelayCommand(CopyDescriptionToClipboardCommandExcute);
             CopyFullPathVideoCommand = new AsyncRelayCommand(CopyFullPathVideoCommandExcute);
@@ -161,7 +174,7 @@ namespace TTSToVideo.WPF.ViewsModels
 
                 foreach (var musicFile in musicFiles)
                 {
-                    MusicModels.Add(new MusicModel { FilePath = musicFile });
+                    MusicModels?.Add(new MusicModel { FilePath = musicFile });
                 }
             }
 
@@ -227,10 +240,45 @@ namespace TTSToVideo.WPF.ViewsModels
             }
 
             this.IsInitialized = true;
+            var langs = $"{Constants.LANG_DEFAULT},en-US,fr-FR,de-DE,es-ES,it-IT,pt-BR,zh-CN,ja-JP,ko-KR".Split(',').ToList();
+            this.Languages = langs;
+        }
+
+        private async Task TranslateToChangedCommandExecute(string? toLanguage)
+        {
+            if (toLanguage == null || this.Model == null || this.ProjectSelected == null)
+            {
+                return;
+            }
+
+            ArgumentNullException.ThrowIfNull(this.Model);
+            ArgumentNullException.ThrowIfNull(this.ProjectSelected);
+
+            // Create subfolder for the translated project
+            var translatedProjectName = $"{toLanguage}";
+            var translatedProjectPath = Path.Combine(this.ProjectSelected.FullPath, $"{SelectedPlatform}", translatedProjectName);
+
+            string translatedText = "";
+
+            await this.LoadModel(this.ProjectSelected, SelectedPlatform.ToString(), SelectedLanguage);
+
+            if (string.IsNullOrEmpty(this.Model.Prompt))
+            {
+                // Get default prompt if the current prompt is empty
+                var defaultProjectPath = Path.Combine(this.ProjectSelected.FullPath, $"{SelectedPlatform}", Constants.LANG_DEFAULT);
+                var defaultConfigPath = Path.Combine(defaultProjectPath, $"{Constants.CONFIG_FILE_PROJECT}");
+                var defaultModel = JsonConvert.DeserializeObject<TtsToVideoModel>(await File.ReadAllTextAsync(defaultConfigPath));
+
+                translatedText = await translator.TranslateTextAsync(defaultModel.Prompt, toLanguage);
+                this.Model.Prompt = translatedText;
+                message.Info($"Translated to {toLanguage}.");
+
+                this.SaveModel(translatedProjectPath);
+            }
 
         }
 
-        private async Task DeleteVideoCommandExecute(StatementModel? arg)
+        private void DeleteVideoCommandExecute(StatementModel? arg)
         {
             var videoPath = arg?.ImageAnimatedPath;
             if (videoPath != null && File.Exists(videoPath))
@@ -427,15 +475,17 @@ namespace TTSToVideo.WPF.ViewsModels
             if (statement is not StatementModel statementModel || !await message.Confirm("Are you sure you want to delete this voice?"))
                 return;
 
+            var basePath = Path.Combine(ProjectSelected?.FullPath ?? string.Empty, SelectedPlatform.ToString(), SelectedLanguage);
+
             var pathsToDelete = new[]
             {
                 statementModel.AudioPath,
                 $"{statementModel.AudioPath}.wav",
                 $"{statementModel.AudioPath}.mp4",
                 $"{statementModel.AudioPath}.wav.mp4" ,
-                $"{ProjectSelected.FullPath}/{ProjectSelected.ProjectName}-Music-Final.mp4",
-                $"{ProjectSelected.FullPath}/{ProjectSelected.ProjectName}.mp4",
-                $"{ProjectSelected.FullPath}/{ProjectSelected.ProjectName}-Final.mp4"
+                Path.Combine(basePath,$"{ProjectSelected.ProjectName}-Music-Final.mp4"),
+                Path.Combine(basePath,$"{ProjectSelected.ProjectName}.mp4"),
+                Path.Combine(basePath,$"{ProjectSelected.ProjectName}-Final.mp4")
             }.Where(File.Exists);
 
             foreach (var file in pathsToDelete)
@@ -495,7 +545,7 @@ namespace TTSToVideo.WPF.ViewsModels
                     }
                 }
 
-                var fullPathProject = this.ProjectSelected.FullPath;
+                var fullPathProject = Path.Combine(this.ProjectSelected.FullPath, SelectedPlatform.ToString(), SelectedLanguage);
 
                 var musicFinalPath = Path.Combine(fullPathProject, $"{ProjectSelected.ProjectName}-Music-Final.mp4");
                 if (File.Exists(musicFinalPath))
@@ -548,7 +598,7 @@ namespace TTSToVideo.WPF.ViewsModels
 
         private async Task OpenFinalVideoCommandExecute()
         {
-            this.FinalProjectVideoPathWithVoice = Path.Combine(ProjectSelected.FullPath, $"{ProjectSelected.FileName}-Final.mp4");
+            this.FinalProjectVideoPathWithVoice = Path.Combine(ProjectSelected.FullPath, SelectedPlatform.ToString(), SelectedLanguage, $"{ProjectSelected.FileName}-Final.mp4");
             await OpenVideo(this.FinalProjectVideoPathWithVoice);
         }
 
@@ -574,7 +624,7 @@ namespace TTSToVideo.WPF.ViewsModels
             Process.Start(
                 new ProcessStartInfo
                 {
-                    FileName = $"\"{this.ProjectSelected.FullPath}\"",
+                    FileName = Path.Combine(this.ProjectSelected.FullPath, SelectedPlatform.ToString(),SelectedLanguage),
                     UseShellExecute = true,
                     Verb = "open"
                 });
@@ -592,7 +642,11 @@ namespace TTSToVideo.WPF.ViewsModels
                     FileName = Path.GetFileName(o),
                     FullPath = o,
                     ProjectName = Path.GetFileName(o),
-                    CreatedAt = Directory.GetCreationTime(o)
+                    CreatedAt = Directory.GetCreationTime(o),
+                    Category =  new CategoryModel{
+                         CategoryName = Path.GetFileName(path),
+                         DirectoryPath = path
+                    }
                 })];
 
                 ProjectsNames = [.. ProjectsNames.OrderByDescending(o => o.CreatedAt)];
@@ -609,9 +663,12 @@ namespace TTSToVideo.WPF.ViewsModels
                 return;
             }
 
-            await this.LoadModel(pm);
+            await this.LoadModel(pm, SelectedPlatform.ToString(), SelectedLanguage);
 
-            this.FinalProjectVideoPathWithVoice = Path.Combine(pm.FullPath, $"{pm.FileName}-Final.mp4");
+            var projectDir = Path.Combine(pm.FullPath, $"{SelectedPlatform}", SelectedLanguage);
+            this.FinalProjectVideoPathWithVoice = Path.Combine(projectDir, "{pm.FileName}-Final.mp4");
+
+            this.ShowVideoDetails(projectDir);
         }
 
         private async Task ProcessCommandExecute()
@@ -635,8 +692,7 @@ namespace TTSToVideo.WPF.ViewsModels
                 this.CancellationTokenSource = new CancellationTokenSource();
                 var token = CancellationTokenSource.Token;
 
-
-                string projectFullPath = this.ProjectSelected.FullPath;
+                string projectFullPath = Path.Combine(this.ProjectSelected.FullPath, SelectedPlatform.ToString(), SelectedLanguage);
 
                 Directory.CreateDirectory(projectFullPath);
 
@@ -650,6 +706,14 @@ namespace TTSToVideo.WPF.ViewsModels
                         FullPath = projectFullPath,
                     });
                 }
+
+                /*
+                if (this.Model.Prompt != this.Model.PromptOriginal)
+                {
+                    this.Model.Statements = [];
+                    this.Model.PromptOriginal = this.Model.Prompt;
+                }
+                */
 
                 await this.SaveModel(projectFullPath);
 
@@ -691,7 +755,8 @@ namespace TTSToVideo.WPF.ViewsModels
                         {
                             Index = i,
                             FontStyle = o.FontStyle,
-                            Id = HashMD5.GenerateHash(o.Text ?? $"{i}")
+                            Id = HashMD5.GenerateHash(o.Text ?? $"{i}"),
+                            PromptDebug = o.Text,
                         }; } )]
                     }, token);
 
@@ -704,13 +769,63 @@ namespace TTSToVideo.WPF.ViewsModels
                             AudioPath = o.AudioPath,
                             ImageAnimatedPath = o.ImageAnimatedPath,
                         })];
-                this.SaveModel(projectFullPath);
 
+                await this.SaveModel(projectFullPath);
+
+                ShowVideoDetails(projectFullPath);
             }
             finally
             {
                 this.CancellationTokenSource?.Dispose();
             }
+        }
+
+        private void ShowVideoDetails(string projectFullPath)
+        {
+
+            var finalVideoPath = Path.Combine(projectFullPath, $"{ProjectSelected?.FileName}-Final.mp4");
+            if (File.Exists(finalVideoPath))
+            {
+                var fileInfo = new FileInfo(finalVideoPath);
+                TimeSpan? videoDuration;
+                try
+                {
+                    // Use MediaInfo or FFmpeg to get duration if available, fallback to null
+                    videoDuration = GetVideoDuration(finalVideoPath);
+                }
+                catch
+                {
+                    videoDuration = null;
+                }
+
+                if (videoDuration != null)
+                {
+                    var videoSizeMB = fileInfo.Length / (1024 * 1024);
+                    this.MessageRight = $"Video duration: {(videoDuration?.ToString(@"hh\:mm\:ss") ?? "Unknown")}, Size: {videoSizeMB:F2} MB";
+                }
+            }
+        }
+
+        // Helper method to get video duration using FFmpeg (requires ffprobe in PATH)
+        private static TimeSpan? GetVideoDuration(string videoPath)
+        {
+            var ffprobePath = "ffprobe"; // Assumes ffprobe is in PATH
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = ffprobePath,
+                Arguments = $"-v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 \"{videoPath}\"",
+                RedirectStandardOutput = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+            using var process = Process.Start(startInfo);
+            string? output = process?.StandardOutput.ReadToEnd();
+            process?.WaitForExit();
+            if (double.TryParse(output, out var seconds))
+            {
+                return TimeSpan.FromSeconds(seconds);
+            }
+            return null;
         }
 
         private void CommonValidation()
@@ -774,14 +889,17 @@ namespace TTSToVideo.WPF.ViewsModels
         private async Task SaveModel(string basePath)
         {
             var json = JsonConvert.SerializeObject(this.Model);
-            await File.WriteAllTextAsync(Path.Combine(basePath, "TTSToVideo.json"), json);
+            await File.WriteAllTextAsync(Path.Combine(basePath, Constants.CONFIG_FILE_PROJECT), json);
         }
 
-        private async Task LoadModel(ProjectModel? pm)
+        private async Task LoadModel(ProjectModel? pm, string selectedPlatform, string selectedLanguage)
         {
             ArgumentNullException.ThrowIfNull(this.ImagesModels);
 
-            var configurationFile = Path.Combine(pm.FullPath, "TTSToVideo.json");
+            var configurationFile = Path.Combine(pm.FullPath, selectedPlatform, selectedLanguage, Constants.CONFIG_FILE_PROJECT);
+
+            Directory.CreateDirectory(Path.GetDirectoryName(configurationFile));
+
             string? json = null;
             if (File.Exists(configurationFile))
             {
@@ -795,7 +913,7 @@ namespace TTSToVideo.WPF.ViewsModels
             else
             {
                 var model = JsonConvert.DeserializeObject<TtsToVideoModel>(json)
-                    ?? throw new Exception($"Error reading configuration of the project \"{Path.GetFileName(pm.FullPath)}\"");
+                    ?? throw new Exception($"Error reading configuration of the project \"{pm.ProjectName}\", {selectedPlatform}, {selectedLanguage}");
 
                 this.Model = new TtsToVideoModel();
 
