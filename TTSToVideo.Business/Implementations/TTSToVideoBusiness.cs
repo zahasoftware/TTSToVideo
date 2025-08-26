@@ -214,15 +214,38 @@ namespace TTSToVideo.Business.Implementations
 
                 //Creating Video (If It is enabled)
                 countImageMain = 1;
-                firstStatement = statements.FirstOrDefault(o => o.IsProtrait);
+                firstStatement = statements.FirstOrDefault();
                 foreach (var statement in statements)
                 {
+                    if (statement.PropmtPatterType == PromptPatternsEnum.SilentVoice)
+                    {
+                        statement.ImageAnimatedPath = statements[statements.IndexOf(statement) - 1].ImageAnimatedPath;
+                        continue;
+                    }
 
-                    var videoPath = $"{statement.Images[0].Path}.mp4";
+                    var imageFileName = $"{statement.Prompt[..Math.Min(statement.Prompt.Length, Constants.MAX_PATH)]}";
+                    imageFileName = Path.Combine(projectPath, $"{PathHelper.CleanFileName(imageFileName)}.jpg");
+
+                    var notExistsOneVideo = !File.Exists($"{imageFileName}.mp4");
+                    var videoPath = $"{imageFileName}.mp4";
                     if (Path.Exists(videoPath))
                     {
                         statement.ImageAnimatedPath = videoPath;
                     }
+
+                    if (options.ImageOptions.UseOnlyFirstImage && statement != firstStatement && notExistsOneVideo)
+                    {
+                        statement.Images.Clear();
+                        statement.ImageAnimatedPath = statements[statements.IndexOf(statement) - 1].ImageAnimatedPath;
+                    }
+                    else if (notExistsOneVideo)
+                    {
+                        //statement.Images.Add(new StatementImage
+                        //{
+                        //    Path =  firstStatement?.Images.First().Path
+                        //});
+                    }
+
                 }
                 /*
                                                     if (options.ImageOptions.CreateVideo)
@@ -355,6 +378,7 @@ namespace TTSToVideo.Business.Implementations
 
                 //add the last silent statement
                 var lastStatement = statements.Last(o => o.PropmtPatterType != PromptPatternsEnum.SilentVoice);
+                var lastImage = lastStatement?.Images?.FirstOrDefault()?.Path;
                 statements.Add(new Statement
                 {
                     PropmtPatterType = PromptPatternsEnum.SilentVoice,
@@ -362,7 +386,7 @@ namespace TTSToVideo.Business.Implementations
                     Id = HashMD5.GenerateHash("last-silent"),
                     Images = lastStatement.Images,
                     ImageAnimatedPath = lastStatement.ImageAnimatedPath,
-                    OutputVideoPath = $"{lastStatement.Images.First().Path}-last-video-part.mp4"
+                    OutputVideoPath = lastImage == null? lastStatement.ImageAnimatedPath : $"{lastImage}-last-video-part.mp4"
                 });
 
                 var statementsUnion = statements.SelectMany(s => s.SubStatements?.Count > 0 ? s.SubStatements : [s]).ToList();
@@ -380,7 +404,16 @@ namespace TTSToVideo.Business.Implementations
                     File.Delete(finalProjectVideoPath);
                 }
 
-                var groupedByImage = statementsUnion.GroupBy(o => o.Images[0].Path).ToList();
+                progressBar.ShowMessage($"Creating Videos.");
+
+                var groupedByImage = statementsUnion
+                    .GroupBy(o => new
+                    {
+                        ImagePath = o.Images.FirstOrDefault()?.Path,
+                        AnimatedPath = o.ImageAnimatedPath ?? string.Empty
+                    })
+                    .ToList();
+
                 foreach (var sg in groupedByImage)
                 {
                     var first = sg.First();
@@ -447,13 +480,13 @@ namespace TTSToVideo.Business.Implementations
 
                 #endregion
 
-                progressBar.ShowMessage($"Mergin Music.");
-
+                progressBar.ShowMessage($"Procesing Music.");
                 //Get total duration of finalProjectVideoPath
                 var audioFile = AudioHelper.OpenAudio(finalProjectVideoPath);
                 var outputMusicFile = await ProcessBackgroundMusic(selectedMusicFile, statements, audioFile.TotalTime, options, projectPath, token);
 
                 //Adding music sound 
+                progressBar.ShowMessage($"Merging Music to the Video.");
                 var finalProjectVideoPathWithAudio = projectPath + "\\" + $"{projectName}-Music-Final.mp4";
                 await FFMPEGHelpers.MixAudioWithVideo(finalProjectVideoPath
                                            , outputMusicFile
@@ -462,7 +495,7 @@ namespace TTSToVideo.Business.Implementations
 
                 var FinalProjectVideoPathWithVoice = projectPath + "\\" + $"{projectName}-Final.mp4";
 
-                progressBar.ShowMessage($"Mergin Voices.");
+                progressBar.ShowMessage($"Merging Voice to the Video.");
                 await FFMPEGHelpers.MixAudioWithVideo(finalProjectVideoPathWithAudio
                                            , concatenatedVoicesPath
                                            , FinalProjectVideoPathWithVoice, token);

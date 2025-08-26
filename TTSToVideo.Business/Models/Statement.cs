@@ -19,7 +19,7 @@ namespace TTSToVideo.Business.Models
         public string GlobalPrompt { get; set; }
         public bool IsNewAudio { get; internal set; }
         public bool IsProtrait { get; internal set; }
-        public string? ImageAnimatedPath { get; internal set; }
+        public string? ImageAnimatedPath { get; set; }
         public FfmpegFontStyle? FontStyle { get; set; }
         public PromptPatternsEnum PropmtPatterType { get; internal set; }
         public string OutputVideoPath { get; internal set; }

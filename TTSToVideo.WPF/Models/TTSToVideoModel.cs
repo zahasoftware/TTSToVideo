@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using NetXP.IAs.ImageGeneratorAI;
 using PropertyChanged;
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Text.Json.Serialization;
 using System.Windows.Media.Imaging;
 
@@ -41,6 +42,18 @@ namespace TTSToVideo.WPF.Models
 
         [JsonIgnore]
         public ObservableCollection<StatementModel>? Statements { get; set; } = [];
+        [JsonIgnore]
+
+        private ObservableCollection<StatementModel>? _statementsFiltered;
+        [JsonIgnore]
+        public ObservableCollection<StatementModel>? StatementsFiltered
+        {
+            get => Statements == null
+                ? (_statementsFiltered ??= [])
+                : new ObservableCollection<StatementModel>(Statements.Where(static o => !string.IsNullOrEmpty(o.Text)));
+            set => _statementsFiltered = value;
+        }
+
         public string PromptOriginal { get; internal set; }
     }
 }

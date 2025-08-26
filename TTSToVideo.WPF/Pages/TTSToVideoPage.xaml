@@ -15,6 +15,8 @@
     <Page.Resources>
         <converters:ImageCollectionConverter x:Key="ImageCollectionConverter" />
         <converters:ImageConverter x:Key="ImageConverter" />
+        <converters:VideoVisibilityConverter x:Key="VideoVisibilityConverter" />
+        <converters:InverseVisibilityConverter x:Key="InverseVisibilityConverter" />
         <Style TargetType="{x:Type Button}">
             <Setter Property="Margin" Value="5 0 0 0" />
         </Style>
@@ -134,7 +136,7 @@
                      ScrollViewer.CanContentScroll="False"
                      ScrollViewer.VerticalScrollBarVisibility="Auto"
                      ScrollViewer.HorizontalScrollBarVisibility="Auto"
-                     ItemsSource="{Binding Model.Statements}"
+                     ItemsSource="{Binding Model.StatementsFiltered}"
                      AutoGenerateColumns="False"
                      CanUserAddRows="False"
                      CanUserDeleteRows="False">
@@ -142,18 +144,31 @@
                 <DataGridTemplateColumn Header="Pictures">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
-                            <ItemsControl ItemsSource="{Binding Images}">
-                                <ItemsControl.ItemsPanel>
-                                    <ItemsPanelTemplate>
-                                        <StackPanel Orientation="Horizontal" />
-                                    </ItemsPanelTemplate>
-                                </ItemsControl.ItemsPanel>
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <Image HorizontalAlignment="Center" Source="{Binding Path, Converter={StaticResource ImageCollectionConverter}}" Width="200" Height="250"/>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
+                            <Grid>
+                                <!-- Video preview (shown if a valid video exists) -->
+                                <MediaElement  Width="200" Height="250"
+                                               Stretch="UniformToFill"
+                                               Source="{Binding ImageAnimatedPath}"
+                                               LoadedBehavior="Stop"
+                                               UnloadedBehavior="Stop"
+                                               Visibility="{Binding ImageAnimatedPath, Converter={StaticResource VideoVisibilityConverter}}"/>
+                                <!-- Existing images (hidden when video shown) -->
+                                <ItemsControl ItemsSource="{Binding Images}"
+                                              Visibility="{Binding ImageAnimatedPath, Converter={StaticResource InverseVisibilityConverter}}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Horizontal" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Image HorizontalAlignment="Center"
+                                                   Source="{Binding Path, Converter={StaticResource ImageCollectionConverter}}"
+                                                   Width="200" Height="250"/>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </Grid>
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
@@ -172,6 +187,7 @@
                                     <ColumnDefinition Width="*"></ColumnDefinition>
                                     <ColumnDefinition Width="*"></ColumnDefinition>
                                     <ColumnDefinition Width="*"></ColumnDefinition>
+                                    <ColumnDefinition Width="*"></ColumnDefinition> <!-- New for Replace button -->
                                 </Grid.ColumnDefinitions>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="auto"></RowDefinition>
@@ -184,7 +200,8 @@
                                     <RowDefinition Height="auto"></RowDefinition>
                                 </Grid.RowDefinitions>
                                 <!-- Action command:Picture -->
-                                <Label Grid.ColumnSpan="3">Picture</Label>
+                                <Label Grid.ColumnSpan="4">Picture</Label>
+
                                 <Button Grid.Row="1" Command="{Binding DataContext.OpenPictureCommand, RelativeSource={RelativeSource AncestorType={x:Type Page}}}" 
                                             CommandParameter="{Binding}">
                                     Open
@@ -206,8 +223,17 @@
                                         <Image Source="/Images/remove-icon.png" Height="32"/>
                                     </StackPanel>
                                 </Button>
+                                <!-- New Replace/Upload button -->
+                                <Button Grid.Row="1" Grid.Column="3"
+                                        ToolTip="Upload / Replace Image or Video (backs up current)"
+                                        Click="ReplaceMediaButton_Click">
+                                    <StackPanel Orientation="Horizontal">
+                                        <Image Source="/Images/regenerate-image16x16.png" Height="24"/>
+                                        <TextBlock Margin="4,0,0,0" Text="Replace"/>
+                                    </StackPanel>
+                                </Button>
                                 <!-- Action commands:Voice-->
-                                <Label Grid.ColumnSpan="3" Grid.Row="2">Voice</Label>
+                                <Label Grid.ColumnSpan="4" Grid.Row="2">Voice</Label>
                                 <Button 
                                      Grid.Row="3"
                                      Grid.Column="0"
@@ -226,7 +252,7 @@
                                 </Button>
 
                                 <!-- Action command:Video -->
-                                <Label Grid.ColumnSpan="3" Grid.Row="4">Video</Label>
+                                <Label Grid.ColumnSpan="4" Grid.Row="4">Video</Label>
                                 <Button Grid.Column="0"
                                     Grid.Row="5"
                                     ToolTip="Open Video"
@@ -254,7 +280,7 @@
                                 </Button>
 
                                 <!-- Font -->
-                                <Label Grid.ColumnSpan="3" Grid.Row="6" >Fonts</Label>
+                                <Label Grid.ColumnSpan="4" Grid.Row="6" >Fonts</Label>
                                 <Button 
                                     Grid.Row="7" 
                                            Click="OpenFontStyleWindow">Open</Button>

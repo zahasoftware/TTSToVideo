@@ -140,58 +140,69 @@ namespace TTSToVideo.Helpers.Implementations.Ffmpeg
             }
         }
 
-        public static async Task CreateVideo(string outputPath, string imagePath, TimeSpan duration, CancellationToken token)
+        public static async Task CreateVideo(
+            string outputPath,
+            string imagePath,
+            TimeSpan duration,
+            CancellationToken token,
+            string preset = "veryfast",
+            bool fastStart = true,
+            bool tuneStillImage = true)
         {
-            //if (!File.Exists(outputPath))
+            var isVideo = string.Equals(Path.GetExtension(imagePath), ".mp4", StringComparison.OrdinalIgnoreCase);
+            double loops = 0;
+            if (isVideo)
             {
-                Process process;
-                string error;
-
-
-                var isVideo = Path.GetExtension(imagePath) == ".mp4";
-
-
-                var videoDuration = duration;
-
-                double inputVideoDuration = 0;
-                if (isVideo)
-                {
-                    inputVideoDuration = duration.TotalSeconds / GetVideoDuration(imagePath).TotalSeconds + 1;
-                    inputVideoDuration = Math.Ceiling(inputVideoDuration);
-                }
-
-                //If image path extension is a video, then i assing -loop option in a string
-                string loop = isVideo ? $"-stream_loop {inputVideoDuration}" : "-loop 1";
-
-                // Run FFmpeg process
-                process = new Process();
-                process.StartInfo.FileName = "ffmpeg";
-                process.StartInfo.Arguments = $"{loop} -y" +
-                                              $" -i \"{imagePath}\" " +
-                                              $" -f lavfi " +
-                                              $" -i anullsrc=r=44100:cl=stereo " +
-                                              $" -t \"{videoDuration:h\\:m\\:s\\.fff}\" " +
-                                              $"-r 30 " +
-                                              $"-c:v libx264 " +
-                                              $"-shortest \"{outputPath}\"";
-
-                process.StartInfo.CreateNoWindow = true;
-                process.StartInfo.UseShellExecute = false;
-                process.StartInfo.RedirectStandardOutput = true;
-                process.StartInfo.RedirectStandardError = true;
-                process.Start();
-
-                process.BeginOutputReadLine();
-                error = process.StandardError.ReadToEnd();
-
-                if (error.Contains("Error"))
-                {
-                    throw new Exception("Error when try to create video with image", new Exception(error));
-                }
-
-                await process.WaitForExitAsync(token);
-
+                var srcDur = GetVideoDuration(imagePath).TotalSeconds;
+                if (srcDur <= 0) throw new InvalidOperationException("Source video duration unknown.");
+                // -stream_loop N repeats N additional times (so total plays = N+1)
+                loops = Math.Ceiling(duration.TotalSeconds / srcDur) - 1;
+                if (loops < 0) loops = 0;
             }
+            string loopArg = isVideo ? $"-stream_loop {loops}" : "-loop 1";
+
+            var sb = new StringBuilder();
+            sb.Append(loopArg).Append(" -y ");
+            sb.Append("-i ").Append('"').Append(imagePath).Append("\" ");
+            sb.Append("-f lavfi -i anullsrc=r=44100:cl=stereo ");
+            sb.Append("-t ").Append('"').Append(duration.ToString("hh\\:mm\\:ss\\.fff")).Append("\" ");
+            if (tuneStillImage && !isVideo) sb.Append("-tune stillimage ");
+            sb.Append("-r 30 ");
+            sb.Append("-c:v libx264 ");
+            sb.Append("-preset ").Append(preset).Append(' ');
+            if (fastStart) sb.Append("-movflags +faststart ");
+            sb.Append("-shortest ");
+            sb.Append('"').Append(outputPath).Append('"');
+
+            using var process = new Process
+            {
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = "ffmpeg",
+                    Arguments = sb.ToString(),
+                    UseShellExecute = false,
+                    RedirectStandardError = true,
+                    RedirectStandardOutput = false,
+                    CreateNoWindow = true
+                },
+                EnableRaisingEvents = true
+            };
+
+            process.Start();
+
+            // Incremental stderr read for progress (optional)
+            var stderr = new StringBuilder();
+            while (!process.HasExited)
+            {
+                var line = await process.StandardError.ReadLineAsync(token);
+                if (line == null) break;
+                stderr.AppendLine(line);
+                // Could parse "time=..." for progress here
+            }
+
+            await process.WaitForExitAsync(token);
+            if (process.ExitCode != 0)
+                throw new Exception("ffmpeg failed: " + stderr);
         }
 
         public static async Task MixAudioWithVideo(string videoFilePath, string audioFilePath, string outputFilePath, CancellationToken token)
