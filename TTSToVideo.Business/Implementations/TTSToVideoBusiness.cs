@@ -22,17 +22,34 @@ using Constants = TTSToVideo.Helpers.Constants;
 
 namespace TTSToVideo.Business.Implementations
 {
-    public class TTSToVideoBusiness(IImageGeneratorAI imageGeneratorAI, ITts tts, IProgressBar progressBar) : ITTSToVideoBusiness
+    public class TTSToVideoBusiness : ITTSToVideoBusiness
     {
+        private readonly IImageGeneratorAI imageGeneratorAI;
+        private readonly IVideoGeneratorFactory videoFactory;
+        private readonly ITts tts;
+        private readonly IProgressBar progressBar;
 
-        public async Task GeneratePortraitVideoCommandExecute(string imagePath, string outputPath)
+        public TTSToVideoBusiness(
+            IImageGeneratorAI imageGeneratorAI,
+            IVideoGeneratorFactory videoFactory,
+            ITts tts,
+            IProgressBar progressBar)
         {
-            progressBar.ShowMessage($"Generating video from \"{Path.GetFileName(outputPath)}\"");
-            var video = await imageGeneratorAI.GenerateVideoFromImage(
-                new ParameterVideoGenerator
-                {
-                    ImageUrlOrPath = imagePath
-                });
+            this.imageGeneratorAI = imageGeneratorAI;
+            this.videoFactory = videoFactory;
+            this.tts = tts;
+            this.progressBar = progressBar;
+        }
+
+        public async Task GeneratePortraitVideoCommandExecute(
+            VideoGenerationRequest request,
+            string outputPath,
+            CancellationToken token = default)
+        {
+            progressBar.ShowMessage($"Generating video ({request.Version}) from \"{Path.GetFileName(request.SourceImagePath)}\"");
+
+            var generator = videoFactory.Resolve(request);
+            var video = await generator.GenerateVideoAsync(request, token);
 
             File.WriteAllBytes(outputPath, video.Video);
             progressBar.ShowMessage($"Video \"{Path.GetFileName(outputPath)}\" created");
@@ -233,7 +250,8 @@ namespace TTSToVideo.Business.Implementations
                         statement.ImageAnimatedPath = videoPath;
                     }
 
-                    if (options.ImageOptions.UseOnlyFirstImage && statement != firstStatement && notExistsOneVideo)
+                    if (options.ImageOptions.UseOnlyFirstImage && statement != firstStatement && notExistsOneVideo
+                        && !string.IsNullOrEmpty(statements[statements.IndexOf(statement) - 1].ImageAnimatedPath))
                     {
                         statement.Images.Clear();
                         statement.ImageAnimatedPath = statements[statements.IndexOf(statement) - 1].ImageAnimatedPath;
@@ -325,6 +343,7 @@ namespace TTSToVideo.Business.Implementations
                                     IsSubtitle = true,
                                     IsTheLastSubtitle = false
                                 });
+                                s.HasSubstatements = true;
                             }
                         }
 
@@ -342,13 +361,16 @@ namespace TTSToVideo.Business.Implementations
                                 Images = s.Images,
                                 ImageAnimatedPath = s.ImageAnimatedPath,
                             });
+                            s.HasSubstatements = true;
                         }
-                        s.HasSubstatements = true;
                     }
                     else
                     {
                         s.IsSubtitle = false;
                         s.HasSubstatements = false;
+                        if (s.Images == null && string.IsNullOrEmpty(s.ImageAnimatedPath))
+                        { 
+                        }
                     }
 
                 }
@@ -386,7 +408,7 @@ namespace TTSToVideo.Business.Implementations
                     Id = HashMD5.GenerateHash("last-silent"),
                     Images = lastStatement.Images,
                     ImageAnimatedPath = lastStatement.ImageAnimatedPath,
-                    OutputVideoPath = lastImage == null? lastStatement.ImageAnimatedPath : $"{lastImage}-last-video-part.mp4"
+                    OutputVideoPath = lastImage == null ? lastStatement.ImageAnimatedPath : $"{lastImage}-last-video-part.mp4"
                 });
 
                 var statementsUnion = statements.SelectMany(s => s.SubStatements?.Count > 0 ? s.SubStatements : [s]).ToList();

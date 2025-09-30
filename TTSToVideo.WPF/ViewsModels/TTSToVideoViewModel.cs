@@ -49,8 +49,6 @@ namespace TTSToVideo.WPF.ViewsModels
     {
         private static Regex RemoveTagsRegex() => new Regex("<.*?>", RegexOptions.Compiled); // Provide implementation for the partial method    
 
-
-
         /// <summary>
         /// Dont change this models to Model, because it will break the binding with the view, when json deserializes the model
         /// </summary>
@@ -67,7 +65,6 @@ namespace TTSToVideo.WPF.ViewsModels
         public AsyncRelayCommand<StatementModel?>? OpenVideoCommand { get; set; }
         public AsyncRelayCommand<StatementModel?>? RegenerateVideoCommand { get; set; }
         public RelayCommand<StatementModel?>? DeleteVideoCommand { get; set; }
-
 
         public AsyncRelayCommand<object?>? OpenVoiceCommand { get; private set; }
         public AsyncRelayCommand<object?>? DeleteVoiceCommand { get; set; }
@@ -276,6 +273,8 @@ namespace TTSToVideo.WPF.ViewsModels
                 this.SaveModel(translatedProjectPath);
             }
 
+            var projectDir = Path.Combine(this.ProjectSelected.FullPath, SelectedPlatform.ToString(), SelectedLanguage);
+            this.ShowVideoDetails(projectDir);
         }
 
         private void DeleteVideoCommandExecute(StatementModel? arg)
@@ -298,24 +297,28 @@ namespace TTSToVideo.WPF.ViewsModels
 
             try
             {
-                // Create cancellation token
                 this.CancellationTokenSource = new CancellationTokenSource();
                 var token = this.CancellationTokenSource.Token;
 
-                // Map the statement to the business layer model
                 var statementForBusiness = model.ToStatement();
-
                 var imagePath = statementForBusiness.Images.FirstOrDefault()?.Path;
 
                 if (imagePath != null)
                 {
                     model.ImageAnimatedPath = imagePath + ".mp4";
 
-                    // Generate the video using the AI service
+                    var request = new VideoGenerationRequest
+                    {
+                        Prompt = this.Model.UseOnlyFirstImage ? this.Model.AditionalPrompt : statementForBusiness.Prompt,
+                        SourceImagePath = imagePath,
+                        Version = MotionVersion.Motion2,
+                        MotionStrength = 5
+                    };
+
                     await ttsToVideoBusiness.GeneratePortraitVideoCommandExecute(
-                        imagePath,
-                       model.ImageAnimatedPath
-                    );
+                        request,
+                        model.ImageAnimatedPath,
+                        token);
                 }
             }
             catch (Exception ex)
@@ -624,7 +627,7 @@ namespace TTSToVideo.WPF.ViewsModels
             Process.Start(
                 new ProcessStartInfo
                 {
-                    FileName = Path.Combine(this.ProjectSelected.FullPath, SelectedPlatform.ToString(),SelectedLanguage),
+                    FileName = Path.Combine(this.ProjectSelected.FullPath, SelectedPlatform.ToString(), SelectedLanguage),
                     UseShellExecute = true,
                     Verb = "open"
                 });

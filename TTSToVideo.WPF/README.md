@@ -26,8 +26,6 @@ dotnet user-secrets set "AzureTranslator:Token" "<azure token translator>"
 winget install ffmpeg
 ```
 
-
-
 # How to use app
 
 ## Patterns to use in prompt

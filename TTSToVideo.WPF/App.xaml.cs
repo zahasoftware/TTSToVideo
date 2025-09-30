@@ -20,6 +20,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Navigation;
+using TTSToVideo.Business;
 using TTSToVideo.Business.Models;
 using TTSToVideo.Helpers;
 using TTSToVideo.Helpers.Implementations;
@@ -95,11 +96,10 @@ namespace TTSToVideo
 
             services.AddSingleton<IProgressBar, ProgressBar>();
             services.AddSingleton<IMessage, Messages>();
-
-
+            services.AddSingleton<IVideoGeneratorFactory, LeonardoVideoGeneratorFactory>();
 
             //Business
-            services.AddSingleton<Business.ITTSToVideoBusiness, Business.Implementations.TTSToVideoBusiness>();
+            services.AddSingleton<ITTSToVideoBusiness, Business.Implementations.TTSToVideoBusiness>();
 
             //MvvM
             services.AddSingleton<TTSToVideoViewModel>();
