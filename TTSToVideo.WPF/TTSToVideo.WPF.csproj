@@ -25,7 +25,6 @@
   </ItemGroup>-->
 
   <ItemGroup>
-    <Content Include="icon.ico" />
     <Content Include="Images\add32x32.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>

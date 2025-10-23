@@ -413,7 +413,6 @@ namespace TTSToVideo.Business.Implementations
 
                 var statementsUnion = statements.SelectMany(s => s.SubStatements?.Count > 0 ? s.SubStatements : [s]).ToList();
 
-
                 //Getting voices (It also get the duration of each video)
                 var concatenatedVoicesPath = await this.ProcessVoices(statementsUnion, projectPath, selectedVoice, options, token);
 

@@ -18,7 +18,7 @@ dotnet user-secrets set "ElevenLabsToken" "<your token>"
 ```pwsd
 dotnet user-secrets set "AzureTranslator:Token" "<azure token translator>"
 ```
-
+4dQwHUljAUIDfYp4AS9Kf1BUOs4JAsvxMYdoS0SoRRSPjcU4WWEwJQQJ99BGACYeBjFXJ3w3AAAbACOGdUbC
 
 ## Install ffmpeg
 

@@ -301,15 +301,20 @@ namespace TTSToVideo.WPF.ViewsModels
                 var token = this.CancellationTokenSource.Token;
 
                 var statementForBusiness = model.ToStatement();
-                var imagePath = statementForBusiness.Images.FirstOrDefault()?.Path;
+
+                var imagePath= $"{statementForBusiness.Prompt[..Math.Min(statementForBusiness.Prompt.Length, Constants.MAX_PATH)]}";
+                imagePath= Path.Combine(ProjectSelected.FullPath, SelectedPlatform.Value.ToString() , SelectedLanguage , $"{PathHelper.CleanFileName(imagePath)}.jpg");
 
                 if (imagePath != null)
                 {
+                    //Generate video path form zero
+
+
                     model.ImageAnimatedPath = imagePath + ".mp4";
 
                     var request = new VideoGenerationRequest
                     {
-                        Prompt = this.Model.UseOnlyFirstImage ? this.Model.AditionalPrompt : statementForBusiness.Prompt,
+                        Prompt = this.Model.UseOnlyFirstImage ? this.Model.AditionalPrompt : $"{this.Model.AditionalPrompt} {statementForBusiness.Prompt}",
                         SourceImagePath = imagePath,
                         Version = MotionVersion.Motion2,
                         MotionStrength = 5
@@ -346,7 +351,7 @@ namespace TTSToVideo.WPF.ViewsModels
                 var token = this.CancellationTokenSource.Token;
 
                 // Define output folder
-                var outputFolder = this.ProjectSelected?.FullPath;
+                var outputFolder =Path.Combine( this.ProjectSelected?.FullPath,$"{SelectedPlatform}", SelectedLanguage);
                 if (string.IsNullOrEmpty(outputFolder))
                 {
                     message.Warn("Project folder is not defined.");
@@ -618,7 +623,7 @@ namespace TTSToVideo.WPF.ViewsModels
                 UseShellExecute = true,
                 Verb = "open"
             });
-            await Task.Delay(0);
+            
 
         }
 
