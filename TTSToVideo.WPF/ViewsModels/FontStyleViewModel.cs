@@ -43,6 +43,7 @@ namespace TTSToVideo.WPF.ViewsModels
 
             this.FontSize = Statement?.FontStyle?.FontSize;
             this.SubtitleVisible = Statement?.FontStyle?.SubtitleVisible ?? true;
+            this.MarginV = Statement?.FontStyle?.MarginV; // load MarginV
         }
 
         private async Task WindowClosed()
@@ -52,18 +53,20 @@ namespace TTSToVideo.WPF.ViewsModels
                 if (Statement.FontStyle?.Alignment != (FfmpegAlignment)this.SelectedFontPosition.Id
                     || Statement.FontStyle?.FontSize != this.FontSize
                     || Statement.FontStyle?.SubtitleVisible != this.SubtitleVisible
+                    || Statement.FontStyle?.MarginV != this.MarginV
                     )
                 {
                     var path = Statement?.Images?.FirstOrDefault()?.Path;
                     if (path != null)
                     {
                         path = $"{Path.Combine(Path.GetDirectoryName(path), "v-" + Path.GetFileNameWithoutExtension(path))}.wav.mp4";
-                        File.Delete(path);
+                        if (File.Exists(path)) File.Delete(path);
                     }
                 }
                 Statement.FontStyle.Alignment = (FfmpegAlignment)this.SelectedFontPosition.Id;
                 Statement.FontStyle.FontSize = this.FontSize;
                 Statement.FontStyle.SubtitleVisible = this.SubtitleVisible;
+                Statement.FontStyle.MarginV = this.MarginV; // save MarginV
             }
             await Task.Delay(1);
         }
@@ -74,6 +77,7 @@ namespace TTSToVideo.WPF.ViewsModels
         public FontPositionModel SelectedFontPosition { get; set; }
         public int? FontSize { get; set; }
         public bool SubtitleVisible { get; set; } = true;
+        public int? MarginV { get; set; } // new MarginV editor
         public StatementModel? Statement { get; set; }
     }
 }

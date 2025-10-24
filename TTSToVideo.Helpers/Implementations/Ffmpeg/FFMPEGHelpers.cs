@@ -476,22 +476,36 @@ namespace TTSToVideo.Helpers.Implementations.Ffmpeg
             int playResX = targetWidth;
             int playResY = targetHeight;
 
-            requestedFontSize += 50;
-            marginL += 50;
-            marginV += 50;
+            // Old logic artificially added +60 which compressed variation between low/high user values.
+            // New logic: treat the user provided FontSize (expected range 0..50) as a semantic scale
+            // and map it to a percentage of the video height, giving a much broader visual spread.
+            // If user does not provide a size -> fallback to a default % of height.
+            int fs;
+            if (requestedFontSize is null)
+            {
+                // Default ~7% of height (tuned) when no explicit font size is set.
+                fs = (int)Math.Round(playResY * 0.07);
+            }
+            else
+            {
+                // Clamp user input into expected domain
+                int user = Math.Clamp(requestedFontSize.Value, 0, 50);
+                // Map user (0..50) -> percent range (2% .. 13%) of height (customizable)
+                // This makes upper values substantially larger visually.
+                double minPct = 0.02;   // 2%
+                double maxPct = 0.13;   // 13%  (1920 => 250px approx)
+                double pct = minPct + (user / 50.0) * (maxPct - minPct);
+                fs = (int)Math.Round(playResY * pct);
+            }
 
-            // Larger default: ~7% of height (was 4.8%). 1080x1920 => ~134px.
-            // If caller passed an explicit FontSize use it verbatim (still clamped to sane limits).
-            int defaultPercentHeight = 7; // percent
-            int fs = requestedFontSize ?? (int)Math.Round(playResY * (defaultPercentHeight / 100.0));
+            // Clamp to reasonable pixel bounds to avoid extreme values for unusual resolutions
+            fs = Math.Clamp(fs, 24, 300);
 
-            // Allow bigger upper bound so it’s really visible (esp. single‑line captions).
-            fs = Math.Clamp(fs, 50, 220);
-
-            // Vertical margin ~6% (was 7% which can push text too high when font bigger)
-            int mv = marginV ?? (int)Math.Round(playResY * 0.06);   // ≈115 for 1920
-            // Horizontal margins ~4% (was 5%) so long lines fit better with bigger font
-            int ml = marginL ?? (int)Math.Round(playResX * 0.04);   // ≈43 for 1080
+            // Margins: if user supplied explicit margins, honor them; otherwise compute dynamic defaults.
+            // Vertical margin default ~6% of height (provides breathing room for larger fonts)
+            int mv = marginV ?? (int)Math.Round(playResY * 0.06);
+            // Horizontal margin default ~4% of width
+            int ml = marginL ?? (int)Math.Round(playResX * 0.04);
             int mr = marginR ?? ml;
 
             return (playResX, playResY, fs, mv, Math.Min(ml, mr));

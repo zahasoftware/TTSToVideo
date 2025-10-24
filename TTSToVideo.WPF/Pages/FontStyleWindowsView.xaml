@@ -41,6 +41,12 @@
                 <Label Content="{Binding FontSize}" HorizontalAlignment="Left" />
             </StackPanel>
 
+            <Label>Vertical Margin (MarginV)</Label>
+            <StackPanel Orientation="Horizontal">
+                <Slider Value="{Binding MarginV, Mode=TwoWay}" Minimum="0" Maximum="300" Width="250" TickFrequency="10" TickPlacement="BottomRight" IsSnapToTickEnabled="True" AutoToolTipPlacement="BottomRight" AutoToolTipPrecision="0" Margin="10" />
+                <Label Content="{Binding MarginV}" HorizontalAlignment="Left" />
+            </StackPanel>
+
             <CheckBox Content="Subtitle Visible" IsChecked="{Binding SubtitleVisible}"></CheckBox>
         </StackPanel>
     </Border>

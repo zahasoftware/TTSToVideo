@@ -316,7 +316,8 @@ namespace TTSToVideo.Business.Implementations
                     if (statementOption != null)
                     {
                         s.FontStyle = statementOption.FontStyle;
-                        s.FontStyle.FontSize = statementOption.FontStyle.FontSize == null ? Helpers.Constants.SUBTITTLE_SIZE_DEFAULT : statementOption.FontStyle.FontSize;
+                        s.FontStyle.FontSize = statementOption.FontStyle.FontSize == null ? options.SubtitleOptions.SubtitleSize : statementOption.FontStyle.FontSize;
+                        s.FontStyle.MarginV = statementOption.FontStyle.MarginV == null ? options.SubtitleOptions.MarginV : statementOption.FontStyle.MarginV;
                         s.FontStyle.Alignment ??= FfmpegAlignment.TopCenter;
                     }
 
@@ -369,7 +370,7 @@ namespace TTSToVideo.Business.Implementations
                         s.IsSubtitle = false;
                         s.HasSubstatements = false;
                         if (s.Images == null && string.IsNullOrEmpty(s.ImageAnimatedPath))
-                        { 
+                        {
                         }
                     }
 

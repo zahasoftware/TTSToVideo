@@ -1,11 +1,9 @@
-﻿
-using CommunityToolkit.Mvvm.ComponentModel;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
 using NetXP.IAs.ImageGeneratorAI;
 using PropertyChanged;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text.Json.Serialization;
-using System.Windows.Media.Imaging;
 
 namespace TTSToVideo.WPF.Models
 {
@@ -39,6 +37,9 @@ namespace TTSToVideo.WPF.Models
         public VideoModel? VideoModel { get; set; }
 
         public int SubtitleSize { get; set; } = TTSToVideo.Helpers.Constants.SUBTITTLE_SIZE_DEFAULT;
+
+        // New global vertical margin for subtitles
+        public int SubtitleMarginV { get; set; } = 40;
 
         [JsonIgnore]
         public ObservableCollection<StatementModel>? Statements { get; set; } = [];

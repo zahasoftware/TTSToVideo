@@ -5,7 +5,7 @@
         public FfmpegAlignment? Alignment { get; set; } = FfmpegAlignment.TopCenter;
 
         //MarginV is the vertical margin from the bottom or top of the screen
-        public int? MarginV { get; set; } = 40;
+        public int? MarginV { get; set; } 
 
         //MarginL is the horizontal margin from the left side of the screen
         public int? MarginL { get; set; }
