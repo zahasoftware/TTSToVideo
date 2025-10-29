@@ -136,5 +136,13 @@ namespace TTSToVideo
             }
 
         }
+
+        private void SubtitleMarginVSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (e.OldValue.Equals(e.NewValue)) return; var vm = ViewModel?.TtsToVideoViewModel; if (vm?.Model?.Statements == null) return;
+            int newMargin = (int)Math.Round(e.NewValue);
+            foreach (var st in vm.Model.Statements) { st.FontStyle ??= new TTSToVideo.Helpers.Implementations.Ffmpeg.FfmpegFontStyle(); st.FontStyle.MarginV = newMargin; }
+        }
+
     }
 }
