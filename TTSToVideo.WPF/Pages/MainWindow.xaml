@@ -181,7 +181,9 @@ CommandParameter="{Binding SelectedItem, RelativeSource={RelativeSource Ancestor
                             />
                     <Separator />
                     <Label Content="MarginV" />
-                    <Slider x:Name="SliderSubtitleMarginV" Value="{Binding TtsToVideoViewModel.Model.SubtitleMarginV, Mode=TwoWay}" Minimum="0" Maximum="300" Width="150" TickFrequency="10" TickPlacement="BottomRight" IsSnapToTickEnabled="True" AutoToolTipPlacement="BottomRight" AutoToolTipPrecision="0" Margin="10" ValueChanged="SubtitleMarginVSlider_ValueChanged"/>
+                    <Slider x:Name="SliderSubtitleMarginV" 
+                            Value="{Binding TtsToVideoViewModel.Model.SubtitleMarginV, Mode=TwoWay}"
+                            Minimum="0" Maximum="300" Width="150" TickFrequency="10" TickPlacement="BottomRight" IsSnapToTickEnabled="True" AutoToolTipPlacement="BottomRight" AutoToolTipPrecision="0" Margin="10" ValueChanged="SubtitleMarginVSlider_ValueChanged"/>
                     <Label Content="{Binding TtsToVideoViewModel.Model.SubtitleMarginV}" />
                 </RibbonGroup>
                 <RibbonGroup Header="Video">

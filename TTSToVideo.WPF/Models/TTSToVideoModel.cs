@@ -39,7 +39,7 @@ namespace TTSToVideo.WPF.Models
         public int SubtitleSize { get; set; } = TTSToVideo.Helpers.Constants.SUBTITTLE_SIZE_DEFAULT;
 
         // New global vertical margin for subtitles
-        public int SubtitleMarginV { get; set; } = 40;
+        public int SubtitleMarginV { get; set; } = TTSToVideo.Helpers.Constants.MARGINV_SIZE_DEFAULT;
 
         [JsonIgnore]
         public ObservableCollection<StatementModel>? Statements { get; set; } = [];
