@@ -12,7 +12,7 @@
       d:DesignHeight="450" d:DesignWidth="1179"
       Background="White"
       Title="MainPage" >
-    <Page.Resources>
+        <Page.Resources>
         <converters:ImageCollectionConverter x:Key="ImageCollectionConverter" />
         <converters:ImageConverter x:Key="ImageConverter" />
         <converters:VideoVisibilityConverter x:Key="VideoVisibilityConverter" />
@@ -146,12 +146,13 @@
                         <DataTemplate>
                             <Grid>
                                 <!-- Video preview (shown if a valid video exists) -->
-                                <MediaElement  Width="200" Height="250"
-                                               Stretch="UniformToFill"
-                                               Source="{Binding ImageAnimatedPath}"
-                                               LoadedBehavior="Stop"
-                                               UnloadedBehavior="Stop"
-                                               Visibility="{Binding ImageAnimatedPath, Converter={StaticResource VideoVisibilityConverter}}"/>
+<MediaElement Width="200" Height="250"
+                  Stretch="UniformToFill"
+                  Source="{Binding PlaybackVideoPath}"
+                  LoadedBehavior="Play"
+                  UnloadedBehavior="Stop"
+                  Visibility="{Binding PlaybackVideoPath, Converter={StaticResource VideoVisibilityConverter}}"
+              />
                                 <!-- Existing images (hidden when video shown) -->
                                 <ItemsControl ItemsSource="{Binding Images}"
                                               Visibility="{Binding ImageAnimatedPath, Converter={StaticResource InverseVisibilityConverter}}">

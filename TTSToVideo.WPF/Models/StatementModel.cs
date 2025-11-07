@@ -1,11 +1,12 @@
 ﻿using NetXP.ImageGeneratorAI;
 using PropertyChanged;
 using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using TTSToVideo.Business.Models;
+using TTSToVideo.Helpers;
 using TTSToVideo.Helpers.Implementations.Ffmpeg;
+using static System.IO.PathHelper;
 
 namespace TTSToVideo.WPF.Models
 {
@@ -34,7 +35,10 @@ namespace TTSToVideo.WPF.Models
             get => fontStyle ??= new FfmpegFontStyle();
             set => fontStyle = value;
         }
-        public string? ImageAnimatedPath { get; internal set; }
+        public string? ImageAnimatedPath { get; set; }
+
+        // New: Short version used for playback
+        public string? PlaybackVideoPath => PathHelpers.EnsureShortVideoPath(ImageAnimatedPath);
 
         internal Statement ToStatement()
         {
@@ -47,6 +51,7 @@ namespace TTSToVideo.WPF.Models
                 AudioPath = AudioPath,
                 AudioDuration = AudioDuration,
                 FontStyle = FontStyle,
+                ImageAnimatedPath = ImageAnimatedPath
             };
         }
     }

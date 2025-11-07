@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -11,6 +12,30 @@ namespace System.IO
 
     public class PathHelper
     {
+        public static class PathHelpers
+        {
+            private static readonly string CacheDir = Path.Combine(Path.GetTempPath(), "tts-video-cache");
+            public static string EnsureShortVideoPath(string fullPath)
+            {
+                if (string.IsNullOrWhiteSpace(fullPath) || !File.Exists(fullPath))
+                    return fullPath;
+
+                // Under safe threshold => return original
+                if (fullPath.Length < 230)
+                    return fullPath;
+
+                Directory.CreateDirectory(CacheDir);
+                var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(fullPath))).Substring(0, 16);
+                var ext = Path.GetExtension(fullPath);
+                var shortPath = Path.Combine(CacheDir, hash + ext);
+
+                if (!File.Exists(shortPath))
+                    File.Copy(fullPath, shortPath, true);
+
+                return shortPath;
+            }
+        }
+
         public static string CleanFileName(string fileName)
         {
             string safeFileName = fileName;
