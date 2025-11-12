@@ -46,12 +46,39 @@ namespace TTSToVideo.Business.Implementations
             string outputPath,
             CancellationToken token = default)
         {
+            // PSEUDOCODE:
+            // 1. Show start message.
+            // 2. If output file exists attempt to delete.
+            // 3. If delete fails or file still exists after delete -> throw CustomApplicationException("Video in use cannot be removed").
+            // 4. Resolve generator.
+            // 5. Generate video.
+            // 6. Write bytes to disk.
+            // 7. Show success message.
+
             progressBar.ShowMessage($"Generating video ({request.Version}) from \"{Path.GetFileName(request.SourceImagePath)}\"");
+
+            if (File.Exists(outputPath))
+            {
+                try
+                {
+                    File.Delete(outputPath);
+                }
+                catch (Exception ex)
+                {
+                    throw new CustomApplicationException("Video in use cannot be removed", ex);
+                }
+
+                if (File.Exists(outputPath))
+                {
+                    throw new CustomApplicationException("Video in use cannot be removed");
+                }
+            }
 
             var generator = videoFactory.Resolve(request);
             var video = await generator.GenerateVideoAsync(request, token);
 
             File.WriteAllBytes(outputPath, video.Video);
+
             progressBar.ShowMessage($"Video \"{Path.GetFileName(outputPath)}\" created");
         }
 
@@ -242,6 +269,7 @@ namespace TTSToVideo.Business.Implementations
 
                     var imageFileName = $"{statement.Prompt[..Math.Min(statement.Prompt.Length, Constants.MAX_PATH)]}";
                     imageFileName = Path.Combine(projectPath, $"{PathHelper.CleanFileName(imageFileName)}.jpg");
+                    var existsImageFile = File.Exists(imageFileName);
 
                     var notExistsOneVideo = !File.Exists($"{imageFileName}.mp4");
                     var videoPath = $"{imageFileName}.mp4";
@@ -251,7 +279,8 @@ namespace TTSToVideo.Business.Implementations
                     }
 
                     if (options.ImageOptions.UseOnlyFirstImage && statement != firstStatement && notExistsOneVideo
-                        && !string.IsNullOrEmpty(statements[statements.IndexOf(statement) - 1].ImageAnimatedPath))
+                        && !string.IsNullOrEmpty(statements[statements.IndexOf(statement) - 1].ImageAnimatedPath)
+                        && !existsImageFile)
                     {
                         statement.Images.Clear();
                         statement.ImageAnimatedPath = statements[statements.IndexOf(statement) - 1].ImageAnimatedPath;
