@@ -698,7 +698,7 @@ namespace TTSToVideo.Business.Implementations
 
                     await GetVoice(new TtsVoice
                     {
-                        ModelId = "eleven_multilingual_v2", // selectedVoice.ModelId,
+                        //ModelId = "", // selectedVoice.ModelId,
                         Id = selectedVoice.Id
                     }
                     , statement

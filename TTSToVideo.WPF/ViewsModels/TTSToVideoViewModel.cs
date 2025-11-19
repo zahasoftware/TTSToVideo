@@ -363,6 +363,7 @@ namespace TTSToVideo.WPF.ViewsModels
                 // Map the statement to the business layer model
                 var statementForBusiness = arg.ToStatement();
                 statementForBusiness.GlobalPrompt = this.Model?.AditionalPrompt ?? "";
+                statementForBusiness.Prompt = this.Model?.Prompt ?? "";
 
                 statementForBusiness.Images.Clear();
 

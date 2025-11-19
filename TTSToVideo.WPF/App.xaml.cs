@@ -127,20 +127,26 @@ namespace TTSToVideo
 
         private void Application_DispatcherUnhandledException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
         {
-            if (e.Exception is CustomApplicationException)
+            switch (e.Exception)
             {
-                this.mw.ViewModel.Message = e.Exception.Message;
+                case OperationCanceledException oce when oce.CancellationToken.CanBeCanceled 
+                                                       && oce.CancellationToken.IsCancellationRequested:
+                    // Normal cancellation – silently swallow or log minimally.
+                    // Example:
+                    // Debug.WriteLine("Operation canceled.");
+                    e.Handled = true;
+                    return;
+
+                case CustomApplicationException cae:
+                    this.mw!.ViewModel.Message = cae.Message;
+                    MessageBox.Show($"{e.Exception.Message}");
+
+                    e.Handled = true;
+                    return;
             }
-            else
-            {
-                MessageBox.Show($"{e.Exception.Message} , See detail in Exception.txt");
-                File.WriteAllText("Exception.txt", e.Exception.ToString());
-            }
-#if DEBUG
-            e.Handled = e.Exception is CustomApplicationException;
-#else
-            e.Handled = true;
-#endif
+            MessageBox.Show($"{e.Exception.Message} , See detail in Exception.txt");
+            File.WriteAllText("Exception.txt", e.Exception.ToString());
+            e.Handled = false;
         }
     }
 }

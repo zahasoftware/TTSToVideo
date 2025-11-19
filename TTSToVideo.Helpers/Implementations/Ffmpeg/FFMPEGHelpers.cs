@@ -9,6 +9,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 using static TTSToVideo.Helpers.Implementations.Ffmpeg.FFMPEGHelpers;
 
 namespace TTSToVideo.Helpers.Implementations.Ffmpeg
@@ -350,7 +351,7 @@ namespace TTSToVideo.Helpers.Implementations.Ffmpeg
             {
                 StartInfo = new ProcessStartInfo
                 {
-                    FileName = "ffmpeg",
+                    FileName = """ffmpeg""",
                     Arguments = ffmpegCmd,
                     CreateNoWindow = true,
                     UseShellExecute = false,
@@ -445,7 +446,7 @@ namespace TTSToVideo.Helpers.Implementations.Ffmpeg
                 CreateNoWindow = true
             };
 
-            using Process process = Process.Start(startInfo);
+            using Process? process = Process.Start(startInfo) ?? throw new ApplicationException($"{startInfo.FileName} cannot be executed , null");
             using StreamReader reader = process.StandardError;
 
             string result = reader.ReadToEnd();
@@ -512,7 +513,7 @@ namespace TTSToVideo.Helpers.Implementations.Ffmpeg
         }
 
         // Modify CreateAssSubtitleFile to use the new scaling logic.
-        public static string CreateAssSubtitleFile(IEnumerable<AssSubtitleSegment> segments, string outputPath = null, int targetWidth = 1080, int targetHeight = 1920)
+        public static string CreateAssSubtitleFile(IEnumerable<AssSubtitleSegment> segments, string outputPath = "", int targetWidth = 1080, int targetHeight = 1920)
         {
             if (segments == null || !segments.Any())
                 throw new ArgumentException("No subtitle segments provided", nameof(segments));

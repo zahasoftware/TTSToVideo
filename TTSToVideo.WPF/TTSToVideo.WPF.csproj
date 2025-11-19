@@ -14,6 +14,7 @@
     <None Remove="Images\config.png" />
     <None Remove="Images\regenerate-image16x16.png" />
     <None Remove="Images\regenerate-image32x32.png" />
+    <None Remove="Images\regenerate-video.png" />
     <None Remove="Images\save.png" />
   </ItemGroup>
 
@@ -35,6 +36,9 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="Images\regenerate-image32x32.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Images\regenerate-video.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

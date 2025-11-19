@@ -291,7 +291,14 @@
                                         <Image Source="/Images/remove-icon.png" Height="32"/>
                                     </StackPanel>
                                 </Button>
-
+                                <Button Grid.Row="5" Grid.Column="3"
+                                        ToolTip="Upload / Replace Image or Video (backs up current)"
+                                        Click="ReplaceMediaButton_Click">
+                                    <StackPanel Orientation="Horizontal">
+                                        <Image Source="/Images/regenerate-video.png" Height="24"/>
+                                        <TextBlock Margin="4,0,0,0" Text="Replace"/>
+                                    </StackPanel>
+                                </Button>
                                 <!-- Font -->
                                 <Label Grid.ColumnSpan="4" Grid.Row="6" >Fonts</Label>
                                 <Button 
