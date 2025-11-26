@@ -5,6 +5,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
+using TTSToVideo.Helpers;
 
 namespace System.IO
 {
@@ -71,5 +72,22 @@ namespace System.IO
             return result.ToString().Normalize(NormalizationForm.FormC);
         }
 
+        public static string GenerateImagePath(string projectPath, string prompt, string extension = ".jpg")
+        {
+            if (string.IsNullOrWhiteSpace(projectPath))
+                throw new ArgumentNullException(nameof(projectPath));
+            
+            if (string.IsNullOrWhiteSpace(prompt))
+                throw new ArgumentNullException(nameof(prompt));
+
+            var truncatedPrompt = prompt[..Math.Min(prompt.Length, Constants.MAX_PATH)];
+            var cleanedName = CleanFileName(truncatedPrompt);
+            
+            // Ensure extension starts with a dot
+            if (!extension.StartsWith("."))
+                extension = "." + extension;
+            
+            return Path.Combine(projectPath, $"{cleanedName}{extension}");
+        }
     }
 }

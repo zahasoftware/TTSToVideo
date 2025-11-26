@@ -302,8 +302,8 @@ namespace TTSToVideo.WPF.ViewsModels
 
                 var statementForBusiness = model.ToStatement();
 
-                var imagePath= $"{statementForBusiness.Prompt[..Math.Min(statementForBusiness.Prompt.Length, Constants.MAX_PATH)]}";
-                imagePath= Path.Combine(ProjectSelected.FullPath, SelectedPlatform.Value.ToString() , SelectedLanguage , $"{PathHelper.CleanFileName(imagePath)}.jpg");
+                var projectPath = Path.Combine(ProjectSelected.FullPath, SelectedPlatform.Value.ToString(), SelectedLanguage);
+                var imagePath = PathHelper.GenerateImagePath(projectPath, statementForBusiness.Prompt);
 
                 if (imagePath != null)
                 {

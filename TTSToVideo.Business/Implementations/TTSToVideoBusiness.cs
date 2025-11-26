@@ -224,8 +224,7 @@ namespace TTSToVideo.Business.Implementations
                         }
                         else
                         {
-                            imageFileName = $"{statement.Prompt[..Math.Min(statement.Prompt.Length, Constants.MAX_PATH)]}";
-                            imageFileName = Path.Combine(projectPath, $"{PathHelper.CleanFileName(imageFileName)}.jpg");
+                            imageFileName = PathHelper.GenerateImagePath(projectPath, statement.Prompt);
                         }
 
                         if (!File.Exists(imageFileName))
@@ -267,8 +266,7 @@ namespace TTSToVideo.Business.Implementations
                         continue;
                     }
 
-                    var imageFileName = $"{statement.Prompt[..Math.Min(statement.Prompt.Length, Constants.MAX_PATH)]}";
-                    imageFileName = Path.Combine(projectPath, $"{PathHelper.CleanFileName(imageFileName)}.jpg");
+                    var imageFileName = PathHelper.GenerateImagePath(projectPath, statement.Prompt);
                     var existsImageFile = File.Exists(imageFileName);
 
                     var notExistsOneVideo = !File.Exists($"{imageFileName}.mp4");
@@ -648,8 +646,7 @@ namespace TTSToVideo.Business.Implementations
 
             foreach (var image in response.Images)
             {
-                var imageFileName = $"{statement.Prompt[..Math.Min(statement.Prompt.Length, Helpers.Constants.MAX_PATH)]}";
-                imageFileName = Path.Combine(projectPath, $"{PathHelper.CleanFileName(imageFileName)}.jpg");
+                var imageFileName = PathHelper.GenerateImagePath(projectPath, statement.Prompt);
 
                 statement.Images.Add(new StatementImage
                 {

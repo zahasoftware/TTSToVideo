@@ -9,13 +9,14 @@ namespace TTSToVideo.WPF.Models
     public class StatementImageModel
     {
         public string? Path { get; set; }
-        public string? Id { get; set; }
+        public string? Id { get; set; } // Add this if missing
 
         internal StatementImage ToStatementImage()
         {
-            return new StatementImage { 
-                Path = Path 
-              , Id = Id
+            return new StatementImage 
+            { 
+                Path = Path,
+                Id = Id 
             };
         }
     }

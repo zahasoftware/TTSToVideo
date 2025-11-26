@@ -159,8 +159,7 @@ namespace TTSToVideo.WPF
 
                     var baseImg = path;
 
-                    var targetPath = $"{stmt.Text[..Math.Min(stmt.Text.Length, Constants.MAX_PATH)]}";
-                    targetPath = Path.Combine(baseImg, $"{PathHelper.CleanFileName(targetPath)}.jpg{ext}"); 
+                    var targetPath = PathHelper.GenerateImagePath(baseImg, stmt.Text, $".jpg{ext}"); 
 
                     // Backup if exists
                     if (File.Exists(targetPath))
@@ -181,8 +180,7 @@ namespace TTSToVideo.WPF
 
                     var imgRef = path;
 
-                    var targetPath = $"{stmt.Text[..Math.Min(stmt.Text.Length, Constants.MAX_PATH)]}";
-                    targetPath = Path.Combine(imgRef, $"{PathHelper.CleanFileName(targetPath)}{ext}");
+                    var targetPath = PathHelper.GenerateImagePath(imgRef, stmt.Text, ext);
 
                     if (imgRef == null || string.IsNullOrWhiteSpace(imgRef))
                     {
