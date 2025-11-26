@@ -40,6 +40,8 @@ namespace TTSToVideo.WPF.Models
         // New: Short version used for playback
         public string? PlaybackVideoPath => PathHelpers.EnsureShortVideoPath(ImageAnimatedPath);
 
+        public bool IsVideoLoaded { get; internal set; }
+
         internal Statement ToStatement()
         {
             return new Statement
