@@ -474,7 +474,8 @@ namespace TTSToVideo.Business.Implementations
                     // Set the output file path (SilenceVoice enum is set because not all silence voice have the same seconds
                     var promptPath = (string.IsNullOrEmpty(first.Prompt) ? $"video.{statementsUnion.IndexOf(first)}" : first.Prompt);
                     var outputVideoPath = $"{promptPath[..Math.Min(promptPath.Length, Constants.MAX_PATH)]}";
-                    outputVideoPath = Path.Combine(projectPath, $"{PathHelper.CleanFileName(outputVideoPath)}");
+                    Directory.CreateDirectory(Path.Combine(projectPath, "Intermediate"));
+                    outputVideoPath = Path.Combine(projectPath, "Intermediate", $"{PathHelper.CleanFileName(outputVideoPath)}");
 
                     first.OutputVideoPath = outputVideoPath + (first.PropmtPatterType == PromptPatternsEnum.SilentVoice ? $".{statementsUnion.IndexOf(first)}" : "") + ".mp4";
 
@@ -589,7 +590,7 @@ namespace TTSToVideo.Business.Implementations
                 var audio = await tts.Convert(new TtsConvertOption
                 {
                     Text = statement.Prompt,
-                    Voice = ttsVoice
+                    Voice = ttsVoice,
                 }, token);
 
                 var buffer = audio.File.GetBuffer();
@@ -698,7 +699,7 @@ namespace TTSToVideo.Business.Implementations
 
                     await GetVoice(new TtsVoice
                     {
-                        //ModelId = "", // selectedVoice.ModelId,
+                        ModelId = "eleven_v3", // selectedVoice.ModelId
                         Id = selectedVoice.Id
                     }
                     , statement
