@@ -564,10 +564,6 @@ namespace TTSToVideo.Business.Implementations
                     {
                         if (s.ImageId != null)
                         {
-                            await imageGeneratorAI.Remove(new ResultGenerate
-                            {
-                                Id = s.ImageId
-                            });
                         }
                     }
                 }
@@ -658,6 +654,7 @@ namespace TTSToVideo.Business.Implementations
                 statement.Images.Add(new StatementImage
                 {
                     Path = imageFileName,
+                    Id = image.Id
                 });
 
                 File.WriteAllBytes(imageFileName, image.Image);

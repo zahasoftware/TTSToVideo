@@ -315,6 +315,7 @@ namespace TTSToVideo.WPF.ViewsModels
                     var request = new VideoGenerationRequest
                     {
                         Prompt = this.Model.UseOnlyFirstImage ? this.Model.AditionalPrompt : $"{this.Model.AditionalPrompt} {statementForBusiness.Prompt}",
+                        SourceImageId = model.Images.FirstOrDefault()?.Id,
                         SourceImagePath = imagePath,
                         Version = MotionVersion.Motion2,
                         MotionStrength = 5
@@ -773,7 +774,7 @@ namespace TTSToVideo.WPF.ViewsModels
                 this.Model.Statements = [.. statements.Select(o => new StatementModel
                         {
                             Text = o.Prompt,
-                            Images = [.. o.Images.Select(i => new StatementImageModel { Path = i.Path })],
+                            Images = [.. o.Images.Select(i => new StatementImageModel { Path = i.Path, Id = i.Id })],
                             AudioDuration = o.AudioDuration,
                             FontStyle = o.FontStyle,
                             AudioPath = o.AudioPath,

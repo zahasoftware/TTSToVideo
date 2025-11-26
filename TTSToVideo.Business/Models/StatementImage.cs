@@ -3,5 +3,6 @@
     public class StatementImage
     {
         public string? Path { get; set; }
+        public string? Id { get; set; }
     }
 }
