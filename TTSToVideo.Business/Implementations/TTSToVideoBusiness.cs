@@ -4,20 +4,11 @@ using NAudio.Wave;
 using NetXP.Exceptions;
 using NetXP.IAs.ImageGeneratorAI;
 using NetXP.Tts;
-using System.Collections.ObjectModel;
-using System.ComponentModel.DataAnnotations;
-using System.Diagnostics;
-using System.Diagnostics.Eventing.Reader;
-using System.Globalization;
-using System.Reflection;
-using System.Security.Cryptography;
-using System.Text;
 using System.Text.RegularExpressions;
 using TTSToVideo.Business.Models;
 using TTSToVideo.Helpers;
 using TTSToVideo.Helpers.Audios;
 using TTSToVideo.Helpers.Implementations.Ffmpeg;
-using static System.Net.Mime.MediaTypeNames;
 using Constants = TTSToVideo.Helpers.Constants;
 
 namespace TTSToVideo.Business.Implementations
@@ -46,33 +37,9 @@ namespace TTSToVideo.Business.Implementations
             string outputPath,
             CancellationToken token = default)
         {
-            // PSEUDOCODE:
-            // 1. Show start message.
-            // 2. If output file exists attempt to delete.
-            // 3. If delete fails or file still exists after delete -> throw CustomApplicationException("Video in use cannot be removed").
-            // 4. Resolve generator.
-            // 5. Generate video.
-            // 6. Write bytes to disk.
-            // 7. Show success message.
-
             progressBar.ShowMessage($"Generating video ({request.Version}) from \"{Path.GetFileName(request.SourceImagePath)}\"");
 
-            if (File.Exists(outputPath))
-            {
-                try
-                {
-                    File.Delete(outputPath);
-                }
-                catch (Exception ex)
-                {
-                    throw new CustomApplicationException("Video in use cannot be removed", ex);
-                }
-
-                if (File.Exists(outputPath))
-                {
-                    throw new CustomApplicationException("Video in use cannot be removed");
-                }
-            }
+            DeleteFileIfExists(outputPath);
 
             var generator = videoFactory.Resolve(request);
             var video = await generator.GenerateVideoAsync(request, token);
@@ -84,489 +51,449 @@ namespace TTSToVideo.Business.Implementations
 
         public async Task GeneratePortraitImageCommandExecute(Statement statement, string[] imageModelIds, string projectPath, TTSToVideoOptions options, CancellationToken token)
         {
-            int countImageMain = 1;
-            await GenerateImage(projectPath, imageModelIds, countImageMain, statement, options, token);
+            await GenerateImage(projectPath, imageModelIds, 1, statement, options, token);
         }
 
         public async Task<List<Statement>> ProcessCommandExecute(
-                                                 string projectPath
-                                               , string projectName
-                                               , string prompt
-                                               , string negativePrompt
-                                               , string globalPrompt
-                                               , string selectedMusicFile
-                                               , string[] imageModelIds
-                                               , TtsVoice selectedVoice
-                                               , bool portraitEnabled
-                                               , TTSToVideoOptions options
-                                               , CancellationToken token)
+            string projectPath,
+            string projectName,
+            string prompt,
+            string negativePrompt,
+            string globalPrompt,
+            string selectedMusicFile,
+            string[] imageModelIds,
+            TtsVoice selectedVoice,
+            bool portraitEnabled,
+            TTSToVideoOptions options,
+            CancellationToken token)
         {
-
-            List<Statement>? statements = [];
+            List<Statement> statements = [];
             try
             {
-                if (!options.ImageOptions.UseTextForPrompt && string.IsNullOrEmpty(globalPrompt))
-                {
-                    throw new CustomApplicationException("If option 'Use paragraph for prompt' is not selected you need to define a 'Additional prompt'");
-                }
-
+                ValidateOptions(options, globalPrompt);
                 Directory.CreateDirectory(projectPath);
 
-
-                var pattern = string.Join("|", PromptPatternDictionary.Patterns.Values.Where(o => o.IsParagraphSeparator).Select(o => o.Pattern));
-                string[] paragraphs = Regex.Split(prompt, pattern, RegexOptions.None);
-                paragraphs = [.. paragraphs.Where(o => !string.IsNullOrWhiteSpace(o))];
-
-                var firstParagraph = paragraphs.First();
-                var tempStatements = new List<string>();
-
-                foreach (var paragraph in paragraphs)
-                {
-                    //Search pattern and split
-                    var patterns = PromptPatternDictionary.Patterns.Values.Where(o => !o.IsParagraphSeparator);
-                    bool hasPatter = false;
-                    foreach (var p in patterns)
-                    {
-                        //Check silenece voice pattern is in the paragraph
-                        if (PromptPatternsEnum.SilentVoice == p.TypeRegex && Regex.IsMatch(paragraph, p.Pattern))
-                        {
-                            hasPatter = true;
-                            var matchesSplit = Regex.Split(paragraph, p.Pattern).Where(ms => !string.IsNullOrWhiteSpace(ms)).ToArray();
-                            foreach (var ms in matchesSplit)
-                            {
-                                if (Regex.IsMatch(ms, p.Pattern))
-                                {
-                                    var msSplitResult = ms.Split(":", StringSplitOptions.TrimEntries).ToList();
-                                    if (msSplitResult.Count != 2)
-                                    {
-                                        throw new CustomApplicationException($"Format of \"{ms}\" incorrect in prompt.");
-                                    }
-
-                                    var seconds = msSplitResult[1].Replace(">", "");
-                                    //converting seconds to integer
-                                    if (!int.TryParse(seconds, out int secondsInt))
-                                    {
-                                        throw new CustomApplicationException($"Format of \"{ms}\" incorrect in prompt, seconds part should be integer.");
-                                    }
-
-                                    //Validating max of seconds to 600
-                                    if (secondsInt > 600)
-                                    {
-                                        throw new CustomApplicationException($"Format of \"{ms}\" incorrect in prompt, seconds part should be less than 600.");
-                                    }
-
-                                    statements.Add(new Statement
-                                    {
-                                        PropmtPatterType = PromptPatternsEnum.SilentVoice,
-                                        AudioDuration = TimeSpan.FromSeconds(secondsInt),
-                                        GlobalPrompt = globalPrompt,
-                                    });
-                                }
-                                else
-                                {
-                                    statements.Add(new Statement { Prompt = ms, GlobalPrompt = globalPrompt });
-                                }
-                            }
-                        }
-                    }
-
-                    if (!hasPatter)
-                    {
-                        statements.Add(new Statement { Prompt = paragraph, GlobalPrompt = globalPrompt });
-                    }
-                }
-
-
-                //Assign the total of all iterations to progress bar Total
-                progressBar.Total = statements.Count * 3; //3 because we have to generate image, voice and video
-
+                statements = ParsePromptIntoStatements(prompt, globalPrompt);
+                
+                progressBar.Total = statements.Count * 3;
+                
                 if (portraitEnabled && statements.Count > 0)
                 {
-                    statements[0].IsProtrait = portraitEnabled;
+                    statements[0].IsProtrait = true;
                 }
 
-                //Taking Picture
-                #region Processing Pictures
-                int numImages = 1;
-                int countImageMain = 0;
-                var firstStatement = statements.First();
-                foreach (var statement in statements)
-                {
-                    progressBar.Increment();
-                    progressBar.ShowMessage($"Getting Picture {countImageMain}");
+                await ProcessImages(statements, imageModelIds, projectPath, options, token);
+                AssignVideoPathsToStatements(statements, projectPath, options);
+                ProcessSubtitles(statements, negativePrompt, globalPrompt, options);
+                AddSilenceStatements(statements, options);
+                AddFinalSilenceStatement(statements, options);
 
-                    countImageMain++;
+                var statementsUnion = FlattenStatements(statements);
+                var concatenatedVoicesPath = await ProcessVoices(statementsUnion, projectPath, selectedVoice, options, token);
 
-                    if (token.IsCancellationRequested)
-                    {
-                        throw new CustomApplicationException("Operantion Cancelled by User");
-                    }
-
-                    bool notExistsOneImage = false;
-                    for (int i = 0; i < numImages; i++)
-                    {
-                        string imageFileName;
-                        if (statement.PropmtPatterType == PromptPatternsEnum.SilentVoice)
-                        {
-                            //Get previous statement 
-                            var previousStatementIndex = statements.IndexOf(statement) - 1;
-                            Statement previousStatementImage;
-                            if (previousStatementIndex >= 0 && previousStatementIndex < statements.Count)
-                            {
-                                previousStatementImage = statements[previousStatementIndex];
-                                imageFileName = previousStatementImage.Images.FirstOrDefault()?.Path ?? throw new CustomApplicationException("Previous statement image path is null.");
-                            }
-                            else
-                            {
-                                throw new CustomApplicationException("Previous statement index is out of range.");
-                            }
-                            imageFileName = previousStatementImage.Images.FirstOrDefault().Path;
-                        }
-                        else
-                        {
-                            imageFileName = PathHelper.GenerateImagePath(projectPath, statement.Prompt);
-                        }
-
-                        if (!File.Exists(imageFileName))
-                        {
-                            notExistsOneImage = true;
-                        }
-                        else
-                        {
-                            statement.Images.Clear();
-                            statement.Images.Add(new StatementImage
-                            {
-                                Path = imageFileName
-                            });
-                        }
-                    }
-
-                    if (options.ImageOptions.UseOnlyFirstImage && statement != firstStatement && notExistsOneImage)
-                    {
-                        statement.Images.Clear();
-                        statement.Images.Add(new StatementImage
-                        {
-                            Path = statements[statements.IndexOf(statement) - 1].Images[0].Path
-                        });
-                    }
-                    else if (notExistsOneImage)
-                    {
-                        await GenerateImage(projectPath, imageModelIds, countImageMain, statement, options, token);
-                    }
-                }
-
-                //Creating Video (If It is enabled)
-                countImageMain = 1;
-                firstStatement = statements.FirstOrDefault();
-                foreach (var statement in statements)
-                {
-                    if (statement.PropmtPatterType == PromptPatternsEnum.SilentVoice)
-                    {
-                        statement.ImageAnimatedPath = statements[statements.IndexOf(statement) - 1].ImageAnimatedPath;
-                        continue;
-                    }
-
-                    var imageFileName = PathHelper.GenerateImagePath(projectPath, statement.Prompt);
-                    var existsImageFile = File.Exists(imageFileName);
-
-                    var notExistsOneVideo = !File.Exists($"{imageFileName}.mp4");
-                    var videoPath = $"{imageFileName}.mp4";
-                    if (Path.Exists(videoPath))
-                    {
-                        statement.ImageAnimatedPath = videoPath;
-                    }
-
-                    if (options.ImageOptions.UseOnlyFirstImage && statement != firstStatement && notExistsOneVideo
-                        && !string.IsNullOrEmpty(statements[statements.IndexOf(statement) - 1].ImageAnimatedPath)
-                        && !existsImageFile)
-                    {
-                        statement.Images.Clear();
-                        statement.ImageAnimatedPath = statements[statements.IndexOf(statement) - 1].ImageAnimatedPath;
-                    }
-                    else if (notExistsOneVideo)
-                    {
-                        //statement.Images.Add(new StatementImage
-                        //{
-                        //    Path =  firstStatement?.Images.First().Path
-                        //});
-                    }
-
-                }
-                /*
-                                                    if (options.ImageOptions.CreateVideo)
-                                                    {
-
-                                                        progressBar.Increment();
-                                                        progressBar.ShowMessage($"Generating Video {countImageMain}");
-                                                        if (token.IsCancellationRequested)
-                                                        {
-                                                            throw new CustomApplicationException("Operantion Cancelled by User");
-                                                        }
-
-
-                                                        if (options.ImageOptions.UseOnlyFirstImage && statement != firstStatement)
-                                                        {
-                                                            statement.ImageAnimatedPath = firstStatement.ImageAnimatedPath;
-                                                        }
-                                                        else
-                                                        {
-                                                            if (!File.Exists(videoPath))
-                                                            {
-                                                                await this.GeneratePortraitVideoCommandExecute(statement.Images[0].Path, videoPath);
-                                                            }
-                                                            statement.ImageAnimatedPath = videoPath;
-                                                        }
-                                                    }
-                                                }
-                                */
-
-                #endregion
-
-
-                //Making subtitles if it can
-                foreach (Statement s in statements)
-                {
-                    var fontSize = s?.FontStyle?.FontSize ?? options.SubtitleOptions.SubtitleSize;
-                    int maxChars = SubtitleHelper.CalculateMaxChars(FFMPEGDefinitions.WidthResolution
-                                                                   , fontSize
-                                                                   , s?.FontStyle?.MarginL ?? 0
-                                                                   , s?.FontStyle?.MarginR ?? 0);
-                    var chunks = SubtitleHelper.SplitByMaxChars(s.Prompt, maxChars);
-
-                    if (s.PropmtPatterType != PromptPatternsEnum.SilentVoice)
-                        s.Id = HashMD5.GenerateHash(s.Prompt);
-
-                    //Adding style
-                    var statementOption = options.StatementOptions.FirstOrDefault(o => o.Id == s.Id);
-                    s.GlobalPrompt = globalPrompt;
-                    s.NegativePrompt = negativePrompt;
-                    if (statementOption != null)
-                    {
-                        s.FontStyle = statementOption.FontStyle;
-                        s.FontStyle.FontSize = statementOption.FontStyle.FontSize == null ? options.SubtitleOptions.SubtitleSize : statementOption.FontStyle.FontSize;
-                        s.FontStyle.MarginV = statementOption.FontStyle.MarginV == null ? options.SubtitleOptions.MarginV : statementOption.FontStyle.MarginV;
-                        s.FontStyle.Alignment ??= FfmpegAlignment.TopCenter;
-                    }
-
-                    if (chunks.Count > 1)
-                    {
-                        s.SubStatements = [];
-                        foreach (var c in chunks)
-                        {
-                            if (!string.IsNullOrEmpty(c))
-                            {
-                                s.SubStatements.Add(
-                                new Statement
-                                {
-                                    Id = HashMD5.GenerateHash(s.Id + "-" + c),
-                                    Prompt = c,
-                                    NegativePrompt = s.NegativePrompt,
-                                    GlobalPrompt = s.GlobalPrompt,
-                                    FontStyle = s.FontStyle,
-                                    PropmtPatterType = s.PropmtPatterType,
-                                    IsProtrait = s.IsProtrait,
-                                    Images = s.Images,
-                                    ImageAnimatedPath = s.ImageAnimatedPath,
-                                    ParentId = s.Id,
-                                    IsSubtitle = true,
-                                    IsTheLastSubtitle = false
-                                });
-                                s.HasSubstatements = true;
-                            }
-                        }
-
-                        if (options.DurationBetweenVideo != null && options.DurationBetweenVideo.Value.TotalSeconds > 0)
-                        {
-                            //add a new silent statement
-                            s.SubStatements.Add(new Statement
-                            {
-                                PropmtPatterType = PromptPatternsEnum.SilentVoice,
-                                AudioDuration = options.DurationBetweenVideo ?? TimeSpan.FromSeconds(0),
-                                Id = HashMD5.GenerateHash(s.Id + "-silent"),
-                                ParentId = s.Id,
-                                IsSubtitle = true,
-                                IsTheLastSubtitle = true,
-                                Images = s.Images,
-                                ImageAnimatedPath = s.ImageAnimatedPath,
-                            });
-                            s.HasSubstatements = true;
-                        }
-                    }
-                    else
-                    {
-                        s.IsSubtitle = false;
-                        s.HasSubstatements = false;
-                        if (s.Images == null && string.IsNullOrEmpty(s.ImageAnimatedPath))
-                        {
-                        }
-                    }
-
-                }
-
-                // Insert a silence statement after sessions that don't have s.SubStatements
-                for (int i = 0; i < statements.Count; i++)
-                {
-                    var s = statements[i];
-                    // Only insert if there are no substatements or substatements is empty
-                    if (!s.HasSubstatements)
-                    {
-                        var silenceStatement = new Statement
-                        {
-                            PropmtPatterType = PromptPatternsEnum.SilentVoice,
-                            AudioDuration = options.DurationBetweenVideo ?? TimeSpan.FromSeconds(0),
-                            Id = HashMD5.GenerateHash(s.Id + "-silent"),
-                            ParentId = s.Id,
-                            IsSubtitle = true,
-                            IsTheLastSubtitle = true,
-                            Images = s.Images,
-                            ImageAnimatedPath = s.ImageAnimatedPath
-                        };
-                        statements.Insert(i + 1, silenceStatement);
-                        i++; // Skip the inserted silence statement
-                    }
-                }
-
-                //add the last silent statement
-                var lastStatement = statements.Last(o => o.PropmtPatterType != PromptPatternsEnum.SilentVoice);
-                var lastImage = lastStatement?.Images?.FirstOrDefault()?.Path;
-                statements.Add(new Statement
-                {
-                    PropmtPatterType = PromptPatternsEnum.SilentVoice,
-                    AudioDuration = options.DurationEndVideo ?? TimeSpan.FromSeconds(0),
-                    Id = HashMD5.GenerateHash("last-silent"),
-                    Images = lastStatement.Images,
-                    ImageAnimatedPath = lastStatement.ImageAnimatedPath,
-                    OutputVideoPath = lastImage == null ? lastStatement.ImageAnimatedPath : $"{lastImage}-last-video-part.mp4"
-                });
-
-                var statementsUnion = statements.SelectMany(s => s.SubStatements?.Count > 0 ? s.SubStatements : [s]).ToList();
-
-                //Getting voices (It also get the duration of each video)
-                var concatenatedVoicesPath = await this.ProcessVoices(statementsUnion, projectPath, selectedVoice, options, token);
-
-                //Mergin videos
-                #region Merging the Video
-
-                var finalProjectVideoPath = projectPath + "\\" + $"final-{projectName}.mp4";
-                if (File.Exists(finalProjectVideoPath))
-                {
-                    File.Delete(finalProjectVideoPath);
-                }
-
-                progressBar.ShowMessage($"Creating Videos.");
-
-                var groupedByImage = statementsUnion
-                    .GroupBy(o => new
-                    {
-                        ImagePath = o.Images.FirstOrDefault()?.Path,
-                        AnimatedPath = o.ImageAnimatedPath ?? string.Empty
-                    })
-                    .ToList();
-
-                foreach (var sg in groupedByImage)
-                {
-                    var first = sg.First();
-                    var totalNanoseconds = sg.Sum(o => o.AudioDuration.TotalMilliseconds);
-                    var duration = TimeSpan.FromMilliseconds(totalNanoseconds);
-
-                    // Set the output file path (SilenceVoice enum is set because not all silence voice have the same seconds
-                    var promptPath = (string.IsNullOrEmpty(first.Prompt) ? $"video.{statementsUnion.IndexOf(first)}" : first.Prompt);
-                    var outputVideoPath = $"{promptPath[..Math.Min(promptPath.Length, Constants.MAX_PATH)]}";
-                    Directory.CreateDirectory(Path.Combine(projectPath, "Intermediate"));
-                    outputVideoPath = Path.Combine(projectPath, "Intermediate", $"{PathHelper.CleanFileName(outputVideoPath)}");
-
-                    first.OutputVideoPath = outputVideoPath + (first.PropmtPatterType == PromptPatternsEnum.SilentVoice ? $".{statementsUnion.IndexOf(first)}" : "") + ".mp4";
-
-                    await FFMPEGHelpers.CreateVideo
-                    (
-                        first.OutputVideoPath,
-                        File.Exists(first.ImageAnimatedPath) ? first.ImageAnimatedPath : first.Images.First().Path,
-                        duration,
-                        token
-                    );
-                }
-
-                //Joining Videos
-                progressBar.ShowMessage($"Merging Videos.");
-                var videoPaths = groupedByImage.Select(o => o.First().OutputVideoPath);
-
-                await FFMPEGHelpers.JoiningVideos([.. videoPaths], finalProjectVideoPath, new FfmpegOptions()
-                {
-                    HeightResolution = FFMPEGDefinitions.HeightResolution,
-                    WidthResolution = FFMPEGDefinitions.WidthResolution,
-                }, token);
-
-                //Get subtitle file
-                var subtitleSegments = statementsUnion.Select(o => new FFMPEGHelpers.AssSubtitleSegment(
-                    o.AudioDuration,
-                    o.Prompt,
-                    o.FontStyle)
-                ).ToList();
-
-                var subtitleFile = FFMPEGHelpers.CreateAssSubtitleFile(subtitleSegments);
-                //, new FfmpegOptions()
-                //{
-                //    HeightResolution = FFMPEGDefinitions.HeightResolution,
-                //    WidthResolution = FFMPEGDefinitions.WidthResolution
-                //});
-
-                var tempFile = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
-                File.Copy(finalProjectVideoPath, tempFile);
-
-                var optionStyle = statementsUnion.LastOrDefault(o => o.FontStyle != null);
-                var ffmpegOptions = new FfmpegOptions()
-                {
-                    HeightResolution = FFMPEGDefinitions.HeightResolution,
-                    WidthResolution = FFMPEGDefinitions.WidthResolution,
-                    FontStyle = new()
-                    {
-                        Alignment = optionStyle?.FontStyle?.Alignment ?? FfmpegAlignment.TopCenter,
-                        FontSize = optionStyle?.FontStyle?.FontSize ?? options.SubtitleOptions.SubtitleSize,
-                        SubtitleVisible = optionStyle?.FontStyle?.SubtitleVisible ?? false
-                    },
-                };
-
-                await FFMPEGHelpers.InjectSubtitlesAsync(tempFile, subtitleFile, finalProjectVideoPath, false);
-
-                #endregion
-
-                progressBar.ShowMessage($"Procesing Music.");
-                //Get total duration of finalProjectVideoPath
-                var audioFile = AudioHelper.OpenAudio(finalProjectVideoPath);
-                var outputMusicFile = await ProcessBackgroundMusic(selectedMusicFile, statements, audioFile.TotalTime, options, projectPath, token);
-
-                //Adding music sound 
-                progressBar.ShowMessage($"Merging Music to the Video.");
-                var finalProjectVideoPathWithAudio = projectPath + "\\" + $"{projectName}-Music-Final.mp4";
-                await FFMPEGHelpers.MixAudioWithVideo(finalProjectVideoPath
-                                           , outputMusicFile
-                                           , finalProjectVideoPathWithAudio
-                                           , token);
-
-                var FinalProjectVideoPathWithVoice = projectPath + "\\" + $"{projectName}-Final.mp4";
-
-                progressBar.ShowMessage($"Merging Voice to the Video.");
-                await FFMPEGHelpers.MixAudioWithVideo(finalProjectVideoPathWithAudio
-                                           , concatenatedVoicesPath
-                                           , FinalProjectVideoPathWithVoice, token);
-
+                await MergeVideosAndSubtitles(statementsUnion, projectPath, projectName, options, token);
+                await AddMusicAndVoice(projectPath, projectName, selectedMusicFile, concatenatedVoicesPath, statements, options, token);
 
                 return statements;
             }
             finally
             {
-                if (statements != null)
-                {
-                    //Cleaning
-                    foreach (var s in statements)
-                    {
-                        if (s.ImageId != null)
-                        {
-                        }
-                    }
-                }
                 progressBar.ShowMessage("Process Finished.");
             }
+        }
+
+        #region Private Helper Methods
+
+        private static void ValidateOptions(TTSToVideoOptions options, string globalPrompt)
+        {
+            if (!options.ImageOptions.UseTextForPrompt && string.IsNullOrEmpty(globalPrompt))
+            {
+                throw new CustomApplicationException("If option 'Use paragraph for prompt' is not selected you need to define a 'Additional prompt'");
+            }
+        }
+
+        private List<Statement> ParsePromptIntoStatements(string prompt, string globalPrompt)
+        {
+            var statements = new List<Statement>();
+            var pattern = string.Join("|", PromptPatternDictionary.Patterns.Values
+                .Where(o => o.IsParagraphSeparator)
+                .Select(o => o.Pattern));
+            
+            var paragraphs = Regex.Split(prompt, pattern, RegexOptions.None)
+                .Where(o => !string.IsNullOrWhiteSpace(o))
+                .ToArray();
+
+            foreach (var paragraph in paragraphs)
+            {
+                var silentVoicePattern = PromptPatternDictionary.Patterns.Values
+                    .FirstOrDefault(p => !p.IsParagraphSeparator && p.TypeRegex == PromptPatternsEnum.SilentVoice);
+
+                if (silentVoicePattern != null && Regex.IsMatch(paragraph, silentVoicePattern.Pattern))
+                {
+                    ProcessSilentVoicePattern(paragraph, silentVoicePattern.Pattern, globalPrompt, statements);
+                }
+                else
+                {
+                    statements.Add(new Statement { Prompt = paragraph, GlobalPrompt = globalPrompt });
+                }
+            }
+
+            return statements;
+        }
+
+        private void ProcessSilentVoicePattern(string paragraph, string pattern, string globalPrompt, List<Statement> statements)
+        {
+            var matches = Regex.Split(paragraph, pattern).Where(ms => !string.IsNullOrWhiteSpace(ms));
+            
+            foreach (var match in matches)
+            {
+                if (Regex.IsMatch(match, pattern))
+                {
+                    var parts = match.Split(":", StringSplitOptions.TrimEntries);
+                    if (parts.Length != 2)
+                    {
+                        throw new CustomApplicationException($"Format of \"{match}\" incorrect in prompt.");
+                    }
+
+                    var seconds = parts[1].Replace(">", "");
+                    if (!int.TryParse(seconds, out int secondsInt) || secondsInt > 600)
+                    {
+                        throw new CustomApplicationException($"Format of \"{match}\" incorrect in prompt. Seconds should be an integer between 0 and 600.");
+                    }
+
+                    statements.Add(new Statement
+                    {
+                        PropmtPatterType = PromptPatternsEnum.SilentVoice,
+                        AudioDuration = TimeSpan.FromSeconds(secondsInt),
+                        GlobalPrompt = globalPrompt,
+                    });
+                }
+                else
+                {
+                    statements.Add(new Statement { Prompt = match, GlobalPrompt = globalPrompt });
+                }
+            }
+        }
+
+        private async Task ProcessImages(List<Statement> statements, string[] imageModelIds, string projectPath, TTSToVideoOptions options, CancellationToken token)
+        {
+            var firstStatement = statements.First();
+            
+            for (int i = 0; i < statements.Count; i++)
+            {
+                var statement = statements[i];
+                progressBar.Increment();
+                progressBar.ShowMessage($"Getting Picture {i}");
+                token.ThrowIfCancellationRequested();
+
+                var imageFileName = GetImageFileName(statement, statements, projectPath, i);
+                
+                if (!File.Exists(imageFileName))
+                {
+                    if (options.ImageOptions.UseOnlyFirstImage && statement != firstStatement && i > 0)
+                    {
+                        statement.Images.Add(new StatementImage { Path = statements[i - 1].Images[0].Path });
+                    }
+                    else
+                    {
+                        await GenerateImage(projectPath, imageModelIds, i + 1, statement, options, token);
+                    }
+                }
+                else
+                {
+                    statement.Images.Add(new StatementImage { Path = imageFileName });
+                }
+            }
+        }
+
+        private string GetImageFileName(Statement statement, List<Statement> statements, string projectPath, int currentIndex)
+        {
+            if (statement.PropmtPatterType == PromptPatternsEnum.SilentVoice)
+            {
+                var previousIndex = currentIndex - 1;
+                if (previousIndex < 0)
+                {
+                    throw new CustomApplicationException("Silent voice statement cannot be first.");
+                }
+                return statements[previousIndex].Images.FirstOrDefault()?.Path 
+                    ?? throw new CustomApplicationException("Previous statement image path is null.");
+            }
+            
+            return PathHelper.GenerateImagePath(projectPath, statement.Prompt);
+        }
+
+        private void AssignVideoPathsToStatements(List<Statement> statements, string projectPath, TTSToVideoOptions options)
+        {
+            var firstStatement = statements.FirstOrDefault();
+            
+            for (int i = 0; i < statements.Count; i++)
+            {
+                var statement = statements[i];
+                
+                if (statement.PropmtPatterType == PromptPatternsEnum.SilentVoice && i > 0)
+                {
+                    statement.ImageAnimatedPath = statements[i - 1].ImageAnimatedPath;
+                    continue;
+                }
+
+                var imageFileName = PathHelper.GenerateImagePath(projectPath, statement.Prompt);
+                var videoPath = $"{imageFileName}.mp4";
+                
+                if (File.Exists(videoPath))
+                {
+                    statement.ImageAnimatedPath = videoPath;
+                }
+                else if (options.ImageOptions.UseOnlyFirstImage && statement != firstStatement && i > 0 
+                    && !string.IsNullOrEmpty(statements[i - 1].ImageAnimatedPath))
+                {
+                    statement.ImageAnimatedPath = statements[i - 1].ImageAnimatedPath;
+                }
+            }
+        }
+
+        private void ProcessSubtitles(List<Statement> statements, string negativePrompt, string globalPrompt, TTSToVideoOptions options)
+        {
+            foreach (var statement in statements)
+            {
+                if (statement.PropmtPatterType != PromptPatternsEnum.SilentVoice)
+                {
+                    statement.Id = HashMD5.GenerateHash(statement.Prompt);
+                }
+
+                statement.GlobalPrompt = globalPrompt;
+                statement.NegativePrompt = negativePrompt;
+
+                ApplyFontStyle(statement, options);
+                SplitIntoSubStatements(statement, options);
+            }
+        }
+
+        private void ApplyFontStyle(Statement statement, TTSToVideoOptions options)
+        {
+            var statementOption = options.StatementOptions.FirstOrDefault(o => o.Id == statement.Id);
+            if (statementOption != null)
+            {
+                statement.FontStyle = statementOption.FontStyle;
+                statement.FontStyle.FontSize ??= options.SubtitleOptions.SubtitleSize;
+                statement.FontStyle.MarginV ??= options.SubtitleOptions.MarginV;
+                statement.FontStyle.Alignment ??= FfmpegAlignment.TopCenter;
+            }
+        }
+
+        private void SplitIntoSubStatements(Statement statement, TTSToVideoOptions options)
+        {
+            var fontSize = statement.FontStyle?.FontSize ?? options.SubtitleOptions.SubtitleSize;
+            var maxChars = SubtitleHelper.CalculateMaxChars(
+                FFMPEGDefinitions.WidthResolution,
+                fontSize,
+                statement.FontStyle?.MarginL ?? 0,
+                statement.FontStyle?.MarginR ?? 0);
+            
+            var chunks = SubtitleHelper.SplitByMaxChars(statement.Prompt, maxChars);
+
+            if (chunks.Count > 1)
+            {
+                statement.SubStatements = [];
+                foreach (var chunk in chunks.Where(c => !string.IsNullOrEmpty(c)))
+                {
+                    statement.SubStatements.Add(CreateSubStatement(statement, chunk));
+                    statement.HasSubstatements = true;
+                }
+
+                if (options.DurationBetweenVideo?.TotalSeconds > 0)
+                {
+                    statement.SubStatements.Add(CreateSilentSubStatement(statement, options.DurationBetweenVideo.Value));
+                    statement.HasSubstatements = true;
+                }
+            }
+            else
+            {
+                statement.IsSubtitle = false;
+                statement.HasSubstatements = false;
+            }
+        }
+
+        private Statement CreateSubStatement(Statement parent, string chunk)
+        {
+            return new Statement
+            {
+                Id = HashMD5.GenerateHash(parent.Id + "-" + chunk),
+                Prompt = chunk,
+                NegativePrompt = parent.NegativePrompt,
+                GlobalPrompt = parent.GlobalPrompt,
+                FontStyle = parent.FontStyle,
+                PropmtPatterType = parent.PropmtPatterType,
+                IsProtrait = parent.IsProtrait,
+                Images = parent.Images,
+                ImageAnimatedPath = parent.ImageAnimatedPath,
+                ParentId = parent.Id,
+                IsSubtitle = true,
+                IsTheLastSubtitle = false
+            };
+        }
+
+        private Statement CreateSilentSubStatement(Statement parent, TimeSpan duration)
+        {
+            return new Statement
+            {
+                PropmtPatterType = PromptPatternsEnum.SilentVoice,
+                AudioDuration = duration,
+                Id = HashMD5.GenerateHash(parent.Id + "-silent"),
+                ParentId = parent.Id,
+                IsSubtitle = true,
+                IsTheLastSubtitle = true,
+                Images = parent.Images,
+                ImageAnimatedPath = parent.ImageAnimatedPath,
+            };
+        }
+
+        private void AddSilenceStatements(List<Statement> statements, TTSToVideoOptions options)
+        {
+            for (int i = 0; i < statements.Count; i++)
+            {
+                var statement = statements[i];
+                if (!statement.HasSubstatements)
+                {
+                    var silenceStatement = new Statement
+                    {
+                        PropmtPatterType = PromptPatternsEnum.SilentVoice,
+                        AudioDuration = options.DurationBetweenVideo ?? TimeSpan.Zero,
+                        Id = HashMD5.GenerateHash(statement.Id + "-silent"),
+                        ParentId = statement.Id,
+                        IsSubtitle = true,
+                        IsTheLastSubtitle = true,
+                        Images = statement.Images,
+                        ImageAnimatedPath = statement.ImageAnimatedPath
+                    };
+                    statements.Insert(i + 1, silenceStatement);
+                    i++;
+                }
+            }
+        }
+
+        private void AddFinalSilenceStatement(List<Statement> statements, TTSToVideoOptions options)
+        {
+            var lastStatement = statements.LastOrDefault(o => o.PropmtPatterType != PromptPatternsEnum.SilentVoice);
+            if (lastStatement == null) return;
+
+            var lastImage = lastStatement.Images?.FirstOrDefault()?.Path;
+            statements.Add(new Statement
+            {
+                PropmtPatterType = PromptPatternsEnum.SilentVoice,
+                AudioDuration = options.DurationEndVideo ?? TimeSpan.Zero,
+                Id = HashMD5.GenerateHash("last-silent"),
+                Images = lastStatement.Images,
+                ImageAnimatedPath = lastStatement.ImageAnimatedPath,
+                OutputVideoPath = lastImage == null ? lastStatement.ImageAnimatedPath : $"{lastImage}-last-video-part.mp4"
+            });
+        }
+
+        private List<Statement> FlattenStatements(List<Statement> statements) => [.. statements.SelectMany<Statement, Statement>(s => (s.SubStatements != null && s.SubStatements.Count > 0) ? s.SubStatements : new[] { s })];
+
+        private async Task MergeVideosAndSubtitles(List<Statement> statementsUnion, string projectPath, string projectName, TTSToVideoOptions options, CancellationToken token)
+        {
+            var finalProjectVideoPath = Path.Combine(projectPath, $"final-{projectName}.mp4");
+            DeleteFileIfExists(finalProjectVideoPath);
+
+            progressBar.ShowMessage("Creating Videos.");
+
+            await CreateIntermediateVideos(statementsUnion, projectPath, token);
+            
+            progressBar.ShowMessage("Merging Videos.");
+            await JoinVideos(statementsUnion, finalProjectVideoPath, token);
+            
+            await InjectSubtitles(statementsUnion, finalProjectVideoPath, options, token);
+        }
+
+        private async Task CreateIntermediateVideos(List<Statement> statementsUnion, string projectPath, CancellationToken token)
+        {
+            var groupedByImage = statementsUnion
+                .GroupBy(o => new
+                {
+                    ImagePath = o.Images.FirstOrDefault()?.Path,
+                    AnimatedPath = o.ImageAnimatedPath ?? string.Empty
+                })
+                .ToList();
+
+            foreach (var group in groupedByImage)
+            {
+                var first = group.First();
+                var duration = TimeSpan.FromMilliseconds(group.Sum(o => o.AudioDuration.TotalMilliseconds));
+
+                var outputVideoPath = GenerateIntermediateVideoPath(first, statementsUnion, projectPath);
+                first.OutputVideoPath = outputVideoPath;
+
+                var sourcePath = File.Exists(first.ImageAnimatedPath) 
+                    ? first.ImageAnimatedPath 
+                    : first.Images.First().Path;
+
+                await FFMPEGHelpers.CreateVideo(first.OutputVideoPath, sourcePath, duration, token);
+            }
+        }
+
+        private string GenerateIntermediateVideoPath(Statement statement, List<Statement> statementsUnion, string projectPath)
+        {
+            var promptPath = string.IsNullOrEmpty(statement.Prompt) 
+                ? $"video.{statementsUnion.IndexOf(statement)}" 
+                : statement.Prompt;
+            
+            var truncatedPath = promptPath[..Math.Min(promptPath.Length, Constants.MAX_PATH)];
+            Directory.CreateDirectory(Path.Combine(projectPath, "Intermediate"));
+            
+            var fileName = PathHelper.CleanFileName(truncatedPath);
+            var suffix = statement.PropmtPatterType == PromptPatternsEnum.SilentVoice 
+                ? $".{statementsUnion.IndexOf(statement)}" 
+                : "";
+            
+            return Path.Combine(projectPath, "Intermediate", $"{fileName}{suffix}.mp4");
+        }
+
+        private async Task JoinVideos(List<Statement> statementsUnion, string finalProjectVideoPath, CancellationToken token)
+        {
+            var groupedByImage = statementsUnion
+                .GroupBy(o => new
+                {
+                    ImagePath = o.Images.FirstOrDefault()?.Path,
+                    AnimatedPath = o.ImageAnimatedPath ?? string.Empty
+                });
+
+            var videoPaths = groupedByImage.Select(o => o.First().OutputVideoPath).ToArray();
+
+            await FFMPEGHelpers.JoiningVideos(videoPaths, finalProjectVideoPath, new FfmpegOptions
+            {
+                HeightResolution = FFMPEGDefinitions.HeightResolution,
+                WidthResolution = FFMPEGDefinitions.WidthResolution,
+            }, token);
+        }
+
+        private async Task InjectSubtitles(List<Statement> statementsUnion, string finalProjectVideoPath, TTSToVideoOptions options, CancellationToken token)
+        {
+            var subtitleSegments = statementsUnion
+                .Select(o => new FFMPEGHelpers.AssSubtitleSegment(o.AudioDuration, o.Prompt, o.FontStyle))
+                .ToList();
+
+            var subtitleFile = FFMPEGHelpers.CreateAssSubtitleFile(subtitleSegments);
+            var tempFile = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+            File.Copy(finalProjectVideoPath, tempFile);
+
+            await FFMPEGHelpers.InjectSubtitlesAsync(tempFile, subtitleFile, finalProjectVideoPath, false);
+        }
+
+        private async Task AddMusicAndVoice(string projectPath, string projectName, string selectedMusicFile, string concatenatedVoicesPath, List<Statement> statements, TTSToVideoOptions options, CancellationToken token)
+        {
+            progressBar.ShowMessage("Processing Music.");
+            
+            var finalProjectVideoPath = Path.Combine(projectPath, $"final-{projectName}.mp4");
+            var audioFile = AudioHelper.OpenAudio(finalProjectVideoPath);
+            var outputMusicFile = await ProcessBackgroundMusic(selectedMusicFile, statements, audioFile.TotalTime, options, projectPath, token);
+
+            progressBar.ShowMessage("Merging Music to the Video.");
+            var finalProjectVideoPathWithAudio = Path.Combine(projectPath, $"{projectName}-Music-Final.mp4");
+            await FFMPEGHelpers.MixAudioWithVideo(finalProjectVideoPath, outputMusicFile, finalProjectVideoPathWithAudio, token);
+
+            progressBar.ShowMessage("Merging Voice to the Video.");
+            var finalProjectVideoPathWithVoice = Path.Combine(projectPath, $"{projectName}-Final.mp4");
+            await FFMPEGHelpers.MixAudioWithVideo(finalProjectVideoPathWithAudio, concatenatedVoicesPath, finalProjectVideoPathWithVoice, token);
         }
 
         private async Task GetVoice(TtsVoice ttsVoice, Statement statement, CancellationToken token)
@@ -575,7 +502,7 @@ namespace TTSToVideo.Business.Implementations
 
             if (File.Exists(statement.AudioPath))
             {
-                WaveStream file = AudioHelper.OpenAudio(statement.AudioPath);
+                using var file = AudioHelper.OpenAudio(statement.AudioPath);
                 statement.AudioDuration = file.TotalTime;
                 statement.IsNewAudio = false;
             }
@@ -587,62 +514,40 @@ namespace TTSToVideo.Business.Implementations
                     Voice = ttsVoice,
                 }, token);
 
-                var buffer = audio.File.GetBuffer();
+                File.WriteAllBytes(statement.AudioPath, audio.File.GetBuffer());
 
-                File.WriteAllBytes(statement.AudioPath, buffer);
-
-                using var audioFile1 = AudioHelper.OpenAudio(statement.AudioPath);
-                statement.AudioDuration = audioFile1.TotalTime;
+                using var audioFile = AudioHelper.OpenAudio(statement.AudioPath);
+                statement.AudioDuration = audioFile.TotalTime;
                 statement.IsNewAudio = true;
             }
 
-            statement.AudioPathWave = statement.AudioPath + ".wav";
+            statement.AudioPathWave = $"{statement.AudioPath}.wav";
             if (!File.Exists(statement.AudioPathWave) || statement.IsNewAudio)
             {
                 AudioHelper.ConvertMp3ToWav(statement.AudioPath, statement.AudioPathWave);
             }
         }
 
-
-        private async Task GenerateImage(string projectPath,
-                                         string[] imageModelId,
-                                         int countImageMain,
-                                         Statement statement,
-                                         TTSToVideoOptions options,
-                                         CancellationToken token)
+        private async Task GenerateImage(string projectPath, string[] imageModelIds, int countImageMain, Statement statement, TTSToVideoOptions options, CancellationToken token)
         {
+            var random = new Random();
+            var selectedModelId = imageModelIds[random.Next(imageModelIds.Length)];
 
-            Random r = new();
-            int rn = r.Next(1, imageModelId.Length + 1);
+            var prompt = BuildImagePrompt(statement, options);
 
             var imageId = await imageGeneratorAI.Generate(new OptionsImageGenerator
             {
-                Width = FFMPEGDefinitions.WidthResolution,//512, //832,
-                Height = FFMPEGDefinitions.HeightResolution,//904, //1472,
-                ModelId = imageModelId[rn - 1],
+                Width = FFMPEGDefinitions.WidthResolution,
+                Height = FFMPEGDefinitions.HeightResolution,
+                ModelId = selectedModelId,
                 NumImages = 1,
-                Prompt = statement.GlobalPrompt + (string.IsNullOrEmpty(statement.GlobalPrompt) || options.ImageOptions.UseTextForPrompt ? "" : ",")
-                        + (options.ImageOptions.UseTextForPrompt ? statement.Prompt : ""),
+                Prompt = prompt,
                 NegativePrompt = statement.NegativePrompt
             });
+            
             statement.ImageId = imageId.Id;
 
-            ResultImagesGenerated response;
-            do
-            {
-                response = await imageGeneratorAI.GetImages(new ResultGenerate { Id = imageId.Id });
-
-                if (token.IsCancellationRequested)
-                {
-                    throw new CustomApplicationException("Operantion Cancelled by User");
-                }
-
-                if (response == null)
-                {
-                    await Task.Delay(3000, token);
-                }
-
-            } while (response == null || response.Images.Count == 0);
+            var response = await WaitForImageGeneration(imageId.Id, token);
 
             foreach (var image in response.Images)
             {
@@ -658,141 +563,147 @@ namespace TTSToVideo.Business.Implementations
             }
         }
 
-        private static void RemoveTempFile(string pathToRemove)
+        private string BuildImagePrompt(Statement statement, TTSToVideoOptions options)
         {
-            File.Delete(pathToRemove);
-            string path = pathToRemove.Replace(".mp4", "")
-                          .Replace(".wav", "")
-                          .Replace(".mp3", "");
-            File.Delete(path);
+            var prompt = statement.GlobalPrompt;
+            
+            if (!string.IsNullOrEmpty(prompt) && options.ImageOptions.UseTextForPrompt)
+            {
+                prompt += ",";
+            }
+            
+            if (options.ImageOptions.UseTextForPrompt)
+            {
+                prompt += statement.Prompt;
+            }
+            
+            return prompt;
+        }
+
+        private async Task<ResultImagesGenerated> WaitForImageGeneration(string imageId, CancellationToken token)
+        {
+            ResultImagesGenerated response;
+            do
+            {
+                token.ThrowIfCancellationRequested();
+                
+                response = await imageGeneratorAI.GetImages(new ResultGenerate { Id = imageId });
+
+                if (response == null || response.Images.Count == 0)
+                {
+                    await Task.Delay(3000, token);
+                }
+            } 
+            while (response == null || response.Images.Count == 0);
+
+            return response;
         }
 
         private async Task<string> ProcessVoices(List<Statement> statements, string projectPath, TtsVoice selectedVoice, TTSToVideoOptions options, CancellationToken token)
         {
-            // Getting statement voices
-            int ca = 1;
-            foreach (var statement in statements)
+            await GenerateVoices(statements, projectPath, selectedVoice, token);
+            return await ConcatenateVoices(statements, projectPath, options, token);
+        }
+
+        private async Task GenerateVoices(List<Statement> statements, string projectPath, TtsVoice selectedVoice, CancellationToken token)
+        {
+            for (int i = 0; i < statements.Count; i++)
             {
+                var statement = statements[i];
                 progressBar.Increment();
-                progressBar.ShowMessage($"Getting voices {ca}");
+                progressBar.ShowMessage($"Getting voices {i + 1}");
 
                 if (statement.PropmtPatterType == PromptPatternsEnum.SilentVoice)
                 {
-                    var silenceAudioPatternTemp = Path.Combine(projectPath, $"silencevoice_{statement.AudioDuration.TotalSeconds}.wav");
-                    AudioHelper.CreateSilentWavAudio(silenceAudioPatternTemp, statement.AudioDuration, token);
-
-                    statement.AudioPath = silenceAudioPatternTemp;
-                    statement.AudioPathWave = statement.AudioPath + ".wav";
-                    File.Copy(statement.AudioPath, statement.AudioPathWave, true);
+                    CreateSilentAudio(statement, projectPath, token);
                 }
                 else if (!string.IsNullOrEmpty(statement.Prompt))
                 {
-                    var audioFileName = $"{statement.Prompt[..Math.Min(statement.Prompt.Length, Constants.MAX_PATH)]}";
-                    audioFileName = Path.Combine(projectPath, $"v-{PathHelper.CleanFileName(audioFileName)}.wav");
+                    var audioFileName = GenerateAudioFileName(statement.Prompt, projectPath);
                     statement.AudioPath = audioFileName;
 
                     await GetVoice(new TtsVoice
                     {
-                        ModelId = "eleven_v3", // selectedVoice.ModelId
+                        ModelId = "eleven_v3",
                         Id = selectedVoice.Id
-                    }
-                    , statement
-                    , token);
+                    }, statement, token);
                 }
                 else
                 {
-                    throw new Exception();
+                    throw new CustomApplicationException("Statement has no prompt and is not a silent voice.");
                 }
             }
+        }
 
-            // Concatenating Voices
+        private void CreateSilentAudio(Statement statement, string projectPath, CancellationToken token)
+        {
+            var silencePath = Path.Combine(projectPath, $"silencevoice_{statement.AudioDuration.TotalSeconds}.wav");
+            AudioHelper.CreateSilentWavAudio(silencePath, statement.AudioDuration, token);
+
+            statement.AudioPath = silencePath;
+            statement.AudioPathWave = $"{statement.AudioPath}.wav";
+            File.Copy(statement.AudioPath, statement.AudioPathWave, true);
+        }
+
+        private string GenerateAudioFileName(string prompt, string projectPath)
+        {
+            var truncated = prompt[..Math.Min(prompt.Length, Constants.MAX_PATH)];
+            var cleanFileName = PathHelper.CleanFileName(truncated);
+            return Path.Combine(projectPath, $"v-{cleanFileName}.wav");
+        }
+
+        private async Task<string> ConcatenateVoices(List<Statement> statements, string projectPath, TTSToVideoOptions options, CancellationToken token)
+        {
             progressBar.ShowMessage("Concatenating voices");
 
             var tempVoiceFileA = $"{Path.GetTempFileName()}.wav";
             var tempVoiceFileB = $"{Path.GetTempFileName()}.wav";
-            var previosVoiceAudioPath = "";
+            
+            var currentAudioPath = statements.First().AudioPathWave;
 
-            // First audio
-            Statement previousStatement = statements.First();
-            previosVoiceAudioPath = previousStatement.AudioPathWave;
-
-            var silenceAudioTemp = $"{Path.GetTempFileName()}.wav";
-
-            if (options.DurationBetweenVideo != null && options.DurationBetweenVideo.Value.TotalSeconds != 0)
+            foreach (var statement in statements.Skip(1))
             {
-                AudioHelper.CreateSilentWavAudio(silenceAudioTemp, (options.DurationBetweenVideo ?? new TimeSpan()), token);
-            }
+                token.ThrowIfCancellationRequested();
 
-            // The rest of the other audios
-            foreach (var s in statements.Skip(1))
-            {
-                if (token.IsCancellationRequested)
-                {
-                    throw new CustomApplicationException("Operation cancelled by User");
-                }
-
-                AudioHelper.ConcatenateAudioFiles(tempVoiceFileA, [previosVoiceAudioPath, s.AudioPathWave]);
-
+                AudioHelper.ConcatenateAudioFiles(tempVoiceFileA, new[] { currentAudioPath, statement.AudioPathWave });
                 File.Copy(tempVoiceFileA, tempVoiceFileB, true);
-
-
-                previosVoiceAudioPath = tempVoiceFileB;
-                previousStatement = s;
+                currentAudioPath = tempVoiceFileB;
             }
 
-            var concatenatedVoicesPath = Path.Combine(projectPath, $"voices-concatenated.wav");
-            File.Copy(previosVoiceAudioPath, concatenatedVoicesPath, true);
+            var concatenatedVoicesPath = Path.Combine(projectPath, "voices-concatenated.wav");
+            File.Copy(currentAudioPath, concatenatedVoicesPath, true);
 
             RemoveTempFile(tempVoiceFileA);
             RemoveTempFile(tempVoiceFileB);
-            RemoveTempFile(silenceAudioTemp);
 
             return concatenatedVoicesPath;
         }
 
-        //Making Background Music 
         private async Task<string> ProcessBackgroundMusic(string selectedMusicFile, List<Statement> statements, TimeSpan totalDuration, TTSToVideoOptions options, string projectPath, CancellationToken token)
         {
-            progressBar.ShowMessage($"Making Background Music Audio.");
+            progressBar.ShowMessage("Making Background Music Audio.");
 
-            var audioFilePath = selectedMusicFile;
-
-
-            var audioFileReal = AudioHelper.OpenAudio(audioFilePath);
-            double cut = audioFileReal.TotalTime.TotalSeconds - (options.DurationEndVideo?.TotalSeconds ?? 0);
-
+            using var audioFileReal = AudioHelper.OpenAudio(selectedMusicFile);
+            
             var tempAudioFileA = $"{Path.GetTempFileName()}.wav";
-            File.Copy(audioFilePath, tempAudioFileA, true);
-
             var tempAudioFileB = $"{Path.GetTempFileName()}.wav";
-            File.Copy(audioFilePath, tempAudioFileB, true);
+            var tempAudioFileC = $"{Path.GetTempFileName()}.wav";
+            
+            File.Copy(selectedMusicFile, tempAudioFileA, true);
+            File.Copy(selectedMusicFile, tempAudioFileB, true);
+
+            await LoopMusicToMatchDuration(tempAudioFileA, tempAudioFileB, tempAudioFileC, audioFileReal.TotalTime, totalDuration, token);
+
+            var cut = await TrimMusicToDuration(tempAudioFileC, tempAudioFileA, totalDuration);
+
+            AudioHelper.DecreaseVolumeAtSpecificTime(
+                tempAudioFileA,
+                tempAudioFileB,
+                TimeSpan.Zero,
+                totalDuration,
+                (float)options.MusicaOptions.MusicVolume);
 
             var outputMusicFile = Path.Combine(projectPath, "output-music.wav");
-
-            var tempAudioFileC = $"{Path.GetTempFileName()}.wav";
-            for (double s = 0; s < totalDuration.TotalSeconds; s += audioFileReal.TotalTime.TotalSeconds)
-            {
-                if (token.IsCancellationRequested)
-                {
-                    throw new CustomApplicationException("Operation Cancelled by User");
-                }
-
-                AudioHelper.ConcatenateAudioFiles(tempAudioFileC, new[] { tempAudioFileA, tempAudioFileB });
-                File.Copy(tempAudioFileC, tempAudioFileA, true);
-            }
-
-            using var a = AudioHelper.OpenAudio(tempAudioFileC);
-            cut = Math.Min(a.TotalTime.TotalSeconds, totalDuration.TotalSeconds);
-            await a.DisposeAsync();
-
-            AudioHelper.CutAudio(tempAudioFileC, tempAudioFileA, cut);
-
-            AudioHelper.DecreaseVolumeAtSpecificTime(tempAudioFileA,
-                                                     tempAudioFileB,
-                                                     TimeSpan.FromSeconds(0),
-                                                     totalDuration,
-                                                     (float)options.MusicaOptions.MusicVolume);
-
             File.Copy(tempAudioFileB, outputMusicFile, true);
 
             RemoveTempFile(tempAudioFileA);
@@ -802,5 +713,63 @@ namespace TTSToVideo.Business.Implementations
             return outputMusicFile;
         }
 
+        private async Task LoopMusicToMatchDuration(string tempA, string tempB, string tempC, TimeSpan musicDuration, TimeSpan totalDuration, CancellationToken token)
+        {
+            for (double seconds = 0; seconds < totalDuration.TotalSeconds; seconds += musicDuration.TotalSeconds)
+            {
+                token.ThrowIfCancellationRequested();
+                AudioHelper.ConcatenateAudioFiles(tempC, new[] { tempA, tempB });
+                File.Copy(tempC, tempA, true);
+            }
+        }
+
+        private async Task<double> TrimMusicToDuration(string sourceFile, string outputFile, TimeSpan totalDuration)
+        {
+            using var audio = AudioHelper.OpenAudio(sourceFile);
+            var cut = Math.Min(audio.TotalTime.TotalSeconds, totalDuration.TotalSeconds);
+            await audio.DisposeAsync();
+
+            AudioHelper.CutAudio(sourceFile, outputFile, cut);
+            return cut;
+        }
+
+        private static void DeleteFileIfExists(string path)
+        {
+            if (!File.Exists(path)) return;
+
+            try
+            {
+                File.Delete(path);
+            }
+            catch (Exception ex)
+            {
+                throw new CustomApplicationException("File in use cannot be removed", ex);
+            }
+
+            if (File.Exists(path))
+            {
+                throw new CustomApplicationException("File in use cannot be removed");
+            }
+        }
+
+        private static void RemoveTempFile(string pathToRemove)
+        {
+            if (File.Exists(pathToRemove))
+            {
+                File.Delete(pathToRemove);
+            }
+
+            var basePath = pathToRemove
+                .Replace(".mp4", "")
+                .Replace(".wav", "")
+                .Replace(".mp3", "");
+            
+            if (File.Exists(basePath))
+            {
+                File.Delete(basePath);
+            }
+        }
+
+        #endregion
     }
 }
