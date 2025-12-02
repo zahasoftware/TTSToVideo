@@ -8,6 +8,8 @@
     <UserSecretsId>4606b24a-a9d1-4121-ac23-76aed86aea50</UserSecretsId>
     <StartupObject></StartupObject>
     <ApplicationIcon>icon.ico</ApplicationIcon>
+    <!-- Add this to prevent file extraction issues -->
+    <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
   </PropertyGroup>
 
   <ItemGroup>
@@ -16,40 +18,19 @@
     <None Remove="Images\regenerate-image32x32.png" />
     <None Remove="Images\regenerate-video.png" />
     <None Remove="Images\save.png" />
+    <None Remove="Images\add32x32.png" />
+    <None Remove="Images\remove-icon.png" />
   </ItemGroup>
 
-  <!--<ItemGroup>
-    <Compile Remove="bin\Debug\net9.0-windows7.0\Projects\NewFolder\**" />
-    <EmbeddedResource Remove="bin\Debug\net9.0-windows7.0\Projects\NewFolder\**" />
-    <None Remove="bin\Debug\net9.0-windows7.0\Projects\NewFolder\**" />
-    <Page Remove="bin\Debug\net9.0-windows7.0\Projects\NewFolder\**" />
-  </ItemGroup>-->
-
+  <!-- Change Content to Resource for images -->
   <ItemGroup>
-    <Content Include="Images\add32x32.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Images\config.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Images\regenerate-image16x16.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Images\regenerate-image32x32.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Images\regenerate-video.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-  </ItemGroup>
-
-  <ItemGroup>
-    <Content Include="Images\remove-icon.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Images\save.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
+    <Resource Include="Images\add32x32.png" />
+    <Resource Include="Images\config.png" />
+    <Resource Include="Images\regenerate-image16x16.png" />
+    <Resource Include="Images\regenerate-image32x32.png" />
+    <Resource Include="Images\regenerate-video.png" />
+    <Resource Include="Images\save.png" />
+    <Resource Include="Images\remove-icon.png" />
   </ItemGroup>
 
   <ItemGroup>

@@ -18,7 +18,6 @@ dotnet user-secrets set "ElevenLabsToken" "<your token>"
 ```pwsd
 dotnet user-secrets set "AzureTranslator:Token" "<azure token translator>"
 ```
-4dQwHUljAUIDfYp4AS9Kf1BUOs4JAsvxMYdoS0SoRRSPjcU4WWEwJQQJ99BGACYeBjFXJ3w3AAAbACOGdUbC
 
 ## Install ffmpeg
 
@@ -38,6 +37,35 @@ Prompt example:
 
 In this example the video will have 10 minutes aways between the text "Hello World" and "How are you today."
 
-# Board
+# Publish
+```pwsh
+Remove-Item "C:\bin\tts2video\*" -Force -ErrorAction SilentlyContinue
+
+dotnet publish TTSToVideo.WPF\TTSToVideo.WPF.csproj `
+  --configuration Release `
+  --runtime win-x64 `
+  --self-contained true `
+  --output "C:\bin\tts2video" `
+  -p:PublishSingleFile=true `
+  -p:IncludeNativeLibrariesForSelfExtract=true `
+  -p:EnableCompressionInSingleFile=true `
+  -p:DebugType=embedded
+
+# Rename
+if (Test-Path "C:\bin\tts2video\TTSToVideo.WPF.exe") {
+    Rename-Item "C:\bin\tts2video\TTSToVideo.WPF.exe" "C:\bin\tts2video\ttstovideo.exe" -Force
+    Write-Host "Successfully created: C:\bin\tts2video\ttstovideo.exe" -ForegroundColor Green
+}
+```
+
+# Configure secrets for deployed application
+# Edit C:\bin\tts2video\appsettings.json and add your tokens:
+# {
+#   "LeonardoAIToken": "<your-token>",
+#   "ElevenLabsToken": "<your-token>",
+#   "AzureTranslator": {
+#     "Token": "<your-token>"
+#   }
+# }
 
 
