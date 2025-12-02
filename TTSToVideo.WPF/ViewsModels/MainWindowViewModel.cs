@@ -22,7 +22,12 @@ namespace TTSToVideo.WPF.ViewsModels
 
             //version from assembly
             var version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+            
+#if DEBUG
+            this.Title = $"TTS To Video, v{version} - DEBUG";
+#else
             this.Title = $"TTS To Video, v{version}";
+#endif
         }
 
         public string Title { get; set; }
