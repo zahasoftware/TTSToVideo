@@ -6,6 +6,7 @@ using NetXP.IAs.ImageGeneratorAI;
 using NetXP.Tts;
 using System.Text.RegularExpressions;
 using TTSToVideo.Business.Models;
+using TTSToVideo.Business.PatternProcessors;
 using TTSToVideo.Helpers;
 using TTSToVideo.Helpers.Audios;
 using TTSToVideo.Helpers.Implementations.Ffmpeg;
@@ -19,17 +20,20 @@ namespace TTSToVideo.Business.Implementations
         private readonly IVideoGeneratorFactory videoFactory;
         private readonly ITts tts;
         private readonly IProgressBar progressBar;
+        private readonly IPromptPatternProcessorFactory patternProcessorFactory;
 
         public TTSToVideoBusiness(
             IImageGeneratorAI imageGeneratorAI,
             IVideoGeneratorFactory videoFactory,
             ITts tts,
-            IProgressBar progressBar)
+            IProgressBar progressBar,
+            IPromptPatternProcessorFactory patternProcessorFactory)
         {
             this.imageGeneratorAI = imageGeneratorAI;
             this.videoFactory = videoFactory;
             this.tts = tts;
             this.progressBar = progressBar;
+            this.patternProcessorFactory = patternProcessorFactory;
         }
 
         public async Task GeneratePortraitVideoCommandExecute(
@@ -125,54 +129,22 @@ namespace TTSToVideo.Business.Implementations
 
             foreach (var paragraph in paragraphs)
             {
-                var silentVoicePattern = PromptPatternDictionary.Patterns.Values
-                    .FirstOrDefault(p => !p.IsParagraphSeparator && p.TypeRegex == PromptPatternsEnum.SilentVoice);
-
-                if (silentVoicePattern != null && Regex.IsMatch(paragraph, silentVoicePattern.Pattern))
+                // Try to find a processor for this paragraph
+                var processor = patternProcessorFactory.FindProcessorForParagraph(paragraph);
+                
+                if (processor != null)
                 {
-                    ProcessSilentVoicePattern(paragraph, silentVoicePattern.Pattern, globalPrompt, statements);
+                    // Use the processor to handle the paragraph with special patterns
+                    processor.Process(paragraph, globalPrompt, statements);
                 }
                 else
                 {
+                    // No special pattern detected, treat as regular text
                     statements.Add(new Statement { Prompt = paragraph, GlobalPrompt = globalPrompt });
                 }
             }
 
             return statements;
-        }
-
-        private void ProcessSilentVoicePattern(string paragraph, string pattern, string globalPrompt, List<Statement> statements)
-        {
-            var matches = Regex.Split(paragraph, pattern).Where(ms => !string.IsNullOrWhiteSpace(ms));
-            
-            foreach (var match in matches)
-            {
-                if (Regex.IsMatch(match, pattern))
-                {
-                    var parts = match.Split(":", StringSplitOptions.TrimEntries);
-                    if (parts.Length != 2)
-                    {
-                        throw new CustomApplicationException($"Format of \"{match}\" incorrect in prompt.");
-                    }
-
-                    var seconds = parts[1].Replace(">", "");
-                    if (!int.TryParse(seconds, out int secondsInt) || secondsInt > 600)
-                    {
-                        throw new CustomApplicationException($"Format of \"{match}\" incorrect in prompt. Seconds should be an integer between 0 and 600.");
-                    }
-
-                    statements.Add(new Statement
-                    {
-                        PropmtPatterType = PromptPatternsEnum.SilentVoice,
-                        AudioDuration = TimeSpan.FromSeconds(secondsInt),
-                        GlobalPrompt = globalPrompt,
-                    });
-                }
-                else
-                {
-                    statements.Add(new Statement { Prompt = match, GlobalPrompt = globalPrompt });
-                }
-            }
         }
 
         private async Task ProcessImages(List<Statement> statements, string[] imageModelIds, string projectPath, TTSToVideoOptions options, CancellationToken token)

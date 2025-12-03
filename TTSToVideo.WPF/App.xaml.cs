@@ -22,6 +22,7 @@ using System.Windows;
 using System.Windows.Navigation;
 using TTSToVideo.Business;
 using TTSToVideo.Business.Models;
+using TTSToVideo.Business.PatternProcessors;
 using TTSToVideo.Helpers;
 using TTSToVideo.Helpers.Implementations;
 using TTSToVideo.WPF;
@@ -97,6 +98,9 @@ namespace TTSToVideo
             services.AddSingleton<IProgressBar, ProgressBar>();
             services.AddSingleton<IMessage, Messages>();
             services.AddSingleton<IVideoGeneratorFactory, LeonardoVideoGeneratorFactory>();
+
+            //Pattern Processors
+            services.AddSingleton<IPromptPatternProcessorFactory, PromptPatternProcessorFactory>();
 
             //Business
             services.AddSingleton<ITTSToVideoBusiness, Business.Implementations.TTSToVideoBusiness>();
