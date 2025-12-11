@@ -115,30 +115,142 @@ namespace TTSToVideo.Business.Implementations
         private List<Statement> ParsePromptIntoStatements(string prompt, string globalPrompt)
         {
             var statements = new List<Statement>();
+            
+            // Step 1: Split by <p> tags to get blocks
+            var blocks = SplitIntoParagraphBlocks(prompt);
+            
+            // Step 2: Process each block
+            foreach (var block in blocks)
+            {
+                ProcessParagraphBlock(block, globalPrompt, statements);
+            }
+
+            return statements;
+        }
+
+        /// <summary>
+        /// Splits the input text into paragraph blocks based on <p></p> tags.
+        /// Returns a list of (content, imagePrompt) tuples.
+        /// </summary>
+        private List<(string Content, string? ImagePrompt)> SplitIntoParagraphBlocks(string input)
+        {
+            var blocks = new List<(string Content, string? ImagePrompt)>();
+            
+            // Pattern to match <p>...</p> blocks
+            var pBlockPattern = @"<p>(.*?)</p>";
+            var matches = Regex.Matches(input, pBlockPattern, RegexOptions.Singleline | RegexOptions.IgnoreCase);
+            
+            var lastIndex = 0;
+            
+            foreach (Match match in matches)
+            {
+                // Add content before the <p> tag as a block without image prompt
+                if (match.Index > lastIndex)
+                {
+                    var beforeContent = input[lastIndex..match.Index].Trim();
+                    if (!string.IsNullOrWhiteSpace(beforeContent))
+                    {
+                        blocks.Add((beforeContent, null));
+                    }
+                }
+                
+                // Extract content inside <p> tags
+                var blockContent = match.Groups[1].Value;
+                
+                // Extract image prompt if exists (<ip> or <image-prompt>)
+                var imagePrompt = ExtractImagePrompt(ref blockContent);
+                
+                // Add the block with its image prompt
+                if (!string.IsNullOrWhiteSpace(blockContent))
+                {
+                    blocks.Add((blockContent.Trim(), imagePrompt));
+                }
+                
+                lastIndex = match.Index + match.Length;
+            }
+            
+            // Add remaining content after the last <p> tag
+            if (lastIndex < input.Length)
+            {
+                var remainingContent = input[lastIndex..].Trim();
+                if (!string.IsNullOrWhiteSpace(remainingContent))
+                {
+                    blocks.Add((remainingContent, null));
+                }
+            }
+            
+            // If no <p> tags found, treat the entire input as one block
+            if (blocks.Count == 0 && !string.IsNullOrWhiteSpace(input))
+            {
+                blocks.Add((input.Trim(), null));
+            }
+            
+            return blocks;
+        }
+
+        /// <summary>
+        /// Extracts image prompt from content using <ip> or <image-prompt> tags.
+        /// Removes the tag from the content and returns the image prompt text.
+        /// </summary>
+        private string? ExtractImagePrompt(ref string content)
+        {
+            // Pattern to match <ip>...</ip> or <image-prompt>...</image-prompt>
+            var ipPattern = @"<(?:ip|image-prompt)>(.*?)</(?:ip|image-prompt)>";
+            var match = Regex.Match(content, ipPattern, RegexOptions.Singleline | RegexOptions.IgnoreCase);
+            
+            if (match.Success)
+            {
+                var imagePrompt = match.Groups[1].Value.Trim();
+                
+                // Remove the image prompt tag from content
+                content = Regex.Replace(content, ipPattern, string.Empty, RegexOptions.Singleline | RegexOptions.IgnoreCase).Trim();
+                
+                return !string.IsNullOrWhiteSpace(imagePrompt) ? imagePrompt : null;
+            }
+            
+            return null;
+        }
+
+        /// <summary>
+        /// Processes a paragraph block by splitting it into individual paragraphs
+        /// and creating statements with the associated image prompt.
+        /// </summary>
+        private void ProcessParagraphBlock((string Content, string? ImagePrompt) block, string globalPrompt, List<Statement> statements)
+        {
+            // Get paragraph separators from dictionary
             var pattern = string.Join("|", PromptPatternDictionary.Patterns.Values
                 .Where(o => o.IsParagraphSeparator)
                 .Select(o => o.Pattern));
             
-            var paragraphs = Regex.Split(prompt, pattern, RegexOptions.None)
+            // Split block content by paragraph separators
+            var paragraphs = Regex.Split(block.Content, pattern, RegexOptions.None)
                 .Where(o => !string.IsNullOrWhiteSpace(o))
                 .ToArray();
 
+            // Process each paragraph
             foreach (var paragraph in paragraphs)
             {
+                var trimmedParagraph = paragraph.Trim();
+                
+                // Check for silent voice pattern
                 var silentVoicePattern = PromptPatternDictionary.Patterns.Values
                     .FirstOrDefault(p => !p.IsParagraphSeparator && p.TypeRegex == PromptPatternsEnum.SilentVoice);
 
-                if (silentVoicePattern != null && Regex.IsMatch(paragraph, silentVoicePattern.Pattern))
+                if (silentVoicePattern != null && Regex.IsMatch(trimmedParagraph, silentVoicePattern.Pattern))
                 {
-                    ProcessSilentVoicePattern(paragraph, silentVoicePattern.Pattern, globalPrompt, statements);
+                    ProcessSilentVoicePattern(trimmedParagraph, silentVoicePattern.Pattern, globalPrompt, statements);
                 }
                 else
                 {
-                    statements.Add(new Statement { Prompt = paragraph, GlobalPrompt = globalPrompt });
+                    // Create statement with image prompt if available
+                    statements.Add(new Statement 
+                    { 
+                        Prompt = trimmedParagraph, 
+                        GlobalPrompt = globalPrompt,
+                        ImagePrompt = block.ImagePrompt
+                    });
                 }
             }
-
-            return statements;
         }
 
         private void ProcessSilentVoicePattern(string paragraph, string pattern, string globalPrompt, List<Statement> statements)
@@ -218,8 +330,9 @@ namespace TTSToVideo.Business.Implementations
                 return statements[previousIndex].Images.FirstOrDefault()?.Path 
                     ?? throw new CustomApplicationException("Previous statement image path is null.");
             }
-            
-            return PathHelper.GenerateImagePath(projectPath, statement.Prompt);
+
+            var imagePrompt = string.IsNullOrEmpty(statement.ImagePrompt) ? statement.Prompt : statement.ImagePrompt;
+            return PathHelper.GenerateImagePath(projectPath,  imagePrompt);
         }
 
         private void AssignVideoPathsToStatements(List<Statement> statements, string projectPath, TTSToVideoOptions options)
@@ -563,8 +676,13 @@ namespace TTSToVideo.Business.Implementations
             }
         }
 
-        private string BuildImagePrompt(Statement statement, TTSToVideoOptions options)
+        private static string BuildImagePrompt(Statement statement, TTSToVideoOptions options)
         {
+            if (!string.IsNullOrEmpty(statement.ImagePrompt))
+            {
+                return statement.ImagePrompt;
+            }
+
             var prompt = statement.GlobalPrompt;
             
             if (!string.IsNullOrEmpty(prompt) && options.ImageOptions.UseTextForPrompt)

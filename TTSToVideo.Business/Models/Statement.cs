@@ -32,6 +32,12 @@ namespace TTSToVideo.Business.Models
         public bool IsTheLastSubtitle { get; internal set; }
         public string ParentId { get; internal set; }
         public bool HasSubstatements { get; internal set; }
+        
+        /// <summary>
+        /// Custom image prompt description for this statement.
+        /// Used when the paragraph is inside a <p> block with <ip> or <image-prompt> tags.
+        /// </summary>
+        public string? ImagePrompt { get; set; }
     }
 
 }

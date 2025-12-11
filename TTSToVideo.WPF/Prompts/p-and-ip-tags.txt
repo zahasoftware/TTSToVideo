@@ -1,0 +1,224 @@
+﻿You are a senior sotware engineer.
+
+Variables:
+NEWPARAGRAPH_DELIMITERS = new string[] { "\r\n\r\n", "\n\n", "\r\n" };
+
+Context:
+You are working on a C# project to convert Text to Speech and then to Video and you need to implement a new feature.
+
+
+The user need that the application can read the input text to process multiples paragraphs, 
+where each paragraph is separated by NEWPARAGRAPH_DELIMITERS it is already implemented in the method TTSToVideoBusiness.ParsePromptIntoStatements
+
+Now the application need to add a new feature before to split by NEWPARAGRAPH_DELIMITERS, now the text could contain special tags to define blocks of paragraphs. 
+the tags is <p></p> to define a block of paragraphs.
+
+So the final logic to split the input text into paragraphs is:
+
+1. First split the input text by the tags <p> and </p> to get blocks of paragraphs.
+2. Then for each block of paragraphs, split it by NEWPARAGRAPH_DELIMITERS to get individual paragraphs.
+3. Collect all the individual paragraphs into a final list of paragraphs.
+4. Return the final list of paragraphs.
+
+Text user input example:
+
+This is some introductory text.
+
+<p>	
+This is the first paragraph of the first block.
+
+This is the second paragraph of the first block.
+</p>
+<p>
+This is the first paragraph of the second block.
+
+This is the second paragraph of the second block.
+
+This is the third paragraph of the second block.
+
+</p>
+
+This is some concluding text.
+
+The expected output paragraphs list:
+
+1. "This is some introductory text."
+2. "This is the first paragraph of the first block."
+3. "This is the second paragraph of the first block."
+4. "This is the first paragraph of the second block."
+5. "This is the second paragraph of the second block."
+6. "This is the third paragraph of the second block."
+
+Also it can have a new tag inside the <p></p> tags called <ip></ip> or <image-prompt></image-prompt> that will contain the description of an image to be generated and to be associated 
+with all the paragraphs inside the <p></p> block.
+
+You need to modify the method TTSToVideoBusiness.ParsePromptIntoStatements to implement this new feature.
+
+The user input example with image prompt tags:
+
+This is some introductory text.
+
+<p>
+This is the first paragraph of the first block.
+
+<ip>
+This is the image prompt for the first block.</ip>
+
+This is the second paragraph of the first block.
+</p>
+<p>	
+This is the first paragraph of the second block.
+
+This is the second paragraph of the second block.
+
+This is the third paragraph of the second block.
+
+</p>
+
+This is some concluding text.
+
+The ip tag can also be written as <image-prompt></image-prompt> and should be saved in the statement object.
+
+
+
+# Response
+````````plaintext
+You are a senior sotware engineer.
+
+Variables:
+NEWPARAGRAPH_DELIMITERS = new string[] { "\r\n\r\n", "\n\n", "\r\n" };
+
+Context:
+You are working on a C# project to convert Text to Speech and then to Video and you need to implement a new feature.
+
+
+The user need that the application can read the input text to process multiples paragraphs, 
+where each paragraph is separated by NEWPARAGRAPH_DELIMITERS it is already implemented in the method TTSToVideoBusiness.ParsePromptIntoStatements
+
+Now the application need to add a new feature before to split by NEWPARAGRAPH_DELIMITERS, now the text could contain special tags to define blocks of paragraphs. 
+the tags is <p></p> to define a block of paragraphs.
+
+So the final logic to split the input text into paragraphs is:
+
+1. First split the input text by the tags <p> and </p> to get blocks of paragraphs.
+2. Then for each block of paragraphs, split it by NEWPARAGRAPH_DELIMITERS to get individual paragraphs.
+3. Collect all the individual paragraphs into a final list of paragraphs.
+4. Return the final list of paragraphs.
+
+Text user input example:
+
+This is some introductory text.
+
+<p>	
+This is the first paragraph of the first block.
+
+This is the second paragraph of the first block.
+</p>
+<p>
+This is the first paragraph of the second block.
+
+This is the second paragraph of the second block.
+
+This is the third paragraph of the second block.
+
+</p>
+
+This is some concluding text.
+
+The expected output paragraphs list:
+
+1. "This is some introductory text."
+2. "This is the first paragraph of the first block."
+3. "This is the second paragraph of the first block."
+4. "This is the first paragraph of the second block."
+5. "This is the second paragraph of the second block."
+6. "This is the third paragraph of the second block."
+
+Also it can have a new tag inside the <p></p> tags called <ip></ip> or <image-prompt></image-prompt> that will contain the description of an image to be generated and to be associated 
+with all the paragraphs inside the <p></p> block.
+
+You need to modify the method TTSToVideoBusiness.ParsePromptIntoStatements to implement this new feature.
+
+The user input example with image prompt tags:
+
+This is some introductory text.
+
+<p>
+This is the first paragraph of the first block.
+
+<ip>
+This is the image prompt for the first block.</ip>
+
+This is the second paragraph of the first block.
+</p>
+<p>	
+This is the first paragraph of the second block.
+
+This is the second paragraph of the second block.
+
+This is the third paragraph of the second block.
+
+</p>
+
+This is some concluding text.
+
+The ip tag can also be written as <image-prompt></image-prompt> and should be saved in the statement object.
+
+
+
+# Paragraph Blocks Feature - IMPLEMENTED ✅
+
+## Status: COMPLETED
+
+This feature has been successfully implemented in the TTS-to-Video application.
+
+## What Was Implemented
+
+✅ Support for `<p></p>` tags to define paragraph blocks
+✅ Support for `<ip></ip>` and `<image-prompt></image-prompt>` tags for custom image descriptions
+✅ Image prompts are associated with all paragraphs in their block
+✅ Backward compatibility with existing prompts
+✅ Integration with existing pattern processing (silent voice, etc.)
+
+## Documentation
+
+For complete documentation, see:
+- **Full Guide**: `TTSToVideo.Business/PARAGRAPH_BLOCKS_FEATURE.md`
+- **Quick Reference**: `TTSToVideo.Business/PARAGRAPH_BLOCKS_QUICK_REFERENCE.md`
+- **Implementation Details**: `TTSToVideo.Business/IMPLEMENTATION_SUMMARY.md`
+
+## Usage Example
+
+```
+Introduction paragraph.
+
+<p>
+First paragraph of scene.
+
+<ip>A beautiful mountain landscape at sunset</ip>
+
+Second paragraph of scene.
+</p>
+
+Conclusion paragraph.
+```
+
+## Changes Made
+
+1. **Statement.cs**: Added `ImagePrompt` property
+2. **TTSToVideoBusiness.cs**: Refactored `ParsePromptIntoStatements()` with new helper methods
+3. **Documentation**: Created comprehensive guides and examples
+
+## Testing
+
+✅ Build successful
+✅ Backward compatibility verified
+✅ Documentation tests created
+
+## Next Steps
+
+The feature is ready to use! Consider:
+1. Updating UI to help users insert tags
+2. Modifying image generation logic to use `ImagePrompt` property
+3. Adding more comprehensive integration tests
+
