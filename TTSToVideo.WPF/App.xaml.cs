@@ -57,7 +57,7 @@ namespace TTSToVideo
 
             services.AddOptions<TtsElevenlabsOptions>().Configure((o) =>
             {
-                configuration.GetSection("TTSOptions").Bind(o);
+                configuration.GetSection("ElevenlabsOptions").Bind(o);
                 o.APIKey = configuration.GetSection("ElevenLabsToken").Value!;
             });
             services.AddHttpClient<TtsEvenLabs>();

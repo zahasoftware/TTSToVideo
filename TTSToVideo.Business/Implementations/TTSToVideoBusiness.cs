@@ -508,11 +508,11 @@ namespace TTSToVideo.Business.Implementations
             var finalProjectVideoPath = Path.Combine(projectPath, $"final-{projectName}.mp4");
             DeleteFileIfExists(finalProjectVideoPath);
 
-            progressBar.ShowMessage("Creating Videos.");
+            progressBar.ShowMessage("Creating Intermediate Videos.");
 
             await CreateIntermediateVideos(statementsUnion, projectPath, token);
             
-            progressBar.ShowMessage("Merging Videos.");
+            progressBar.ShowMessage("Merging Intermediate Videos.");
             await JoinVideos(statementsUnion, finalProjectVideoPath, token);
             
             await InjectSubtitles(statementsUnion, finalProjectVideoPath, options, token);
@@ -664,7 +664,8 @@ namespace TTSToVideo.Business.Implementations
 
             foreach (var image in response.Images)
             {
-                var imageFileName = PathHelper.GenerateImagePath(projectPath, statement.Prompt);
+                var imagePrompt = string.IsNullOrEmpty(statement.ImagePrompt) ? statement.Prompt : statement.ImagePrompt;
+                var imageFileName = PathHelper.GenerateImagePath(projectPath, imagePrompt);
 
                 statement.Images.Add(new StatementImage
                 {
@@ -753,7 +754,7 @@ namespace TTSToVideo.Business.Implementations
             }
         }
 
-        private void CreateSilentAudio(Statement statement, string projectPath, CancellationToken token)
+        private static void CreateSilentAudio(Statement statement, string projectPath, CancellationToken token)
         {
             var silencePath = Path.Combine(projectPath, $"silencevoice_{statement.AudioDuration.TotalSeconds}.wav");
             AudioHelper.CreateSilentWavAudio(silencePath, statement.AudioDuration, token);
@@ -763,11 +764,12 @@ namespace TTSToVideo.Business.Implementations
             File.Copy(statement.AudioPath, statement.AudioPathWave, true);
         }
 
-        private string GenerateAudioFileName(string prompt, string projectPath)
+        private static string GenerateAudioFileName(string prompt, string projectPath)
         {
             var truncated = prompt[..Math.Min(prompt.Length, Constants.MAX_PATH)];
             var cleanFileName = PathHelper.CleanFileName(truncated);
-            return Path.Combine(projectPath, $"v-{cleanFileName}.wav");
+            Directory.CreateDirectory(Path.Combine(projectPath, "voices"));
+            return Path.Combine(projectPath, "voices", $"{cleanFileName}.wav");
         }
 
         private async Task<string> ConcatenateVoices(List<Statement> statements, string projectPath, TTSToVideoOptions options, CancellationToken token)

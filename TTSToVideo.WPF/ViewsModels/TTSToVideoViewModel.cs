@@ -330,6 +330,7 @@ namespace TTSToVideo.WPF.ViewsModels
                 statements.Select(o => new StatementModel
                 {
                     Text = o.Prompt,
+                    ImagePrompt = o.ImagePrompt,
                     Images = new ObservableCollection<StatementImageModel>(
                         o.Images.Select(i => new StatementImageModel { Path = i.Path, Id = i.Id })
                     ),
