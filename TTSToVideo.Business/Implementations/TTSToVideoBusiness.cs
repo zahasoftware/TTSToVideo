@@ -625,6 +625,7 @@ namespace TTSToVideo.Business.Implementations
                 {
                     Text = statement.Prompt,
                     Voice = ttsVoice,
+                    NextText = statement.nextStatement?.Prompt ?? string.Empty
                 }, token);
 
                 File.WriteAllBytes(statement.AudioPath, audio.File.GetBuffer());
@@ -726,11 +727,14 @@ namespace TTSToVideo.Business.Implementations
 
         private async Task GenerateVoices(List<Statement> statements, string projectPath, TtsVoice selectedVoice, CancellationToken token)
         {
+            int voiceCounter = 0;
             for (int i = 0; i < statements.Count; i++)
             {
                 var statement = statements[i];
+
+                statement.nextStatement = (i + 1 < statements.Count) ? statements[i + 1] : null;
+
                 progressBar.Increment();
-                progressBar.ShowMessage($"Getting voices {i + 1}");
 
                 if (statement.PropmtPatterType == PromptPatternsEnum.SilentVoice)
                 {
@@ -738,13 +742,15 @@ namespace TTSToVideo.Business.Implementations
                 }
                 else if (!string.IsNullOrEmpty(statement.Prompt))
                 {
+
+                    progressBar.ShowMessage($"Getting voices {++voiceCounter}");
                     var audioFileName = GenerateAudioFileName(statement.Prompt, projectPath);
                     statement.AudioPath = audioFileName;
 
                     await GetVoice(new TtsVoice
                     {
-                        ModelId = "eleven_v3",
-                        Id = selectedVoice.Id
+                        ModelId = "eleven_multilingual_v2", //eleven_multilingual_v2, eleven_v3
+                        Id = selectedVoice.Id,
                     }, statement, token);
                 }
                 else

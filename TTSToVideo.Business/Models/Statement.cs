@@ -6,6 +6,8 @@ namespace TTSToVideo.Business.Models
 {
     public class Statement
     {
+        internal Statement? nextStatement;
+
         public Statement()
         {
             Images = [];
