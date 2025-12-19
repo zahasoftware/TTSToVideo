@@ -55,7 +55,8 @@
             <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" Margin="0,0,15,0">
                 <Label Margin="5,0,5,0">Search</Label>
                 <TextBox x:Name="SearchTextBox" Width="180" VerticalAlignment="Center"
-                         ToolTip="Type text to search inside Prompt"/>
+                         ToolTip="Type text to search inside Prompt"
+                         KeyDown="SearchTextBox_KeyDown"/>
                 <Button Content="Find" Margin="5,0,0,0" Click="FindButton_Click"/>
                 <Button Content="Next" Margin="5,0,0,0" Click="FindNextButton_Click"/>
             </StackPanel>

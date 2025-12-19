@@ -84,6 +84,15 @@ namespace TTSToVideo.WPF
             _lastMatchLength = length;
         }
 
+        private void SearchTextBox_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter)
+            {
+                FindButton_Click(sender, e);
+                e.Handled = true;
+            }
+        }
+
         private void FindButton_Click(object sender, RoutedEventArgs e)
         {
             string query = SearchTextBox.Text;
