@@ -15,38 +15,58 @@ namespace TTSToVideo.Helpers.Audios
     {
         public static void ConcatenateAudioFiles(string outputFile, params string[] inputFiles)
         {
-            // Create a new WaveFileWriter for the output file
-            WaveFileWriter waveFileWriter = null;
+            if (inputFiles == null || inputFiles.Length == 0)
+            {
+                throw new ArgumentException("At least one input file is required", nameof(inputFiles));
+            }
+
+            var readers = new List<AudioFileReader>();
+            var sampleProviders = new List<ISampleProvider>();
 
             try
             {
-                foreach (string inputFile in inputFiles)
+                // Load all files and create sample providers
+                foreach (var inputFile in inputFiles)
                 {
-                    using WaveFileReader reader = new(inputFile);
-                    if (waveFileWriter == null)
+                    var reader = new AudioFileReader(inputFile);
+                    readers.Add(reader);
+                    
+                    // Validate format consistency
+                    if (sampleProviders.Count > 0)
                     {
-                        // Create the output file with the same format as the first input file
-                        waveFileWriter = new WaveFileWriter(outputFile, reader.WaveFormat);
+                        var firstFormat = sampleProviders[0].WaveFormat;
+                        if (!reader.WaveFormat.Equals(firstFormat))
+                        {
+                            throw new InvalidOperationException(
+                                $"Can't concatenate audio files with different formats. " +
+                                $"Expected: {firstFormat}, Got: {reader.WaveFormat} in file: {inputFile}");
+                        }
                     }
-                    else if (!reader.WaveFormat.Equals(waveFileWriter.WaveFormat))
-                    {
-                        throw new InvalidOperationException("Can't concatenate WAV files with different formats.");
-                    }
-
-                    // Read and write audio data
-                    byte[] buffer = new byte[reader.WaveFormat.AverageBytesPerSecond];
-                    int bytesRead;
-                    while ((bytesRead = reader.Read(buffer, 0, buffer.Length)) > 0)
-                    {
-                        waveFileWriter.Write(buffer, 0, bytesRead);
-                    }
-
-                    reader.Close();
+                    
+                    // Add very short fade in/out to prevent clicks at boundaries
+                    int fadeSamples = (int)(reader.WaveFormat.SampleRate * 0.01);
+fadeSamples -= fadeSamples % reader.WaveFormat.Channels;
+var fadedProvider = new OffsetSampleProvider(reader)
+{
+    TakeSamples = fadeSamples
+   };
+                    
+                    sampleProviders.Add(reader);
                 }
+
+                // Concatenate all sample providers
+                var concatenated = new ConcatenatingSampleProvider(sampleProviders);
+
+                // Write to output file
+                WaveFileWriter.CreateWaveFile16(outputFile, concatenated);
             }
             finally
             {
-                waveFileWriter?.Dispose();
+                // Clean up all readers
+                foreach (var reader in readers)
+                {
+                    reader?.Dispose();
+                }
             }
         }
 
@@ -146,7 +166,7 @@ namespace TTSToVideo.Helpers.Audios
                         return AudioFormat.WAV;
                     }
                     // Check for "ID3" tag which indicates an MP3 file
-                    else if (headerHex.StartsWith("494433") || headerHex.StartsWith("FFFB"))
+                    else if (headerHex.StartsWith("494333") || headerHex.StartsWith("FFFB"))
                     {
                         return AudioFormat.MP3;
                     }
