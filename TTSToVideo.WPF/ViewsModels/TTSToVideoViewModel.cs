@@ -369,7 +369,7 @@ namespace TTSToVideo.WPF.ViewsModels
                     new TTSToVideoOptions { ImageOptions = new TtsToVideoImageOptions { UseTextForPrompt = true } },
                     CancellationTokenSource.Token);
 
-                arg.Images = new  ObservableCollection<StatementImageModel>( mapper.Map<List<StatementImageModel>>(statement.Images));
+                arg.Images = new ObservableCollection<StatementImageModel>(mapper.Map<List<StatementImageModel>>(statement.Images));
                 message.Info("Image regenerated successfully.");
             }
             catch (OperationCanceledException)
@@ -434,9 +434,11 @@ namespace TTSToVideo.WPF.ViewsModels
             if (string.IsNullOrWhiteSpace(model.PlaybackVideoPath))
             {
                 var candidate = model.ImageAnimatedPath;
-                if (!string.IsNullOrWhiteSpace(candidate) && File.Exists(candidate)) { 
+                if (!string.IsNullOrWhiteSpace(candidate) && File.Exists(candidate))
+                {
                     //model.PlaybackVideoPath = candidate;
-                }else
+                }
+                else
 
                     return;
             }
@@ -744,13 +746,6 @@ namespace TTSToVideo.WPF.ViewsModels
             await Task.CompletedTask;
         }
 
-        private static async Task OpenVideoAsync(string path)
-        {
-            if (!File.Exists(path))
-                throw new CustomApplicationException("Video not created.");
-
-            await OpenFileAsync(path);
-        }
 
         private void ShowVideoDetails(string projectFullPath)
         {
@@ -858,5 +853,46 @@ namespace TTSToVideo.WPF.ViewsModels
         }
 
         #endregion
+        private static async Task OpenVideoAsync(string path)
+        {
+            if (!File.Exists(path))
+                throw new CustomApplicationException("Video not created.");
+
+            try
+            {
+                // Try to find VLC installation
+                var vlcPath = FindVlcInstallation();
+                if (vlcPath != null)
+                {
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = vlcPath,
+                        Arguments = $"\"{path}\"",  // ✅ Properly interpolated
+                        UseShellExecute = false
+                    });
+                    await Task.CompletedTask;
+                    return;
+                }
+            }
+            catch
+            {
+                // If VLC fails, fall through to default player
+            }
+
+            // Fallback to default player
+            await OpenFileAsync(path);
+        }
+
+        private static string? FindVlcInstallation()
+        {
+            // Common VLC installation paths
+            var paths = new[]
+            {
+                @"C:\Program Files\VideoLAN\VLC\vlc.exe",
+                @"C:\Program Files (x86)\VideoLAN\VLC\vlc.exe"
+            };
+
+            return paths.FirstOrDefault(File.Exists);
+        }
     }
 }
