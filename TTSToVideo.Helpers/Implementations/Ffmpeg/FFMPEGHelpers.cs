@@ -505,7 +505,7 @@ namespace TTSToVideo.Helpers.Implementations.Ffmpeg
 
             // Get base colors - ensure we have valid defaults
             string textColorHex = firstStyled?.Style?.TextColor ?? "#FFFFFFFF";
-            string backColorHex = firstStyled?.Style?.BackgroundColor ?? "#64000000";
+            string backColorHex = firstStyled?.Style?.BackgroundColor ?? "#FF000000";
             
             string basePrimaryColor = ConvertToAssColor(textColorHex);
             string baseBackColor = ConvertToAssColor(backColorHex);

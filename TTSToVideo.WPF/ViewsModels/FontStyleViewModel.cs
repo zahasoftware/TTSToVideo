@@ -48,7 +48,7 @@ namespace TTSToVideo.WPF.ViewsModels
             
             // Load colors with proper defaults
             var textColorHex = Statement?.FontStyle?.TextColor ?? "#FFFFFFFF";
-            var backColorHex = Statement?.FontStyle?.BackgroundColor ?? "#64000000";
+            var backColorHex = Statement?.FontStyle?.BackgroundColor ?? "#FF000000";
             
             Console.WriteLine($"FontStyleViewModel Loading - Text: {textColorHex}, Back: {backColorHex}");
             

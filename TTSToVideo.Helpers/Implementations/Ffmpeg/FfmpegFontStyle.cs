@@ -23,7 +23,7 @@
 
         // Background color in ARGB format (e.g., #64000000 for semi-transparent black)
         // Default: Black with 40% opacity
-        public string? BackgroundColor { get; set; } = "#64000000";
+        public string? BackgroundColor { get; set; } = "#FF000000";
 
         public override string ToString()
         {
