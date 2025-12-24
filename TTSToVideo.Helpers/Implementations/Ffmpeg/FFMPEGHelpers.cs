@@ -53,41 +53,6 @@ namespace TTSToVideo.Helpers.Implementations.Ffmpeg
                     subtitleFilePathRare = subtitleFilePath
                                 .Replace("\\", "\\\\\\\\")
                                 .Replace(":", "\\:");
-
-                    //Force_Style for ffmpeg
-                    var options = new List<string>();
-                    if (ffmpegOptions.FontStyle.Alignment != null)
-                    {
-                        options.Add($"Alignment={MapToAssAlignment(ffmpegOptions.FontStyle.Alignment)}");
-                    }
-
-
-                    if (ffmpegOptions.FontStyle.FontSize != null)
-                    {
-                        options.Add($"Fontsize={(byte)ffmpegOptions.FontStyle.FontSize.Value}");
-                    }
-
-                    if (ffmpegOptions.FontStyle.MarginV != null)
-                    {
-                        options.Add($"MarginV={(byte)ffmpegOptions.FontStyle.MarginV.Value}");
-                    }
-
-                    if (ffmpegOptions.FontStyle.MarginV != null)
-                    {
-                        options.Add($"MarginL={(byte)ffmpegOptions.FontStyle.MarginV.Value}");
-                    }
-
-                    if (ffmpegOptions.FontStyle.MarginR != null)
-                    {
-                        options.Add($"MarginR={(byte)ffmpegOptions.FontStyle.MarginR.Value}");
-                    }
-
-                    forceStyle = string.Join(",", options);
-
-                    if (!string.IsNullOrEmpty(forceStyle))
-                    {
-                        forceStyle = $":force_style={forceStyle}";
-                    }
                 }
 
                 var isVideo = Path.GetExtension(imagePath) == ".mp4";
@@ -113,7 +78,7 @@ namespace TTSToVideo.Helpers.Implementations.Ffmpeg
                                               $" -f lavfi " +
                                               $" -i anullsrc=r=44100:cl=stereo " +
                                               $" -t \"{videoDuration:h\\:m\\:s\\.fff}\" " +
-                                              (ffmpegOptions.FontStyle.SubtitleVisible == true ? $"-vf \"subtitles='{subtitleFilePathRare}.ass':force_style='{forceStyle}'\" " : "") +
+                                              (ffmpegOptions.FontStyle.SubtitleVisible == true ? $"-vf \"subtitles='{subtitleFilePathRare}.ass'\" " : "") +
                                               $"-r 30 " +
                                               $"-c:v libx264 " +
                                               $"-shortest \"{outputPath}\"";
@@ -561,7 +526,7 @@ namespace TTSToVideo.Helpers.Implementations.Ffmpeg
             sb.AppendLine("Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding");
 
             // Base style - BorderStyle=3 for opaque box background with padding
-            sb.AppendLine($"Style: Default,Arial,{baseFontSize},{basePrimaryColor},&H000000FF,&HFF000000,{baseBackColor}," +
+            sb.AppendLine($"Style: Default,Arial,{baseFontSize},{basePrimaryColor},&H000000FF,{baseBackColor},{baseBackColor}," +
                           "0,0,0,0,100,100,0,0,3,4,0," + // BorderStyle=3 for box, Outline=4 (padding), Shadow=0
                           $"{MapToAssAlignment(firstStyled?.Style?.Alignment ?? FfmpegAlignment.BottomCenter)},{baseMarginLH},{baseMarginLH},{baseMarginV},1");
 
@@ -609,7 +574,7 @@ namespace TTSToVideo.Helpers.Implementations.Ffmpeg
                         Console.WriteLine($"Creating style {styleName}: Text={segTextColorHex} -> {primaryColor}, Back={segBackColorHex} -> {backColor}");
                         
                         sb.Insert(sb.ToString().IndexOf("[Events]"),
-                            $"Style: {styleName},Arial,{fs},{primaryColor},&H000000FF,&HFF000000,{backColor}," +
+                            $"Style: {styleName},Arial,{fs},{primaryColor},&H000000FF,{backColor},{backColor}," +
                             "0,0,0,0,100,100,0,0,3,4,0," + // BorderStyle=3, Outline=4 (padding), Shadow=0
                             $"{MapToAssAlignment(seg.Style?.Alignment ?? FfmpegAlignment.BottomCenter)}," +
                             $"{mlh},{mlh},{mv},1\n");
