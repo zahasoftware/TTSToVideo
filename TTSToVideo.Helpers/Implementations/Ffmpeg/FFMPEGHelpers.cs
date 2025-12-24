@@ -351,7 +351,7 @@ namespace TTSToVideo.Helpers.Implementations.Ffmpeg
             {
                 StartInfo = new ProcessStartInfo
                 {
-                    FileName = """ffmpeg""",
+                    FileName = "ffmpeg",
                     Arguments = ffmpegCmd,
                     CreateNoWindow = true,
                     UseShellExecute = false,
@@ -512,7 +512,7 @@ namespace TTSToVideo.Helpers.Implementations.Ffmpeg
             return (playResX, playResY, fs, mv, Math.Min(ml, mr));
         }
 
-        // Modify CreateAssSubtitleFile to use the new scaling logic.
+        // Modify CreateAssSubtitleFile to use the new scaling logic and colors.
         public static string CreateAssSubtitleFile(IEnumerable<AssSubtitleSegment> segments, string outputPath = "", int targetWidth = 1080, int targetHeight = 1920)
         {
             if (segments == null || !segments.Any())
@@ -527,7 +527,7 @@ namespace TTSToVideo.Helpers.Implementations.Ffmpeg
                 path = Path.ChangeExtension(path, ".ass");
             }
 
-            // Derive a “global” representative style (first visible segment that has a style).
+            // Derive a "global" representative style (first visible segment that has a style).
             var firstStyled = segments.FirstOrDefault(s => s.Style is { SubtitleVisible: not false });
 
             var (playResX, playResY, baseFontSize, baseMarginV, baseMarginLH) = ComputeSubtitleScale(
@@ -537,6 +537,17 @@ namespace TTSToVideo.Helpers.Implementations.Ffmpeg
                 firstStyled?.Style?.MarginV,
                 firstStyled?.Style?.MarginL,
                 firstStyled?.Style?.MarginR);
+
+            // Get base colors - ensure we have valid defaults
+            string textColorHex = firstStyled?.Style?.TextColor ?? "#FFFFFFFF";
+            string backColorHex = firstStyled?.Style?.BackgroundColor ?? "#64000000";
+            
+            string basePrimaryColor = ConvertToAssColor(textColorHex);
+            string baseBackColor = ConvertToAssColor(backColorHex);
+
+            // Debug output
+            Console.WriteLine($"Base Text Color: {textColorHex} -> ASS: {basePrimaryColor}");
+            Console.WriteLine($"Base Back Color: {backColorHex} -> ASS: {baseBackColor}");
 
             var sb = new StringBuilder();
             sb.AppendLine("[Script Info]");
@@ -549,9 +560,9 @@ namespace TTSToVideo.Helpers.Implementations.Ffmpeg
             sb.AppendLine("[V4+ Styles]");
             sb.AppendLine("Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding");
 
-            // Base style (Alignment default bottom center = 2)
-            sb.AppendLine($"Style: Default,Arial,{baseFontSize},&H00FFFFFF,&H000000FF,&H00000000,&H64000000," +
-                          "0,0,0,0,100,100,0,0,1,2,0," +
+            // Base style - BorderStyle=3 for opaque box background with padding
+            sb.AppendLine($"Style: Default,Arial,{baseFontSize},{basePrimaryColor},&H000000FF,&HFF000000,{baseBackColor}," +
+                          "0,0,0,0,100,100,0,0,3,4,0," + // BorderStyle=3 for box, Outline=4 (padding), Shadow=0
                           $"{MapToAssAlignment(firstStyled?.Style?.Alignment ?? FfmpegAlignment.BottomCenter)},{baseMarginLH},{baseMarginLH},{baseMarginV},1");
 
             sb.AppendLine();
@@ -583,24 +594,82 @@ namespace TTSToVideo.Helpers.Implementations.Ffmpeg
                         seg.Style.MarginL,
                         seg.Style.MarginR);
 
-                    string key = $"{fs}-{mv}-{mlh}-{seg.Style.Alignment}";
+                    string segTextColorHex = seg.Style.TextColor ?? "#FFFFFFFF";
+                    string segBackColorHex = seg.Style.BackgroundColor ?? "#64000000";
+                    
+                    string primaryColor = ConvertToAssColor(segTextColorHex);
+                    string backColor = ConvertToAssColor(segBackColorHex);
+
+                    string key = $"{fs}-{mv}-{mlh}-{seg.Style.Alignment}-{primaryColor}-{backColor}";
                     if (!styleMap.TryGetValue(key, out styleName))
                     {
                         styleName = $"Style_{styleCounter++}";
                         styleMap[key] = styleName;
+                        
+                        Console.WriteLine($"Creating style {styleName}: Text={segTextColorHex} -> {primaryColor}, Back={segBackColorHex} -> {backColor}");
+                        
                         sb.Insert(sb.ToString().IndexOf("[Events]"),
-                            $"Style: {styleName},Arial,{fs},&H00FFFFFF,&H000000FF,&H00000000,&H64000000," +
-                            "0,0,0,0,100,100,0,0,1,2,0," +
+                            $"Style: {styleName},Arial,{fs},{primaryColor},&H000000FF,&HFF000000,{backColor}," +
+                            "0,0,0,0,100,100,0,0,3,4,0," + // BorderStyle=3, Outline=4 (padding), Shadow=0
                             $"{MapToAssAlignment(seg.Style?.Alignment ?? FfmpegAlignment.BottomCenter)}," +
                             $"{mlh},{mlh},{mv},1\n");
                     }
                 }
 
-                sb.AppendLine($"Dialogue: 0,{FormatAssTime(start)},{FormatAssTime(end)},{styleName},,0,0,0,,{(string.IsNullOrEmpty(seg.Text) ? "" : seg.Text.Replace("\n"," "))}");
+                sb.AppendLine($"Dialogue: 0,{FormatAssTime(start)},{FormatAssTime(end)},{styleName},,0,0,0,,{(string.IsNullOrEmpty(seg.Text) ? "" : seg.Text.Replace("\n", " "))}");
             }
 
-            File.WriteAllText(path, sb.ToString(), Encoding.UTF8);
+            string assContent = sb.ToString();
+            Console.WriteLine("Generated ASS content:");
+            Console.WriteLine(assContent);
+            
+            File.WriteAllText(path, assContent, Encoding.UTF8);
             return path;
+        }
+
+        // Helper method to convert ARGB hex color to ASS format (&HAABBGGRR)
+        // Note: In ASS format, alpha is INVERTED: 00=opaque, FF=transparent
+        private static string ConvertToAssColor(string argbHex)
+        {
+            try
+            {
+                // Remove # if present
+                argbHex = argbHex.TrimStart('#');
+                
+                // Ensure it's 8 characters (AARRGGBB)
+                if (argbHex.Length == 8)
+                {
+                    // Extract components
+                    string a = argbHex.Substring(0, 2);
+                    string r = argbHex.Substring(2, 2);
+                    string g = argbHex.Substring(4, 2);
+                    string b = argbHex.Substring(6, 2);
+
+                    // Convert alpha to ASS format (inverted: 00=opaque, FF=transparent)
+                    int alphaValue = Convert.ToInt32(a, 16);
+                    int invertedAlpha = 255 - alphaValue;
+                    string assAlpha = invertedAlpha.ToString("X2");
+
+                    // ASS format is &HAA0B0G0R0
+                    return $"&H{assAlpha}{b}{g}{r}";
+                }
+                else if (argbHex.Length == 6)
+                {
+                    // RGB only, assume fully opaque (00 alpha in ASS = fully opaque)
+                    string r = argbHex.Substring(0, 2);
+                    string g = argbHex.Substring(2, 2);
+                    string b = argbHex.Substring(4, 2);
+
+                    // ASS format is &HAA0B0G0R0 with full opacity (00)
+                    return $"&H00{b}{g}{r}";
+                }
+                
+                return "&H00FFFFFF"; // Default white fully opaque
+            }
+            catch
+            {
+                return "&H00FFFFFF"; // Default white fully opaque on error
+            }
         }
 
         // Replace the existing InjectSubtitlesAsync (the 4‑parameter one) with this version

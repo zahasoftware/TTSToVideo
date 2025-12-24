@@ -17,9 +17,17 @@
 
         public bool? SubtitleVisible { get; set; } = true;
 
+        // Text color in ARGB format (e.g., #FFFFFFFF for white)
+        // Default: White fully opaque
+        public string? TextColor { get; set; } = "#FFFFFFFF";
+
+        // Background color in ARGB format (e.g., #64000000 for semi-transparent black)
+        // Default: Black with 40% opacity
+        public string? BackgroundColor { get; set; } = "#64000000";
+
         public override string ToString()
         {
-            return $"Alignment: {Alignment}, MarginV: {MarginV}, MarginL: {MarginL}, MarginR: {MarginR}, FontSize: {FontSize}, SubtitleVisible: {SubtitleVisible}";
+            return $"Alignment: {Alignment}, MarginV: {MarginV}, MarginL: {MarginL}, MarginR: {MarginR}, FontSize: {FontSize}, SubtitleVisible: {SubtitleVisible}, TextColor: {TextColor}, BackgroundColor: {BackgroundColor}";
         }
     }
 }
