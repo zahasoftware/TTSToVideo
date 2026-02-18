@@ -14,7 +14,6 @@ namespace TTSToVideo.Business
                 { PromptPatternsEnum.SilentVoice, new PromptPattern{ Pattern = "(<(?:[sS]|[sS]ilence):\\d+>)" , TypeRegex = PromptPatternsEnum.SilentVoice} },
                 { PromptPatternsEnum.NewParagraph,new PromptPattern { Pattern = "\r\n\r\n" , IsParagraphSeparator = true , TypeRegex = PromptPatternsEnum.NewParagraph} },
                 { PromptPatternsEnum.NewParagraph2,new PromptPattern { Pattern = "\n\n" , IsParagraphSeparator = true , TypeRegex = PromptPatternsEnum.NewParagraph2} },
-                { PromptPatternsEnum.NewParagraph3,new PromptPattern { Pattern = "\r\n" , IsParagraphSeparator = true , TypeRegex = PromptPatternsEnum.NewParagraph3} },
         };
 
     }

@@ -3,15 +3,17 @@
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
       xmlns:local="clr-namespace:TTSToVideo.WPF.ViewsModels"
+      xmlns:c="clr-namespace:TTSToVideo.WPF.Converters"
       xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
-      Title="Font Style Settings" Height="550" Width="800"
+      Title="Font Style Settings" Height="750" Width="900"
       xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
       xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
       d:DataContext="{d:DesignInstance Type=local:FontStyleViewModel}"
       mc:Ignorable="d"
-      d:DesignHeight="550" d:DesignWidth="800">
-
-
+      d:DesignHeight="750" d:DesignWidth="900">
+    <Window.Resources>
+        <c:IntToBoolConverter x:Key="IntToBoolConverter"/>
+    </Window.Resources>
     <i:Interaction.Triggers>
         <i:EventTrigger EventName="Closed">
             <i:InvokeCommandAction Command="{Binding WindowClosedCommand}" />
@@ -20,51 +22,185 @@
             <i:InvokeCommandAction Command="{Binding WindowOpenedCommand}" />
         </i:EventTrigger>
     </i:Interaction.Triggers>
-    <Border Padding="10 0">
-        <StackPanel>
-            <Label>Font Position</Label>
-            <StackPanel Orientation="Vertical">
-                <ComboBox ItemsSource="{Binding FontPosition}" DisplayMemberPath="Name"
-              SelectedItem="{Binding SelectedFontPosition}"></ComboBox>
-            </StackPanel>
+    
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <Border Padding="20">
+            <StackPanel>
+                <!-- Basic Settings -->
+                <GroupBox Header="Basic Settings" Margin="0,0,0,10">
+                    <StackPanel>
+                        <Label>Font Position</Label>
+                        <ComboBox ItemsSource="{Binding FontPosition}" DisplayMemberPath="Name"
+                                  SelectedItem="{Binding SelectedFontPosition}" Margin="0,0,0,10"/>
 
-            <Label>Font Size</Label>
-            <StackPanel Orientation="Horizontal">
-                <Slider Value="{Binding FontSize, Mode=TwoWay}" 
-        Minimum             ="5" Maximum="50" 
-        Width               ="250" 
-        TickFrequency       ="1" 
-        TickPlacement       ="BottomRight" 
-        IsSnapToTickEnabled ="True" 
-        AutoToolTipPlacement="BottomRight" 
-        AutoToolTipPrecision="0" 
-        Margin="10" />
-                <Label Content="{Binding FontSize}" HorizontalAlignment="Left" />
-            </StackPanel>
+                        <Label>Font Family</Label>
+                        <TextBox Text="{Binding Fontname, Mode=TwoWay}" Margin="0,0,0,10"/>
 
-            <Label>Vertical Margin (MarginV)</Label>
-            <StackPanel Orientation="Horizontal">
-                <Slider Value="{Binding MarginV, Mode=TwoWay}" Minimum="0" Maximum="300" Width="250" TickFrequency="10" TickPlacement="BottomRight" IsSnapToTickEnabled="True" AutoToolTipPlacement="BottomRight" AutoToolTipPrecision="0" Margin="10" />
-                <Label Content="{Binding MarginV}" HorizontalAlignment="Left" />
-            </StackPanel>
+                        <Label>Font Size</Label>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                            <Slider Value="{Binding FontSize, Mode=TwoWay}" 
+                                    Minimum="5" Maximum="50" 
+                                    Width="250" 
+                                    TickFrequency="1" 
+                                    TickPlacement="BottomRight" 
+                                    IsSnapToTickEnabled="True" 
+                                    AutoToolTipPlacement="BottomRight" 
+                                    AutoToolTipPrecision="0" 
+                                    Margin="0,0,10,0" />
+                            <Label Content="{Binding FontSize}" HorizontalAlignment="Left" />
+                        </StackPanel>
 
-            <Label>Text Color</Label>
-            <StackPanel Orientation="Horizontal" Margin="10">
-                <xctk:ColorPicker SelectedColor="{Binding TextColor, Mode=TwoWay}" 
-                                  ShowStandardColors="True" 
-                                  Width="200" 
-                                  DisplayColorAndName="True"/>
-            </StackPanel>
+                        <CheckBox Content="Subtitle Visible" IsChecked="{Binding SubtitleVisible}" Margin="0,10,0,0"/>
+                    </StackPanel>
+                </GroupBox>
 
-            <Label>Background Color</Label>
-            <StackPanel Orientation="Horizontal" Margin="10">
-                <xctk:ColorPicker SelectedColor="{Binding BackgroundColor, Mode=TwoWay}" 
-                                  ShowStandardColors="True" 
-                                  Width="200" 
-                                  DisplayColorAndName="True"/>
-            </StackPanel>
+                <!-- Margins -->
+                <GroupBox Header="Margins" Margin="0,0,0,10">
+                    <StackPanel>
+                        <Label>Vertical Margin (MarginV)</Label>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                            <Slider Value="{Binding MarginV, Mode=TwoWay}" Minimum="0" Maximum="300" 
+                                    Width="250" TickFrequency="10" TickPlacement="BottomRight" 
+                                    IsSnapToTickEnabled="True" AutoToolTipPlacement="BottomRight" 
+                                    AutoToolTipPrecision="0" Margin="0,0,10,0" />
+                            <Label Content="{Binding MarginV}" HorizontalAlignment="Left" />
+                        </StackPanel>
 
-            <CheckBox Content="Subtitle Visible" IsChecked="{Binding SubtitleVisible}" Margin="10 10 0 0"></CheckBox>
-        </StackPanel>
-    </Border>
+                        <Label>Left Margin (MarginL)</Label>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                            <Slider Value="{Binding MarginL, Mode=TwoWay}" Minimum="0" Maximum="300" 
+                                    Width="250" TickFrequency="10" TickPlacement="BottomRight" 
+                                    IsSnapToTickEnabled="True" AutoToolTipPlacement="BottomRight" 
+                                    AutoToolTipPrecision="0" Margin="0,0,10,0" />
+                            <Label Content="{Binding MarginL}" HorizontalAlignment="Left" />
+                        </StackPanel>
+
+                        <Label>Right Margin (MarginR)</Label>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                            <Slider Value="{Binding MarginR, Mode=TwoWay}" Minimum="0" Maximum="300" 
+                                    Width="250" TickFrequency="10" TickPlacement="BottomRight" 
+                                    IsSnapToTickEnabled="True" AutoToolTipPlacement="BottomRight" 
+                                    AutoToolTipPrecision="0" Margin="0,0,10,0" />
+                            <Label Content="{Binding MarginR}" HorizontalAlignment="Left" />
+                        </StackPanel>
+                    </StackPanel>
+                </GroupBox>
+
+                <!-- Colors -->
+                <GroupBox Header="Colors" Margin="0,0,0,10">
+                    <StackPanel>
+                        <Label>Text Color (Primary)</Label>
+                        <xctk:ColorPicker SelectedColor="{Binding TextColor, Mode=TwoWay}" 
+                                          ShowStandardColors="True" 
+                                          Width="200" 
+                                          DisplayColorAndName="True"
+                                          Margin="0,0,0,10"
+                                          HorizontalAlignment="Left"/>
+
+                        <Label>Background Color</Label>
+                        <xctk:ColorPicker SelectedColor="{Binding BackgroundColor, Mode=TwoWay}" 
+                                          ShowStandardColors="True" 
+                                          Width="200" 
+                                          DisplayColorAndName="True"
+                                          Margin="0,0,0,10"
+                                          HorizontalAlignment="Left"/>
+
+                        <Label>Secondary Color (Karaoke)</Label>
+                        <xctk:ColorPicker SelectedColor="{Binding SecondaryColour, Mode=TwoWay}" 
+                                          ShowStandardColors="True" 
+                                          Width="200" 
+                                          DisplayColorAndName="True"
+                                          Margin="0,0,0,10"
+                                          HorizontalAlignment="Left"/>
+
+                        <Label>Outline Color</Label>
+                        <xctk:ColorPicker SelectedColor="{Binding OutlineColour, Mode=TwoWay}" 
+                                          ShowStandardColors="True" 
+                                          Width="200" 
+                                          DisplayColorAndName="True"
+                                          Margin="0,0,0,10"
+                                          HorizontalAlignment="Left"/>
+                    </StackPanel>
+                </GroupBox>
+
+                <!-- Text Effects -->
+                <GroupBox Header="Text Effects" Margin="0,0,0,10">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                            <CheckBox Content="Bold" IsChecked="{Binding Bold, Converter={StaticResource IntToBoolConverter}}" Margin="0,0,20,0"/>
+                            <CheckBox Content="Italic" IsChecked="{Binding Italic, Converter={StaticResource IntToBoolConverter}}" Margin="0,0,20,0"/>
+                            <CheckBox Content="Underline" IsChecked="{Binding Underline, Converter={StaticResource IntToBoolConverter}}" Margin="0,0,20,0"/>
+                            <CheckBox Content="StrikeOut" IsChecked="{Binding StrikeOut, Converter={StaticResource IntToBoolConverter}}"/>
+                        </StackPanel>
+
+                        <Label>Horizontal Scale (ScaleX %)</Label>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                            <Slider Value="{Binding ScaleX, Mode=TwoWay}" Minimum="50" Maximum="200" 
+                                    Width="250" TickFrequency="10" TickPlacement="BottomRight" 
+                                    IsSnapToTickEnabled="True" AutoToolTipPlacement="BottomRight" 
+                                    AutoToolTipPrecision="0" Margin="0,0,10,0" />
+                            <Label Content="{Binding ScaleX}" HorizontalAlignment="Left" />
+                        </StackPanel>
+
+                        <Label>Vertical Scale (ScaleY %)</Label>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                            <Slider Value="{Binding ScaleY, Mode=TwoWay}" Minimum="50" Maximum="200" 
+                                    Width="250" TickFrequency="10" TickPlacement="BottomRight" 
+                                    IsSnapToTickEnabled="True" AutoToolTipPlacement="BottomRight" 
+                                    AutoToolTipPrecision="0" Margin="0,0,10,0" />
+                            <Label Content="{Binding ScaleY}" HorizontalAlignment="Left" />
+                        </StackPanel>
+
+                        <Label>Character Spacing</Label>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                            <Slider Value="{Binding Spacing, Mode=TwoWay}" Minimum="-10" Maximum="10" 
+                                    Width="250" TickFrequency="1" TickPlacement="BottomRight" 
+                                    IsSnapToTickEnabled="True" AutoToolTipPlacement="BottomRight" 
+                                    AutoToolTipPrecision="1" Margin="0,0,10,0" />
+                            <Label Content="{Binding Spacing}" HorizontalAlignment="Left" />
+                        </StackPanel>
+
+                        <Label>Rotation Angle (degrees)</Label>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                            <Slider Value="{Binding Angle, Mode=TwoWay}" Minimum="0" Maximum="360" 
+                                    Width="250" TickFrequency="15" TickPlacement="BottomRight" 
+                                    IsSnapToTickEnabled="True" AutoToolTipPlacement="BottomRight" 
+                                    AutoToolTipPrecision="0" Margin="0,0,10,0" />
+                            <Label Content="{Binding Angle}" HorizontalAlignment="Left" />
+                        </StackPanel>
+                    </StackPanel>
+                </GroupBox>
+
+                <!-- Border and Shadow -->
+                <GroupBox Header="Border and Shadow" Margin="0,0,0,10">
+                    <StackPanel>
+                        <Label>Border Style</Label>
+                        <ComboBox ItemsSource="{Binding BorderStyleOptions}" DisplayMemberPath="Name"
+                                  SelectedItem="{Binding SelectedBorderStyle}" 
+                                  SelectedValue="{Binding BorderStyle}" 
+                                  SelectedValuePath="Id"
+                                  Margin="0,0,0,10"/>
+
+                        <Label>Outline/Border Width (also box padding)</Label>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                            <Slider Value="{Binding Outline, Mode=TwoWay}" Minimum="0" Maximum="20" 
+                                    Width="250" TickFrequency="1" TickPlacement="BottomRight" 
+                                    IsSnapToTickEnabled="True" AutoToolTipPlacement="BottomRight" 
+                                    AutoToolTipPrecision="0" Margin="0,0,10,0" />
+                            <Label Content="{Binding Outline}" HorizontalAlignment="Left" />
+                        </StackPanel>
+
+                        <Label>Shadow Depth</Label>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                            <Slider Value="{Binding Shadow, Mode=TwoWay}" Minimum="0" Maximum="10" 
+                                    Width="250" TickFrequency="1" TickPlacement="BottomRight" 
+                                    IsSnapToTickEnabled="True" AutoToolTipPlacement="BottomRight" 
+                                    AutoToolTipPrecision="0" Margin="0,0,10,0" />
+                            <Label Content="{Binding Shadow}" HorizontalAlignment="Left" />
+                        </StackPanel>
+                    </StackPanel>
+                </GroupBox>
+            </StackPanel>
+        </Border>
+    </ScrollViewer>
 </Window>

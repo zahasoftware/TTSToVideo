@@ -23,6 +23,5 @@ namespace TTSToVideo.WPF.Pages
                 this.Close(); // Close the window
             }
         }
-
     }
 }

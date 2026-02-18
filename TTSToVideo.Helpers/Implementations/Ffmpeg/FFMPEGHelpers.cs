@@ -36,7 +36,7 @@ namespace TTSToVideo.Helpers.Implementations.Ffmpeg
                     // Subtitles to ASS
                     process = new();
                     process.StartInfo.FileName = "ffmpeg";
-                    process.StartInfo.Arguments = $" -i {subtitleFilePath} {subtitleFilePath}.ass";
+                    process.StartInfo.Arguments = $" -y -i \"{subtitleFilePath}\" \"{subtitleFilePath}.ass\"";
 
                     process.StartInfo.CreateNoWindow = true;
                     process.StartInfo.UseShellExecute = false;
@@ -48,11 +48,81 @@ namespace TTSToVideo.Helpers.Implementations.Ffmpeg
 
                     error = process.StandardError.ReadToEnd();
 
-                    Console.WriteLine("Error: " + error);
-
-                    subtitleFilePathRare = subtitleFilePath
+                    // Escape for subtitles filter
+                    subtitleFilePathRare = (subtitleFilePath + ".ass")
                                 .Replace("\\", "\\\\\\\\")
                                 .Replace(":", "\\:");
+
+                    // Build force_style for libass rendering with all comprehensive properties
+                    var styleParts = new List<string>();
+
+                    // Border and outline settings
+                    int borderStyle = ffmpegOptions.FontStyle.BorderStyle ?? 3;
+                    int outline = ffmpegOptions.FontStyle.Outline ?? 4;
+                    int shadow = ffmpegOptions.FontStyle.Shadow ?? 0;
+                    
+                    styleParts.Add($"BorderStyle={borderStyle}");
+                    styleParts.Add($"Outline={outline}");
+                    styleParts.Add($"Shadow={shadow}");
+
+                    // Alignment
+                    if (ffmpegOptions.FontStyle.Alignment != null)
+                        styleParts.Add($"Alignment={MapToAssAlignment(ffmpegOptions.FontStyle.Alignment)}");
+
+                    // Font properties
+                    if (!string.IsNullOrEmpty(ffmpegOptions.FontStyle.Fontname))
+                        styleParts.Add($"Fontname={ffmpegOptions.FontStyle.Fontname}");
+                    
+                    if (ffmpegOptions.FontStyle.FontSize != null)
+                        styleParts.Add($"Fontsize={(byte)ffmpegOptions.FontStyle.FontSize.Value}");
+
+                    // Text effects
+                    if (ffmpegOptions.FontStyle.Bold != null && ffmpegOptions.FontStyle.Bold != 0)
+                        styleParts.Add($"Bold={ffmpegOptions.FontStyle.Bold}");
+                    
+                    if (ffmpegOptions.FontStyle.Italic != null && ffmpegOptions.FontStyle.Italic != 0)
+                        styleParts.Add($"Italic={ffmpegOptions.FontStyle.Italic}");
+                    
+                    if (ffmpegOptions.FontStyle.Underline != null && ffmpegOptions.FontStyle.Underline != 0)
+                        styleParts.Add($"Underline={ffmpegOptions.FontStyle.Underline}");
+                    
+                    if (ffmpegOptions.FontStyle.StrikeOut != null && ffmpegOptions.FontStyle.StrikeOut != 0)
+                        styleParts.Add($"StrikeOut={ffmpegOptions.FontStyle.StrikeOut}");
+
+                    // Scaling and spacing
+                    if (ffmpegOptions.FontStyle.ScaleX != null && ffmpegOptions.FontStyle.ScaleX != 100)
+                        styleParts.Add($"ScaleX={ffmpegOptions.FontStyle.ScaleX}");
+                    
+                    if (ffmpegOptions.FontStyle.ScaleY != null && ffmpegOptions.FontStyle.ScaleY != 100)
+                        styleParts.Add($"ScaleY={ffmpegOptions.FontStyle.ScaleY}");
+                    
+                    if (ffmpegOptions.FontStyle.Spacing != null && ffmpegOptions.FontStyle.Spacing != 0)
+                        styleParts.Add($"Spacing={ffmpegOptions.FontStyle.Spacing}");
+                    
+                    if (ffmpegOptions.FontStyle.Angle != null && ffmpegOptions.FontStyle.Angle != 0)
+                        styleParts.Add($"Angle={ffmpegOptions.FontStyle.Angle}");
+
+                    // Margins
+                    if (ffmpegOptions.FontStyle.MarginV != null)
+                        styleParts.Add($"MarginV={(byte)ffmpegOptions.FontStyle.MarginV.Value}");
+                    if (ffmpegOptions.FontStyle.MarginL != null)
+                        styleParts.Add($"MarginL={(byte)ffmpegOptions.FontStyle.MarginL.Value}");
+                    if (ffmpegOptions.FontStyle.MarginR != null)
+                        styleParts.Add($"MarginR={(byte)ffmpegOptions.FontStyle.MarginR.Value}");
+
+                    // Colors - libass expects &HAABBGGRR with inverted alpha
+                    var primary = ConvertToAssColor(ffmpegOptions.FontStyle.TextColor ?? throw new Exception("Color not defined"));
+                    var secondary = ConvertToAssColor(ffmpegOptions.FontStyle.SecondaryColour ?? throw new Exception("Color not defined"));
+                    var outline_color = ConvertToAssColor(ffmpegOptions.FontStyle.OutlineColour ?? throw new Exception("Color not defined"));
+                    var back = ConvertToAssColor(ffmpegOptions.FontStyle.BackgroundColor ?? throw new Exception("Color not defined"));
+                    
+                    styleParts.Add($"PrimaryColour={primary}");
+                    styleParts.Add($"SecondaryColour={secondary}");
+                    styleParts.Add($"OutlineColour={outline_color}");
+                    styleParts.Add($"BackColour={back}");
+
+                    // Wrap entire force_style value in single quotes
+                    forceStyle = $":force_style='{string.Join(",", styleParts)}'";
                 }
 
                 var isVideo = Path.GetExtension(imagePath) == ".mp4";
@@ -78,7 +148,7 @@ namespace TTSToVideo.Helpers.Implementations.Ffmpeg
                                               $" -f lavfi " +
                                               $" -i anullsrc=r=44100:cl=stereo " +
                                               $" -t \"{videoDuration:h\\:m\\:s\\.fff}\" " +
-                                              (ffmpegOptions.FontStyle.SubtitleVisible == true ? $"-vf \"subtitles='{subtitleFilePathRare}.ass'\" " : "") +
+                                              (ffmpegOptions.FontStyle.SubtitleVisible == true ? $"-vf \"subtitles='{subtitleFilePathRare}'{forceStyle}'\" " : "") +
                                               $"-r 30 " +
                                               $"-c:v libx264 " +
                                               $"-shortest \"{outputPath}\"";
@@ -504,15 +574,29 @@ namespace TTSToVideo.Helpers.Implementations.Ffmpeg
                 firstStyled?.Style?.MarginR);
 
             // Get base colors - ensure we have valid defaults
-            string textColorHex = firstStyled?.Style?.TextColor ?? "#FFFFFFFF";
-            string backColorHex = firstStyled?.Style?.BackgroundColor ?? "#FF000000";
+            string textColorHex = firstStyled?.Style?.TextColor ?? Constants.FONT_COLOR_DETAUL;
+            string backColorHex = firstStyled?.Style?.BackgroundColor ?? Constants.FONT_BACKCOLOR_DEFAULT;
+            string secondaryColorHex = firstStyled?.Style?.SecondaryColour ?? Constants.FONT_COLOR_DETAUL; 
+            string outlineColorHex = firstStyled?.Style?.OutlineColour ?? Constants.FONT_BACKCOLOR_DEFAULT;
             
             string basePrimaryColor = ConvertToAssColor(textColorHex);
             string baseBackColor = ConvertToAssColor(backColorHex);
+            string baseSecondaryColor = ConvertToAssColor(secondaryColorHex);
+            string baseOutlineColor = ConvertToAssColor(outlineColorHex);
 
-            // Debug output
-            Console.WriteLine($"Base Text Color: {textColorHex} -> ASS: {basePrimaryColor}");
-            Console.WriteLine($"Base Back Color: {backColorHex} -> ASS: {baseBackColor}");
+            // Get base style properties
+            string baseFontname = firstStyled?.Style?.Fontname ?? "Arial";
+            int baseBold = firstStyled?.Style?.Bold ?? 0;
+            int baseItalic = firstStyled?.Style?.Italic ?? 0;
+            int baseUnderline = firstStyled?.Style?.Underline ?? 0;
+            int baseStrikeOut = firstStyled?.Style?.StrikeOut ?? 0;
+            int baseScaleX = firstStyled?.Style?.ScaleX ?? 100;
+            int baseScaleY = firstStyled?.Style?.ScaleY ?? 100;
+            double baseSpacing = firstStyled?.Style?.Spacing ?? 0;
+            double baseAngle = firstStyled?.Style?.Angle ?? 0;
+            int baseBorderStyle = firstStyled?.Style?.BorderStyle ?? 3;
+            int baseOutline = firstStyled?.Style?.Outline ?? 4;
+            int baseShadow = firstStyled?.Style?.Shadow ?? 0;
 
             var sb = new StringBuilder();
             sb.AppendLine("[Script Info]");
@@ -525,9 +609,9 @@ namespace TTSToVideo.Helpers.Implementations.Ffmpeg
             sb.AppendLine("[V4+ Styles]");
             sb.AppendLine("Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding");
 
-            // Base style - BorderStyle=3 for opaque box background with padding
-            sb.AppendLine($"Style: Default,Arial,{baseFontSize},{basePrimaryColor},&H000000FF,{baseBackColor},{baseBackColor}," +
-                          "0,0,0,0,100,100,0,0,3,4,0," + // BorderStyle=3 for box, Outline=4 (padding), Shadow=0
+            // Base style with all new properties
+            sb.AppendLine($"Style: Default,{baseFontname},{baseFontSize},{basePrimaryColor},{baseSecondaryColor},{baseOutlineColor},{baseBackColor}," +
+                          $"{baseBold},{baseItalic},{baseUnderline},{baseStrikeOut},{baseScaleX},{baseScaleY},{baseSpacing},{baseAngle},{baseBorderStyle},{baseOutline},{baseShadow}," +
                           $"{MapToAssAlignment(firstStyled?.Style?.Alignment ?? FfmpegAlignment.BottomCenter)},{baseMarginLH},{baseMarginLH},{baseMarginV},1");
 
             sb.AppendLine();
@@ -559,23 +643,38 @@ namespace TTSToVideo.Helpers.Implementations.Ffmpeg
                         seg.Style.MarginL,
                         seg.Style.MarginR);
 
-                    string segTextColorHex = seg.Style.TextColor ?? "#FFFFFFFF";
-                    string segBackColorHex = seg.Style.BackgroundColor ?? "#64000000";
+                    string segTextColorHex = seg.Style.TextColor ?? Constants.FONT_COLOR_DETAUL;
+                    string segBackColorHex = seg.Style.BackgroundColor ?? Constants.FONT_BACKCOLOR_DEFAULT;
+                    string segSecondaryColorHex = seg.Style.SecondaryColour ?? Constants.FONT_COLOR_DETAUL;
+                    string segOutlineColorHex = seg.Style.OutlineColour ?? Constants.FONT_BACKCOLOR_DEFAULT;
                     
                     string primaryColor = ConvertToAssColor(segTextColorHex);
                     string backColor = ConvertToAssColor(segBackColorHex);
+                    string secondaryColor = ConvertToAssColor(segSecondaryColorHex);
+                    string outlineColor = ConvertToAssColor(segOutlineColorHex);
 
-                    string key = $"{fs}-{mv}-{mlh}-{seg.Style.Alignment}-{primaryColor}-{backColor}";
+                    string fontname = seg.Style.Fontname ?? "Arial";
+                    int bold = seg.Style.Bold ?? 0;
+                    int italic = seg.Style.Italic ?? 0;
+                    int underline = seg.Style.Underline ?? 0;
+                    int strikeOut = seg.Style.StrikeOut ?? 0;
+                    int scaleX = seg.Style.ScaleX ?? 100;
+                    int scaleY = seg.Style.ScaleY ?? 100;
+                    double spacing = seg.Style.Spacing ?? 0;
+                    double angle = seg.Style.Angle ?? 0;
+                    int borderStyle = seg.Style.BorderStyle ?? 3;
+                    int outline = seg.Style.Outline ?? 4;
+                    int shadow = seg.Style.Shadow ?? 0;
+
+                    string key = $"{fontname}-{fs}-{mv}-{mlh}-{seg.Style.Alignment}-{primaryColor}-{secondaryColor}-{outlineColor}-{backColor}-{bold}-{italic}-{underline}-{strikeOut}-{scaleX}-{scaleY}-{spacing}-{angle}-{borderStyle}-{outline}-{shadow}";
                     if (!styleMap.TryGetValue(key, out styleName))
                     {
                         styleName = $"Style_{styleCounter++}";
                         styleMap[key] = styleName;
                         
-                        Console.WriteLine($"Creating style {styleName}: Text={segTextColorHex} -> {primaryColor}, Back={segBackColorHex} -> {backColor}");
-                        
                         sb.Insert(sb.ToString().IndexOf("[Events]"),
-                            $"Style: {styleName},Arial,{fs},{primaryColor},&H000000FF,{backColor},{backColor}," +
-                            "0,0,0,0,100,100,0,0,3,4,0," + // BorderStyle=3, Outline=4 (padding), Shadow=0
+                            $"Style: {styleName},{fontname},{fs},{primaryColor},{secondaryColor},{outlineColor},{backColor}," +
+                            $"{bold},{italic},{underline},{strikeOut},{scaleX},{scaleY},{spacing},{angle},{borderStyle},{outline},{shadow}," +
                             $"{MapToAssAlignment(seg.Style?.Alignment ?? FfmpegAlignment.BottomCenter)}," +
                             $"{mlh},{mlh},{mv},1\n");
                     }
@@ -585,9 +684,6 @@ namespace TTSToVideo.Helpers.Implementations.Ffmpeg
             }
 
             string assContent = sb.ToString();
-            Console.WriteLine("Generated ASS content:");
-            Console.WriteLine(assContent);
-            
             File.WriteAllText(path, assContent, Encoding.UTF8);
             return path;
         }

@@ -74,9 +74,9 @@ namespace TTSToVideo.Business.Implementations
                 Directory.CreateDirectory(projectPath);
 
                 statements = ParsePromptIntoStatements(prompt, globalPrompt);
-                
+
                 progressBar.Total = statements.Count * 3;
-                
+
                 if (portraitEnabled && statements.Count > 0)
                 {
                     statements[0].IsProtrait = true;
@@ -115,10 +115,10 @@ namespace TTSToVideo.Business.Implementations
         private List<Statement> ParsePromptIntoStatements(string prompt, string globalPrompt)
         {
             var statements = new List<Statement>();
-            
+
             // Step 1: Split by <p> tags to get blocks
             var blocks = SplitIntoParagraphBlocks(prompt);
-            
+
             // Step 2: Process each block
             foreach (var block in blocks)
             {
@@ -135,13 +135,13 @@ namespace TTSToVideo.Business.Implementations
         private List<(string Content, string? ImagePrompt)> SplitIntoParagraphBlocks(string input)
         {
             var blocks = new List<(string Content, string? ImagePrompt)>();
-            
+
             // Pattern to match <p>...</p> blocks
             var pBlockPattern = @"<p>(.*?)</p>";
             var matches = Regex.Matches(input, pBlockPattern, RegexOptions.Singleline | RegexOptions.IgnoreCase);
-            
+
             var lastIndex = 0;
-            
+
             foreach (Match match in matches)
             {
                 // Add content before the <p> tag as a block without image prompt
@@ -153,22 +153,22 @@ namespace TTSToVideo.Business.Implementations
                         blocks.Add((beforeContent, null));
                     }
                 }
-                
+
                 // Extract content inside <p> tags
                 var blockContent = match.Groups[1].Value;
-                
+
                 // Extract image prompt if exists (<ip> or <image-prompt>)
                 var imagePrompt = ExtractImagePrompt(ref blockContent);
-                
+
                 // Add the block with its image prompt
                 if (!string.IsNullOrWhiteSpace(blockContent))
                 {
                     blocks.Add((blockContent.Trim(), imagePrompt));
                 }
-                
+
                 lastIndex = match.Index + match.Length;
             }
-            
+
             // Add remaining content after the last <p> tag
             if (lastIndex < input.Length)
             {
@@ -178,13 +178,13 @@ namespace TTSToVideo.Business.Implementations
                     blocks.Add((remainingContent, null));
                 }
             }
-            
+
             // If no <p> tags found, treat the entire input as one block
             if (blocks.Count == 0 && !string.IsNullOrWhiteSpace(input))
             {
                 blocks.Add((input.Trim(), null));
             }
-            
+
             return blocks;
         }
 
@@ -197,17 +197,17 @@ namespace TTSToVideo.Business.Implementations
             // Pattern to match <ip>...</ip> or <image-prompt>...</image-prompt>
             var ipPattern = @"<(?:ip|image-prompt)>(.*?)</(?:ip|image-prompt)>";
             var match = Regex.Match(content, ipPattern, RegexOptions.Singleline | RegexOptions.IgnoreCase);
-            
+
             if (match.Success)
             {
                 var imagePrompt = match.Groups[1].Value.Trim();
-                
+
                 // Remove the image prompt tag from content
                 content = Regex.Replace(content, ipPattern, string.Empty, RegexOptions.Singleline | RegexOptions.IgnoreCase).Trim();
-                
+
                 return !string.IsNullOrWhiteSpace(imagePrompt) ? imagePrompt : null;
             }
-            
+
             return null;
         }
 
@@ -221,7 +221,7 @@ namespace TTSToVideo.Business.Implementations
             var pattern = string.Join("|", PromptPatternDictionary.Patterns.Values
                 .Where(o => o.IsParagraphSeparator)
                 .Select(o => o.Pattern));
-            
+
             // Split block content by paragraph separators
             var paragraphs = Regex.Split(block.Content, pattern, RegexOptions.None)
                 .Where(o => !string.IsNullOrWhiteSpace(o))
@@ -231,21 +231,21 @@ namespace TTSToVideo.Business.Implementations
             foreach (var paragraph in paragraphs)
             {
                 var trimmedParagraph = paragraph.Trim();
-                
+
                 // Check for silent voice pattern
                 var silentVoicePattern = PromptPatternDictionary.Patterns.Values
                     .FirstOrDefault(p => !p.IsParagraphSeparator && p.TypeRegex == PromptPatternsEnum.SilentVoice);
 
                 if (silentVoicePattern != null && Regex.IsMatch(trimmedParagraph, silentVoicePattern.Pattern))
                 {
-                    ProcessSilentVoicePattern(trimmedParagraph, silentVoicePattern.Pattern, globalPrompt, statements);
+                    ProcessSilentVoicePattern(trimmedParagraph, silentVoicePattern.Pattern, globalPrompt, block.ImagePrompt, statements);
                 }
                 else
                 {
                     // Create statement with image prompt if available
-                    statements.Add(new Statement 
-                    { 
-                        Prompt = trimmedParagraph, 
+                    statements.Add(new Statement
+                    {
+                        Prompt = trimmedParagraph,
                         GlobalPrompt = globalPrompt,
                         ImagePrompt = block.ImagePrompt
                     });
@@ -253,10 +253,10 @@ namespace TTSToVideo.Business.Implementations
             }
         }
 
-        private void ProcessSilentVoicePattern(string paragraph, string pattern, string globalPrompt, List<Statement> statements)
+        private void ProcessSilentVoicePattern(string paragraph, string pattern, string globalPrompt, string imagePrompt, List<Statement> statements)
         {
             var matches = Regex.Split(paragraph, pattern).Where(ms => !string.IsNullOrWhiteSpace(ms));
-            
+
             foreach (var match in matches)
             {
                 if (Regex.IsMatch(match, pattern))
@@ -278,11 +278,17 @@ namespace TTSToVideo.Business.Implementations
                         PropmtPatterType = PromptPatternsEnum.SilentVoice,
                         AudioDuration = TimeSpan.FromSeconds(secondsInt),
                         GlobalPrompt = globalPrompt,
+                        ImagePrompt = imagePrompt,
                     });
                 }
                 else
                 {
-                    statements.Add(new Statement { Prompt = match, GlobalPrompt = globalPrompt });
+                    statements.Add(new Statement
+                    {
+                        Prompt = match,
+                        GlobalPrompt = globalPrompt,
+                        ImagePrompt = imagePrompt,
+                    });
                 }
             }
         }
@@ -290,7 +296,7 @@ namespace TTSToVideo.Business.Implementations
         private async Task ProcessImages(List<Statement> statements, string[] imageModelIds, string projectPath, TTSToVideoOptions options, CancellationToken token)
         {
             var firstStatement = statements.First();
-            
+
             for (int i = 0; i < statements.Count; i++)
             {
                 var statement = statements[i];
@@ -299,7 +305,7 @@ namespace TTSToVideo.Business.Implementations
                 token.ThrowIfCancellationRequested();
 
                 var imageFileName = GetImageFileName(statement, statements, projectPath, i);
-                
+
                 if (!File.Exists(imageFileName))
                 {
                     if (options.ImageOptions.UseOnlyFirstImage && statement != firstStatement && i > 0)
@@ -327,22 +333,22 @@ namespace TTSToVideo.Business.Implementations
                 {
                     throw new CustomApplicationException("Silent voice statement cannot be first.");
                 }
-                return statements[previousIndex].Images.FirstOrDefault()?.Path 
+                return statements[previousIndex].Images.FirstOrDefault()?.Path
                     ?? throw new CustomApplicationException("Previous statement image path is null.");
             }
 
             var imagePrompt = string.IsNullOrEmpty(statement.ImagePrompt) ? statement.Prompt : statement.ImagePrompt;
-            return PathHelper.GenerateImagePath(projectPath,  imagePrompt);
+            return PathHelper.GenerateImagePath(projectPath, imagePrompt);
         }
 
         private void AssignVideoPathsToStatements(List<Statement> statements, string projectPath, TTSToVideoOptions options)
         {
             var firstStatement = statements.FirstOrDefault();
-            
+
             for (int i = 0; i < statements.Count; i++)
             {
                 var statement = statements[i];
-                
+
                 if (statement.PropmtPatterType == PromptPatternsEnum.SilentVoice && i > 0)
                 {
                     statement.ImageAnimatedPath = statements[i - 1].ImageAnimatedPath;
@@ -351,12 +357,12 @@ namespace TTSToVideo.Business.Implementations
 
                 var imageFileName = PathHelper.GenerateImagePath(projectPath, statement.Prompt);
                 var videoPath = $"{imageFileName}.mp4";
-                
+
                 if (File.Exists(videoPath))
                 {
                     statement.ImageAnimatedPath = videoPath;
                 }
-                else if (options.ImageOptions.UseOnlyFirstImage && statement != firstStatement && i > 0 
+                else if (options.ImageOptions.UseOnlyFirstImage && statement != firstStatement && i > 0
                     && !string.IsNullOrEmpty(statements[i - 1].ImageAnimatedPath))
                 {
                     statement.ImageAnimatedPath = statements[i - 1].ImageAnimatedPath;
@@ -401,7 +407,7 @@ namespace TTSToVideo.Business.Implementations
                 fontSize,
                 statement.FontStyle?.MarginL ?? 0,
                 statement.FontStyle?.MarginR ?? 0);
-            
+
             var chunks = SubtitleHelper.SplitByMaxChars(statement.Prompt, maxChars);
 
             if (chunks.Count > 1)
@@ -511,10 +517,10 @@ namespace TTSToVideo.Business.Implementations
             progressBar.ShowMessage("Creating Intermediate Videos.");
 
             await CreateIntermediateVideos(statementsUnion, projectPath, token);
-            
+
             progressBar.ShowMessage("Merging Intermediate Videos.");
             await JoinVideos(statementsUnion, finalProjectVideoPath, token);
-            
+
             await InjectSubtitles(statementsUnion, finalProjectVideoPath, options, token);
         }
 
@@ -536,8 +542,8 @@ namespace TTSToVideo.Business.Implementations
                 var outputVideoPath = GenerateIntermediateVideoPath(first, statementsUnion, projectPath);
                 first.OutputVideoPath = outputVideoPath;
 
-                var sourcePath = File.Exists(first.ImageAnimatedPath) 
-                    ? first.ImageAnimatedPath 
+                var sourcePath = File.Exists(first.ImageAnimatedPath)
+                    ? first.ImageAnimatedPath
                     : first.Images.First().Path;
 
                 await FFMPEGHelpers.CreateVideo(first.OutputVideoPath, sourcePath, duration, token);
@@ -546,18 +552,18 @@ namespace TTSToVideo.Business.Implementations
 
         private string GenerateIntermediateVideoPath(Statement statement, List<Statement> statementsUnion, string projectPath)
         {
-            var promptPath = string.IsNullOrEmpty(statement.Prompt) 
-                ? $"video.{statementsUnion.IndexOf(statement)}" 
+            var promptPath = string.IsNullOrEmpty(statement.Prompt)
+                ? $"video.{statementsUnion.IndexOf(statement)}"
                 : statement.Prompt;
-            
+
             var truncatedPath = promptPath[..Math.Min(promptPath.Length, Constants.MAX_PATH)];
             Directory.CreateDirectory(Path.Combine(projectPath, "Intermediate"));
-            
+
             var fileName = PathHelper.CleanFileName(truncatedPath);
-            var suffix = statement.PropmtPatterType == PromptPatternsEnum.SilentVoice 
-                ? $".{statementsUnion.IndexOf(statement)}" 
+            var suffix = statement.PropmtPatterType == PromptPatternsEnum.SilentVoice
+                ? $".{statementsUnion.IndexOf(statement)}"
                 : "";
-            
+
             return Path.Combine(projectPath, "Intermediate", $"{fileName}{suffix}.mp4");
         }
 
@@ -595,7 +601,7 @@ namespace TTSToVideo.Business.Implementations
         private async Task AddMusicAndVoice(string projectPath, string projectName, string selectedMusicFile, string concatenatedVoicesPath, List<Statement> statements, TTSToVideoOptions options, CancellationToken token)
         {
             progressBar.ShowMessage("Processing Music.");
-            
+
             var finalProjectVideoPath = Path.Combine(projectPath, $"final-{projectName}.mp4");
             var audioFile = AudioHelper.OpenAudio(finalProjectVideoPath);
             var outputMusicFile = await ProcessBackgroundMusic(selectedMusicFile, statements, audioFile.TotalTime, options, projectPath, token);
@@ -658,7 +664,7 @@ namespace TTSToVideo.Business.Implementations
                 Prompt = prompt,
                 NegativePrompt = statement.NegativePrompt
             });
-            
+
             statement.ImageId = imageId.Id;
 
             var response = await WaitForImageGeneration(imageId.Id, token);
@@ -686,17 +692,17 @@ namespace TTSToVideo.Business.Implementations
             }
 
             var prompt = statement.GlobalPrompt;
-            
+
             if (!string.IsNullOrEmpty(prompt) && options.ImageOptions.UseTextForPrompt)
             {
                 prompt += ",";
             }
-            
+
             if (options.ImageOptions.UseTextForPrompt)
             {
                 prompt += statement.Prompt;
             }
-            
+
             return prompt;
         }
 
@@ -706,14 +712,14 @@ namespace TTSToVideo.Business.Implementations
             do
             {
                 token.ThrowIfCancellationRequested();
-                
+
                 response = await imageGeneratorAI.GetImages(new ResultGenerate { Id = imageId });
 
                 if (response == null || response.Images.Count == 0)
                 {
                     await Task.Delay(3000, token);
                 }
-            } 
+            }
             while (response == null || response.Images.Count == 0);
 
             return response;
@@ -784,7 +790,7 @@ namespace TTSToVideo.Business.Implementations
 
             var tempVoiceFileA = $"{Path.GetTempFileName()}.wav";
             var tempVoiceFileB = $"{Path.GetTempFileName()}.wav";
-            
+
             var currentAudioPath = statements.First().AudioPathWave;
 
             foreach (var statement in statements.Skip(1))
@@ -810,11 +816,11 @@ namespace TTSToVideo.Business.Implementations
             progressBar.ShowMessage("Making Background Music Audio.");
 
             using var audioFileReal = AudioHelper.OpenAudio(selectedMusicFile);
-            
+
             var tempAudioFileA = $"{Path.GetTempFileName()}.wav";
             var tempAudioFileB = $"{Path.GetTempFileName()}.wav";
             var tempAudioFileC = $"{Path.GetTempFileName()}.wav";
-            
+
             File.Copy(selectedMusicFile, tempAudioFileA, true);
             File.Copy(selectedMusicFile, tempAudioFileB, true);
 
@@ -889,7 +895,7 @@ namespace TTSToVideo.Business.Implementations
                 .Replace(".mp4", "")
                 .Replace(".wav", "")
                 .Replace(".mp3", "");
-            
+
             if (File.Exists(basePath))
             {
                 File.Delete(basePath);
