@@ -40,6 +40,14 @@ namespace TTSToVideo.Business.Models
         /// Used when the paragraph is inside a <p> block with <ip> or <image-prompt> tags.
         /// </summary>
         public string? ImagePrompt { get; set; }
+        
+        /// <summary>
+        /// Custom video prompt description for this statement.
+        /// Used when the paragraph is inside a <p> block with <vp> or <video-prompt> tags.
+        /// If both ImagePrompt and VideoPrompt are present, the image is converted to video using this prompt.
+        /// If only VideoPrompt is present, the video is generated without an image.
+        /// </summary>
+        public string? VideoPrompt { get; set; }
     }
 
 }

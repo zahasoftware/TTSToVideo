@@ -41,7 +41,8 @@ namespace TTSToVideo.WPF.Models
         public string? PlaybackVideoPath => PathHelpers.EnsureShortVideoPath(ImageAnimatedPath);
 
         public bool IsVideoLoaded { get; internal set; }
-        public string? ImagePrompt { get; internal set; }
+        public string? ImagePrompt { get; set; }
+        public string? VideoPrompt { get; set; }
 
         internal Statement ToStatement()
         {
@@ -54,7 +55,9 @@ namespace TTSToVideo.WPF.Models
                 AudioPath = AudioPath,
                 AudioDuration = AudioDuration,
                 FontStyle = FontStyle,
-                ImageAnimatedPath = ImageAnimatedPath
+                ImageAnimatedPath = ImageAnimatedPath,
+                VideoPrompt = VideoPrompt,
+                ImagePrompt = ImagePrompt,
             };
         }
     }

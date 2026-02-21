@@ -3,7 +3,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 namespace TTSToVideo.UnitTests
 {
     /// <summary>
-    /// Unit tests for paragraph block parsing with <p> and <ip> tags
+    /// Unit tests for paragraph block parsing with <p>, <ip>, and <vp> tags
     /// Note: These are documentation tests. Actual implementation tests should be added
     /// once the project reference to TTSToVideo.Business is configured.
     /// </summary>
@@ -144,6 +144,74 @@ Conclusion paragraph.";
             // 4. "Middle paragraph." (ImagePrompt: null)
             // 5. "Block 2 paragraph 1." (ImagePrompt: null)
             // 6. "Conclusion paragraph." (ImagePrompt: null)
+
+            Assert.IsTrue(true); // Documentation test
+        }
+        
+        [TestMethod]
+        public void ParsePromptIntoStatements_WithVideoPromptTag_Documentation()
+        {
+            // This test documents the expected behavior for video prompt extraction
+            
+            // Input example:
+            var input = @"This is some introductory text.
+
+<p>
+This is the first paragraph of the first block.
+
+<ip>This is the image prompt for the first block.</ip>
+<vp>This is the video prompt for the first block.</vp>
+
+This is the second paragraph of the first block.
+</p>
+
+This is some concluding text.";
+
+            // Expected behavior:
+            // - Paragraphs 1 & 2 in the first block should have:
+            //   * ImagePrompt = "This is the image prompt for the first block."
+            //   * VideoPrompt = "This is the video prompt for the first block."
+            // - Both prompts will be used: image is converted to video using the video prompt
+            // - All other paragraphs should have ImagePrompt = null and VideoPrompt = null
+
+            Assert.IsTrue(true); // Documentation test
+        }
+
+        [TestMethod]
+        public void ParsePromptIntoStatements_WithVideoPromptOnly_Documentation()
+        {
+            // Input example:
+            var input = @"<p>
+<vp>This is the video prompt for the third block.</vp>
+
+This is the first paragraph of the third block.
+
+This is the second paragraph of the third block.
+
+This is the third paragraph of the third block.
+</p>";
+
+            // Expected: All 3 paragraphs should have VideoPrompt = "This is the video prompt for the third block."
+            // and ImagePrompt = null (video generated without image)
+
+            Assert.IsTrue(true); // Documentation test
+        }
+
+        [TestMethod]
+        public void ParsePromptIntoStatements_WithVideoPromptAlternativeTag_Documentation()
+        {
+            // Input example:
+            var input = @"<p>
+Test paragraph.
+
+<video-prompt>
+Custom video description here.
+</video-prompt>
+
+Another paragraph.
+</p>";
+
+            // Expected: Both paragraphs should have VideoPrompt = "Custom video description here."
 
             Assert.IsTrue(true); // Documentation test
         }

@@ -130,11 +130,11 @@ namespace TTSToVideo.Business.Implementations
 
         /// <summary>
         /// Splits the input text into paragraph blocks based on <p></p> tags.
-        /// Returns a list of (content, imagePrompt) tuples.
+        /// Returns a list of (content, imagePrompt, videoPrompt) tuples.
         /// </summary>
-        private List<(string Content, string? ImagePrompt)> SplitIntoParagraphBlocks(string input)
+        private List<(string Content, string? ImagePrompt, string? VideoPrompt)> SplitIntoParagraphBlocks(string input)
         {
-            var blocks = new List<(string Content, string? ImagePrompt)>();
+            var blocks = new List<(string Content, string? ImagePrompt, string? VideoPrompt)>();
 
             // Pattern to match <p>...</p> blocks
             var pBlockPattern = @"<p>(.*?)</p>";
@@ -144,13 +144,13 @@ namespace TTSToVideo.Business.Implementations
 
             foreach (Match match in matches)
             {
-                // Add content before the <p> tag as a block without image prompt
+                // Add content before the <p> tag as a block without image prompt or video prompt
                 if (match.Index > lastIndex)
                 {
                     var beforeContent = input[lastIndex..match.Index].Trim();
                     if (!string.IsNullOrWhiteSpace(beforeContent))
                     {
-                        blocks.Add((beforeContent, null));
+                        blocks.Add((beforeContent, null, null));
                     }
                 }
 
@@ -159,11 +159,14 @@ namespace TTSToVideo.Business.Implementations
 
                 // Extract image prompt if exists (<ip> or <image-prompt>)
                 var imagePrompt = ExtractImagePrompt(ref blockContent);
+                
+                // Extract video prompt if exists (<vp> or <video-prompt>)
+                var videoPrompt = ExtractVideoPrompt(ref blockContent);
 
-                // Add the block with its image prompt
+                // Add the block with its image prompt and video prompt
                 if (!string.IsNullOrWhiteSpace(blockContent))
                 {
-                    blocks.Add((blockContent.Trim(), imagePrompt));
+                    blocks.Add((blockContent.Trim(), imagePrompt, videoPrompt));
                 }
 
                 lastIndex = match.Index + match.Length;
@@ -175,14 +178,14 @@ namespace TTSToVideo.Business.Implementations
                 var remainingContent = input[lastIndex..].Trim();
                 if (!string.IsNullOrWhiteSpace(remainingContent))
                 {
-                    blocks.Add((remainingContent, null));
+                    blocks.Add((remainingContent, null, null));
                 }
             }
 
             // If no <p> tags found, treat the entire input as one block
             if (blocks.Count == 0 && !string.IsNullOrWhiteSpace(input))
             {
-                blocks.Add((input.Trim(), null));
+                blocks.Add((input.Trim(), null, null));
             }
 
             return blocks;
@@ -212,10 +215,33 @@ namespace TTSToVideo.Business.Implementations
         }
 
         /// <summary>
-        /// Processes a paragraph block by splitting it into individual paragraphs
-        /// and creating statements with the associated image prompt.
+        /// Extracts video prompt from content using <vp> or <video-prompt> tags.
+        /// Removes the tag from the content and returns the video prompt text.
         /// </summary>
-        private void ProcessParagraphBlock((string Content, string? ImagePrompt) block, string globalPrompt, List<Statement> statements)
+        private string? ExtractVideoPrompt(ref string content)
+        {
+            // Pattern to match <vp>...</vp> or <video-prompt>...</video-prompt>
+            var vpPattern = @"<(?:vp|video-prompt)>(.*?)</(?:vp|video-prompt)>";
+            var match = Regex.Match(content, vpPattern, RegexOptions.Singleline | RegexOptions.IgnoreCase);
+
+            if (match.Success)
+            {
+                var videoPrompt = match.Groups[1].Value.Trim();
+
+                // Remove the video prompt tag from content
+                content = Regex.Replace(content, vpPattern, string.Empty, RegexOptions.Singleline | RegexOptions.IgnoreCase).Trim();
+
+                return !string.IsNullOrWhiteSpace(videoPrompt) ? videoPrompt : null;
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Processes a paragraph block by splitting it into individual paragraphs
+        /// and creating statements with the associated image prompt and video prompt.
+        /// </summary>
+        private void ProcessParagraphBlock((string Content, string? ImagePrompt, string? VideoPrompt) block, string globalPrompt, List<Statement> statements)
         {
             // Get paragraph separators from dictionary
             var pattern = string.Join("|", PromptPatternDictionary.Patterns.Values
@@ -238,22 +264,23 @@ namespace TTSToVideo.Business.Implementations
 
                 if (silentVoicePattern != null && Regex.IsMatch(trimmedParagraph, silentVoicePattern.Pattern))
                 {
-                    ProcessSilentVoicePattern(trimmedParagraph, silentVoicePattern.Pattern, globalPrompt, block.ImagePrompt, statements);
+                    ProcessSilentVoicePattern(trimmedParagraph, silentVoicePattern.Pattern, globalPrompt, block.ImagePrompt, block.VideoPrompt, statements);
                 }
                 else
                 {
-                    // Create statement with image prompt if available
+                    // Create statement with image prompt and video prompt if available
                     statements.Add(new Statement
                     {
                         Prompt = trimmedParagraph,
                         GlobalPrompt = globalPrompt,
-                        ImagePrompt = block.ImagePrompt
+                        ImagePrompt = block.ImagePrompt,
+                        VideoPrompt = block.VideoPrompt
                     });
                 }
             }
         }
 
-        private void ProcessSilentVoicePattern(string paragraph, string pattern, string globalPrompt, string imagePrompt, List<Statement> statements)
+        private void ProcessSilentVoicePattern(string paragraph, string pattern, string globalPrompt, string imagePrompt, string videoPrompt, List<Statement> statements)
         {
             var matches = Regex.Split(paragraph, pattern).Where(ms => !string.IsNullOrWhiteSpace(ms));
 
@@ -279,6 +306,7 @@ namespace TTSToVideo.Business.Implementations
                         AudioDuration = TimeSpan.FromSeconds(secondsInt),
                         GlobalPrompt = globalPrompt,
                         ImagePrompt = imagePrompt,
+                        VideoPrompt = videoPrompt,
                     });
                 }
                 else
@@ -288,6 +316,7 @@ namespace TTSToVideo.Business.Implementations
                         Prompt = match,
                         GlobalPrompt = globalPrompt,
                         ImagePrompt = imagePrompt,
+                        VideoPrompt = videoPrompt,
                     });
                 }
             }
@@ -355,7 +384,8 @@ namespace TTSToVideo.Business.Implementations
                     continue;
                 }
 
-                var imageFileName = PathHelper.GenerateImagePath(projectPath, statement.Prompt);
+                var imageFileName = PathHelper.GenerateImagePath(projectPath,
+                                                                !string.IsNullOrEmpty(statement.VideoPrompt) ? statement.VideoPrompt :  statement.Prompt);
                 var videoPath = $"{imageFileName}.mp4";
 
                 if (File.Exists(videoPath))

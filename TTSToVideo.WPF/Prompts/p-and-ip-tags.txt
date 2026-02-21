@@ -176,7 +176,11 @@ This feature has been successfully implemented in the TTS-to-Video application.
 
 ✅ Support for `<p></p>` tags to define paragraph blocks
 ✅ Support for `<ip></ip>` and `<image-prompt></image-prompt>` tags for custom image descriptions
+✅ Support for `<vp></vp>` and `<video-prompt></video-prompt>` tags for custom video generation
 ✅ Image prompts are associated with all paragraphs in their block
+✅ Video prompts are associated with all paragraphs in their block
+✅ Combined image + video prompts support (image-to-video conversion)
+✅ Video-only generation support (when only `<vp>` is present)
 ✅ Backward compatibility with existing prompts
 ✅ Integration with existing pattern processing (silent voice, etc.)
 
@@ -186,6 +190,7 @@ For complete documentation, see:
 - **Full Guide**: `TTSToVideo.Business/PARAGRAPH_BLOCKS_FEATURE.md`
 - **Quick Reference**: `TTSToVideo.Business/PARAGRAPH_BLOCKS_QUICK_REFERENCE.md`
 - **Implementation Details**: `TTSToVideo.Business/IMPLEMENTATION_SUMMARY.md`
+- **Video Prompt Guide**: `TTSToVideo.WPF/Prompts/vp-tag-usage.txt`
 
 ## Usage Example
 
@@ -196,8 +201,15 @@ Introduction paragraph.
 First paragraph of scene.
 
 <ip>A beautiful mountain landscape at sunset</ip>
+<vp>Slow camera pan across the mountain peaks with warm lighting</vp>
 
 Second paragraph of scene.
+</p>
+
+<p>
+<vp>Timelapse of clouds moving across blue sky</vp>
+
+Third paragraph with video-only generation.
 </p>
 
 Conclusion paragraph.
@@ -205,9 +217,12 @@ Conclusion paragraph.
 
 ## Changes Made
 
-1. **Statement.cs**: Added `ImagePrompt` property
-2. **TTSToVideoBusiness.cs**: Refactored `ParsePromptIntoStatements()` with new helper methods
-3. **Documentation**: Created comprehensive guides and examples
+1. **Statement.cs**: Added `ImagePrompt` and `VideoPrompt` properties
+2. **TTSToVideoBusiness.cs**: 
+   - Refactored `ParsePromptIntoStatements()` with new helper methods
+   - Added `ExtractVideoPrompt()` method for `<vp>` tag extraction
+   - Updated all methods to support video prompt parameter
+3. **Documentation**: Created comprehensive guides and examples including video prompt usage
 
 ## Testing
 

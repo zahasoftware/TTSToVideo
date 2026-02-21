@@ -334,17 +334,19 @@ namespace TTSToVideo.WPF.ViewsModels
                     Images = new ObservableCollection<StatementImageModel>(
                         o.Images.Select(i => new StatementImageModel { Path = i.Path, Id = i.Id })
                     ),
+                    VideoPrompt = o.VideoPrompt,
                     AudioDuration = o.AudioDuration,
                     FontStyle = o.FontStyle,
                     AudioPath = o.AudioPath,
-                    ImageAnimatedPath = o.ImageAnimatedPath
+                    ImageAnimatedPath = o.ImageAnimatedPath,
+                    ImageId = o.ImageId
                 })
             );
         }
 
-        private async Task RegeneratePictureCommandExecute(StatementModel? arg)
+        private async Task RegeneratePictureCommandExecute(StatementModel? statementModel)
         {
-            if (arg == null)
+            if (statementModel == null)
             {
                 message.Warn("No statement provided to regenerate the picture.");
                 return;
@@ -357,7 +359,7 @@ namespace TTSToVideo.WPF.ViewsModels
 
                 message.Info("Generating image.");
 
-                var statement = arg.ToStatement();
+                var statement = statementModel.ToStatement();
                 statement.GlobalPrompt = Model?.AditionalPrompt ?? "";
                 statement.Prompt = string.IsNullOrEmpty(statement.ImagePrompt) ? statement?.Prompt : statement.ImagePrompt;
                 statement.Images.Clear();
@@ -369,8 +371,12 @@ namespace TTSToVideo.WPF.ViewsModels
                     new TTSToVideoOptions { ImageOptions = new TtsToVideoImageOptions { UseTextForPrompt = true } },
                     CancellationTokenSource.Token);
 
-                arg.Images = new ObservableCollection<StatementImageModel>(mapper.Map<List<StatementImageModel>>(statement.Images));
+                statementModel.ImageId = statement.ImageId;
+                statementModel.Images = new ObservableCollection<StatementImageModel>(mapper.Map<List<StatementImageModel>>(statement.Images));
                 message.Info("Image regenerated successfully.");
+
+
+                //TODO: Save the model to keep the ID
             }
             catch (OperationCanceledException)
             {
@@ -395,16 +401,19 @@ namespace TTSToVideo.WPF.ViewsModels
                 CancellationTokenSource = new CancellationTokenSource();
                 var statement = model.ToStatement();
                 var projectPath = GetProjectPath();
-                var imagePath = PathHelper.GenerateImagePath(projectPath, statement.Prompt);
+                var prompt = !string.IsNullOrEmpty(statement.VideoPrompt) 
+                                ? statement.VideoPrompt : (!string.IsNullOrEmpty(statement.ImagePrompt) 
+                                ?  statement.ImagePrompt : statement.Prompt);
+
+                var imagePath = PathHelper.GenerateImagePath(projectPath, prompt);
 
                 if (imagePath != null)
                 {
                     model.ImageAnimatedPath = $"{imagePath}.mp4";
+
                     var request = new VideoGenerationRequest
                     {
-                        Prompt = Model.UseOnlyFirstImage
-                            ? Model.AditionalPrompt
-                            : $"{Model.AditionalPrompt} {statement.Prompt}",
+                        Prompt = statement.VideoPrompt + (string.IsNullOrEmpty(statement.GlobalPrompt)?"":statement.GlobalPrompt) ,
                         SourceImageId = model.Images.FirstOrDefault()?.Id,
                         SourceImagePath = imagePath,
                         Version = MotionVersion.Motion2,

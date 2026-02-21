@@ -1,0 +1,118 @@
+# Video Prompt (<vp>) Tag Usage Guide
+
+## Overview
+The `<vp>` or `<video-prompt>` tag allows you to specify custom video generation prompts for paragraphs within a `<p>` block, similar to how `<ip>` tags work for image prompts.
+
+## Syntax
+```
+<vp>Your video prompt here</vp>
+```
+or
+```
+<video-prompt>Your video prompt here</video-prompt>
+```
+
+## Usage Scenarios
+
+### 1. Video Prompt with Image Prompt (Image-to-Video)
+When both `<ip>` and `<vp>` tags are present, the image is generated using the image prompt, then converted to video using the video prompt as a description.
+
+```
+<p>
+This is the first paragraph.
+
+<ip>A beautiful sunset over mountains</ip>
+<vp>Gentle camera pan across the mountain range with warm orange lighting</vp>
+
+This is the second paragraph.
+</p>
+```
+
+**Result:**
+- An image is generated using "A beautiful sunset over mountains"
+- The image is then converted to video with motion described by "Gentle camera pan across the mountain range with warm orange lighting"
+- Both paragraphs share the same image and video
+
+### 2. Video Prompt Only (Direct Video Generation)
+When only `<vp>` tag is present (no `<ip>`), the video is generated directly without creating an image first.
+
+```
+<p>
+<vp>A timelapse of clouds moving across a blue sky</vp>
+
+This is the first paragraph of the third block.
+
+This is the second paragraph of the third block.
+</p>
+```
+
+**Result:**
+- Video is generated directly using the prompt "A timelapse of clouds moving across a blue sky"
+- All paragraphs in the block share this video
+
+### 3. No Video Prompt
+If no `<vp>` tag is present, the system works as before (using image prompts or default behavior).
+
+```
+<p>
+This is some text.
+
+<ip>A serene lake with reflection</ip>
+
+More text here.
+</p>
+```
+
+**Result:**
+- Only an image is generated (no video conversion with special prompt)
+- Traditional behavior is maintained
+
+## Complete Example
+
+```
+This is some introductory text.
+
+<p>
+This is the first paragraph of the first block.
+
+<ip>This is the image prompt for the first block.</ip>
+<vp>This is the video prompt for the first block.</vp>
+
+This is the second paragraph of the first block.
+</p>
+
+<p>	
+This is the first paragraph of the second block.
+
+This is the second paragraph of the second block.
+
+This is the third paragraph of the second block.
+</p>
+
+<p>
+<vp>This is the video prompt for the third block.</vp>
+
+This is the first paragraph of the third block.
+
+This is the second paragraph of the third block.
+
+This is the third paragraph of the third block.
+</p>
+
+This is some concluding text.
+```
+
+**Processing:**
+1. "This is some introductory text." ? No special prompts
+2. First block paragraphs ? ImagePrompt + VideoPrompt (image converted to video)
+3. Second block paragraphs ? No special prompts
+4. Third block paragraphs ? VideoPrompt only (direct video generation)
+5. "This is some concluding text." ? No special prompts
+
+## Key Points
+- The `<vp>` tag can be placed anywhere within a `<p>` block
+- Video prompts are associated with ALL paragraphs in that `<p>` block
+- `<vp>` and `<video-prompt>` are interchangeable
+- Tags are case-insensitive
+- Video prompt content is trimmed of leading/trailing whitespace
+- The tags are removed from the final text content
