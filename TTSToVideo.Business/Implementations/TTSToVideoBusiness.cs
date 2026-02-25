@@ -845,14 +845,22 @@ namespace TTSToVideo.Business.Implementations
         {
             progressBar.ShowMessage("Making Background Music Audio.");
 
-            using var audioFileReal = AudioHelper.OpenAudio(selectedMusicFile);
+            // Ensure we work with WAV regardless of the source (supports MP3 input)
+            var normalizedMusicPath = selectedMusicFile;
+            if (string.Equals(Path.GetExtension(selectedMusicFile), ".mp3", StringComparison.OrdinalIgnoreCase))
+            {
+                normalizedMusicPath = $"{Path.GetTempFileName()}.wav";
+                AudioHelper.ConvertMp3ToWav(selectedMusicFile, normalizedMusicPath);
+            }
+
+            using var audioFileReal = AudioHelper.OpenAudio(normalizedMusicPath);
 
             var tempAudioFileA = $"{Path.GetTempFileName()}.wav";
             var tempAudioFileB = $"{Path.GetTempFileName()}.wav";
             var tempAudioFileC = $"{Path.GetTempFileName()}.wav";
 
-            File.Copy(selectedMusicFile, tempAudioFileA, true);
-            File.Copy(selectedMusicFile, tempAudioFileB, true);
+            File.Copy(normalizedMusicPath, tempAudioFileA, true);
+            File.Copy(normalizedMusicPath, tempAudioFileB, true);
 
             await LoopMusicToMatchDuration(tempAudioFileA, tempAudioFileB, tempAudioFileC, audioFileReal.TotalTime, totalDuration, token);
 

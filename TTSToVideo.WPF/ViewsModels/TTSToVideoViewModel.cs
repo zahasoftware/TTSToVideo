@@ -164,9 +164,17 @@ namespace TTSToVideo.WPF.ViewsModels
         private void LoadMusicFiles()
         {
             if (!Directory.Exists(configuration.Model.MusicDir)) return;
-            var musicFiles = Directory.GetFiles(configuration.Model.MusicDir, "*.wav");
+
+            var musicFiles = Directory
+                .EnumerateFiles(configuration.Model.MusicDir)
+                .Where(f =>
+                    f.EndsWith(".wav", StringComparison.OrdinalIgnoreCase) ||
+                    f.EndsWith(".mp3", StringComparison.OrdinalIgnoreCase));
+
             foreach (var file in musicFiles)
+            {
                 MusicModels?.Add(new MusicModel { FilePath = file });
+            }
         }
 
         private async Task LoadImageModelsAsync()
