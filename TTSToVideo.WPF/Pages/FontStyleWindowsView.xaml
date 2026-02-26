@@ -5,12 +5,13 @@
       xmlns:local="clr-namespace:TTSToVideo.WPF.ViewsModels"
       xmlns:c="clr-namespace:TTSToVideo.WPF.Converters"
       xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
-      Title="Font Style Settings" Height="750" Width="900"
       xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
       xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
       d:DataContext="{d:DesignInstance Type=local:FontStyleViewModel}"
       mc:Ignorable="d"
-      d:DesignHeight="750" d:DesignWidth="900">
+      d:DesignHeight="750" d:DesignWidth="900"
+      Title="{Binding Title}"
+        >
     <Window.Resources>
         <c:IntToBoolConverter x:Key="IntToBoolConverter"/>
     </Window.Resources>

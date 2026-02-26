@@ -185,6 +185,12 @@ CommandParameter="{Binding SelectedItem, RelativeSource={RelativeSource Ancestor
                             Value="{Binding TtsToVideoViewModel.Model.SubtitleMarginV, Mode=TwoWay}"
                             Minimum="0" Maximum="300" Width="150" TickFrequency="10" TickPlacement="BottomRight" IsSnapToTickEnabled="True" AutoToolTipPlacement="BottomRight" AutoToolTipPrecision="0" Margin="10" ValueChanged="SubtitleMarginVSlider_ValueChanged"/>
                     <Label Content="{Binding TtsToVideoViewModel.Model.SubtitleMarginV}" />
+                    <Separator />
+                    <RibbonButton Label="Edit All Styles" 
+                                  Click="OpenMasterFontStyleWindow" 
+                                  ToolTip="Edit font style for all statements"
+                                  LargeImageSource="/Images/config.png"
+                                  IsEnabled="{Binding TtsToVideoViewModel.ProjectSelected, Converter={StaticResource IsNotNullConverter}}" />
                 </RibbonGroup>
                 <RibbonGroup Header="Video">
                     <!--<Slider x:Name="sliderDuration" 

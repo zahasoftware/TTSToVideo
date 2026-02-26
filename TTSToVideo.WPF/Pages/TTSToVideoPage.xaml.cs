@@ -53,7 +53,16 @@ namespace TTSToVideo.WPF
             var window = (ServiceProvider.GetService(typeof(FontStyleWindowsView)) as FontStyleWindowsView);
             //Get the current item of the datagrid
             var item = (sender as Button).DataContext as StatementModel;
-            (window.DataContext as FontStyleViewModel).Statement = item;
+            var fontStyleVM = window.DataContext as FontStyleViewModel;
+            
+            // Set to single statement mode
+            if (fontStyleVM != null)
+            {
+                fontStyleVM.IsMasterMode = false;
+                fontStyleVM.AllStatements = null;
+                fontStyleVM.Statement = item;
+            }
+            
             window.ShowDialog();
         }
 

@@ -144,5 +144,33 @@ namespace TTSToVideo
             foreach (var st in vm.Model.Statements) { st.FontStyle ??= new TTSToVideo.Helpers.Implementations.Ffmpeg.FfmpegFontStyle(); st.FontStyle.MarginV = newMargin; }
         }
 
+        private void OpenMasterFontStyleWindow(object sender, RoutedEventArgs e)
+        {
+            if (ServiceProvider.GetService(typeof(FontStyleWindowsView)) is FontStyleWindowsView window)
+            {
+                var fontStyleVM = window.DataContext as FontStyleViewModel;
+                if (fontStyleVM != null)
+                {
+                    // Set to master mode (editing all statements)
+                    fontStyleVM.IsMasterMode = true;
+                    fontStyleVM.Title = "Master Font Style - Edit All Statements";
+                    fontStyleVM.AllStatements = ViewModel?.TtsToVideoViewModel?.Model?.Statements?.ToList();
+                    
+                    // Use first statement as template or create default
+                    var templateStatement = ViewModel?.TtsToVideoViewModel?.Model?.Statements?.FirstOrDefault()
+                        ?? new TTSToVideo.WPF.Models.StatementModel();
+                    fontStyleVM.Statement = templateStatement;
+                }
+                
+                window.Owner = this;
+                window.WindowStartupLocation = WindowStartupLocation.CenterOwner;
+                window.ShowDialog();
+            }
+            else
+            {
+                MessageBox.Show("Unable to open font style window. Service not available.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
     }
 }

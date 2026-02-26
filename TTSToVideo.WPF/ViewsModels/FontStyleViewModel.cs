@@ -91,8 +91,33 @@ namespace TTSToVideo.WPF.ViewsModels
 
         private async Task WindowClosed()
         {
-            if (Statement != null)
+            if (IsMasterMode && AllStatements != null && AllStatements.Count > 0)
             {
+                // Apply changes to all statements
+                var newTextColor = ColorToHexPreservingAlpha(this.TextColor, _originalTextColorHex);
+                var newBackColor = ColorToHexPreservingAlpha(this.BackgroundColor, _originalBackgroundColorHex);
+                var newSecondaryColour = ColorToHexPreservingAlpha(this.SecondaryColour, _originalSecondaryColourHex);
+                var newOutlineColour = ColorToHexPreservingAlpha(this.OutlineColour, _originalOutlineColourHex);
+                
+                foreach (var statement in AllStatements)
+                {
+                    if (statement.FontStyle == null)
+                        statement.FontStyle = new FfmpegFontStyle();
+                    
+                    ApplyStylesToStatement(statement, newTextColor, newBackColor, newSecondaryColour, newOutlineColour);
+                    
+                    // Delete cached video for this statement
+                    var path = statement?.Images?.FirstOrDefault()?.Path;
+                    if (path != null)
+                    {
+                        path = $"{Path.Combine(Path.GetDirectoryName(path), "v-" + Path.GetFileNameWithoutExtension(path))}.wav.mp4";
+                        if (File.Exists(path)) File.Delete(path);
+                    }
+                }
+            }
+            else if (Statement != null)
+            {
+                // Single statement mode
                 var newTextColor = ColorToHexPreservingAlpha(this.TextColor, _originalTextColorHex);
                 var newBackColor = ColorToHexPreservingAlpha(this.BackgroundColor, _originalBackgroundColorHex);
                 var newSecondaryColour = ColorToHexPreservingAlpha(this.SecondaryColour, _originalSecondaryColourHex);
@@ -128,30 +153,44 @@ namespace TTSToVideo.WPF.ViewsModels
                         if (File.Exists(path)) File.Delete(path);
                     }
                 }
-                Statement.FontStyle.Alignment = (FfmpegAlignment)this.SelectedFontPosition.Id;
-                Statement.FontStyle.FontSize = this.FontSize;
-                Statement.FontStyle.SubtitleVisible = this.SubtitleVisible;
-                Statement.FontStyle.MarginV = this.MarginV;
-                Statement.FontStyle.MarginL = this.MarginL;
-                Statement.FontStyle.MarginR = this.MarginR;
-                Statement.FontStyle.TextColor = newTextColor;
-                Statement.FontStyle.BackgroundColor = newBackColor;
-                Statement.FontStyle.SecondaryColour = newSecondaryColour;
-                Statement.FontStyle.OutlineColour = newOutlineColour;
-                Statement.FontStyle.Fontname = this.Fontname;
-                Statement.FontStyle.Bold = this.Bold;
-                Statement.FontStyle.Italic = this.Italic;
-                Statement.FontStyle.Underline = this.Underline;
-                Statement.FontStyle.StrikeOut = this.StrikeOut;
-                Statement.FontStyle.ScaleX = this.ScaleX;
-                Statement.FontStyle.ScaleY = this.ScaleY;
-                Statement.FontStyle.Spacing = this.Spacing;
-                Statement.FontStyle.Angle = this.Angle;
-                Statement.FontStyle.BorderStyle = this.BorderStyle;
-                Statement.FontStyle.Outline = this.Outline;
-                Statement.FontStyle.Shadow = this.Shadow;
+                
+                ApplyStylesToStatement(Statement, newTextColor, newBackColor, newSecondaryColour, newOutlineColour);
             }
+            
+            // Reset master mode flags
+            IsMasterMode = false;
+            AllStatements = null;
+            
             await Task.Delay(1);
+        }
+        
+        private void ApplyStylesToStatement(StatementModel statement, string textColor, string backColor, string secondaryColour, string outlineColour)
+        {
+            if (statement.FontStyle == null)
+                statement.FontStyle = new FfmpegFontStyle();
+                
+            statement.FontStyle.Alignment = (FfmpegAlignment)this.SelectedFontPosition.Id;
+            statement.FontStyle.FontSize = this.FontSize;
+            statement.FontStyle.SubtitleVisible = this.SubtitleVisible;
+            statement.FontStyle.MarginV = this.MarginV;
+            statement.FontStyle.MarginL = this.MarginL;
+            statement.FontStyle.MarginR = this.MarginR;
+            statement.FontStyle.TextColor = textColor;
+            statement.FontStyle.BackgroundColor = backColor;
+            statement.FontStyle.SecondaryColour = secondaryColour;
+            statement.FontStyle.OutlineColour = outlineColour;
+            statement.FontStyle.Fontname = this.Fontname;
+            statement.FontStyle.Bold = this.Bold;
+            statement.FontStyle.Italic = this.Italic;
+            statement.FontStyle.Underline = this.Underline;
+            statement.FontStyle.StrikeOut = this.StrikeOut;
+            statement.FontStyle.ScaleX = this.ScaleX;
+            statement.FontStyle.ScaleY = this.ScaleY;
+            statement.FontStyle.Spacing = this.Spacing;
+            statement.FontStyle.Angle = this.Angle;
+            statement.FontStyle.BorderStyle = this.BorderStyle;
+            statement.FontStyle.Outline = this.Outline;
+            statement.FontStyle.Shadow = this.Shadow;
         }
 
         private Color ParseColorFromHex(string hex)
@@ -207,6 +246,17 @@ namespace TTSToVideo.WPF.ViewsModels
         public int? Outline { get; set; }
         public int? Shadow { get; set; }
         public StatementModel? Statement { get; set; }
+        
+        /// <summary>
+        /// Indicates whether this editor is in master mode (editing all statements) or single statement mode.
+        /// </summary>
+        public bool IsMasterMode { get; set; }
+        
+        /// <summary>
+        /// Collection of all statements to be edited in master mode.
+        /// </summary>
+        public List<StatementModel>? AllStatements { get; set; }
+        public string Title { get; set; }
     }
 
     public class BorderStyleModel
