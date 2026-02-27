@@ -319,8 +319,8 @@ namespace TTSToVideo.WPF.ViewsModels
                 },
                 SubtitleOptions = new TtsTVideoSubtitleOptions
                 {
-                    SubtitleSize = Model.SubtitleSize,
-                    MarginV = Model.SubtitleMarginV
+                    SubtitleSize = Constants.SUBTITTLE_SIZE_DEFAULT,
+                    MarginV = Constants.MARGINV_SIZE_DEFAULT
                 },
                 StatementOptions = Model.Statements.Select((o, i) => new StatementOptions
                 {
