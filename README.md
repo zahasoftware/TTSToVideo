@@ -6,7 +6,6 @@ dotnet user-secrets init
 dotnet user-secrets set "LeonardoAIToken" "<your token>"
 ```
 
-
 ## This is for ElevenLab Token https://elevenlabs.io/ai-speech-classifier
 
 ```pwsh

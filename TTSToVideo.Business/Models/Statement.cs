@@ -48,6 +48,12 @@ namespace TTSToVideo.Business.Models
         /// If only VideoPrompt is present, the video is generated without an image.
         /// </summary>
         public string? VideoPrompt { get; set; }
+        
+        /// <summary>
+        /// Voice ID to use for this statement.
+        /// If not specified, the global voice will be used.
+        /// </summary>
+        public string? VoiceId { get; set; }
     }
 
 }

@@ -19,6 +19,7 @@ namespace TTSToVideo.Business.Implementations
         private readonly IVideoGeneratorFactory videoFactory;
         private readonly ITts tts;
         private readonly IProgressBar progressBar;
+        private List<TtsVoice>? cachedVoices;
 
         public TTSToVideoBusiness(
             IImageGeneratorAI imageGeneratorAI,
@@ -116,10 +117,13 @@ namespace TTSToVideo.Business.Implementations
         {
             var statements = new List<Statement>();
 
-            // Step 1: Split by <p> tags to get blocks
+            // Step 1: Validate voice tag format
+            ValidateVoiceTagFormat(prompt);
+
+            // Step 2: Extract voice tags and split by <p> tags to get blocks
             var blocks = SplitIntoParagraphBlocks(prompt);
 
-            // Step 2: Process each block
+            // Step 3: Process each block
             foreach (var block in blocks)
             {
                 ProcessParagraphBlock(block, globalPrompt, statements);
@@ -127,14 +131,42 @@ namespace TTSToVideo.Business.Implementations
 
             return statements;
         }
+        
+        /// <summary>
+        /// Validates that all voice tags have the required name or n attribute.
+        /// </summary>
+        private void ValidateVoiceTagFormat(string prompt)
+        {
+            // Pattern to match all voice tags (both valid and invalid)
+            var allVoiceTagsPattern = @"<(?:v|voice)(\s+[^>]*)?>";
+            var allMatches = Regex.Matches(prompt, allVoiceTagsPattern, RegexOptions.IgnoreCase);
+            
+            foreach (Match match in allMatches)
+            {
+                var attributes = match.Groups[1].Value;
+                
+                // Check if the tag has name or n attribute with a value
+                var hasValidAttribute = Regex.IsMatch(attributes, @"(?:name|n)\s*=\s*""[^""]+""", RegexOptions.IgnoreCase);
+                
+                if (!hasValidAttribute)
+                {
+                    throw new CustomApplicationException($"Voice tag validation failed: Voice tag '{match.Value}' must have a 'name' or 'n' attribute with a value. Example: <v name=\"VoiceName\">, <v n=\"VoiceName\">, or <voice name=\"VoiceName\">");
+                }
+            }
+        }
 
         /// <summary>
         /// Splits the input text into paragraph blocks based on <p></p> tags.
-        /// Returns a list of (content, imagePrompt, videoPrompt) tuples.
+        /// Returns a list of (content, imagePrompt, videoPrompt, voiceId) tuples.
         /// </summary>
-        private List<(string Content, string? ImagePrompt, string? VideoPrompt)> SplitIntoParagraphBlocks(string input)
+        private List<(string Content, string? ImagePrompt, string? VideoPrompt, string? VoiceId)> SplitIntoParagraphBlocks(string input)
         {
-            var blocks = new List<(string Content, string? ImagePrompt, string? VideoPrompt)>();
+            var blocks = new List<(string Content, string? ImagePrompt, string? VideoPrompt, string? VoiceId)>();
+            string? currentVoiceId = null;
+
+            // First, extract all voice tags and track their positions
+            var voiceTagPattern = @"<(?:v|voice)\s+(?:n|name)=""([^""]+)"">";
+            var voiceMatches = Regex.Matches(input, voiceTagPattern, RegexOptions.IgnoreCase).Cast<Match>().ToList();
 
             // Pattern to match <p>...</p> blocks
             var pBlockPattern = @"<p>(.*?)</p>";
@@ -147,26 +179,46 @@ namespace TTSToVideo.Business.Implementations
                 // Add content before the <p> tag as a block without image prompt or video prompt
                 if (match.Index > lastIndex)
                 {
-                    var beforeContent = input[lastIndex..match.Index].Trim();
+                    var beforeContent = input[lastIndex..match.Index];
+                    
+                    // Check if there's a voice tag in this content
+                    var voiceInBefore = voiceMatches.LastOrDefault(v => v.Index < match.Index && v.Index >= lastIndex);
+                    if (voiceInBefore != null)
+                    {
+                        currentVoiceId = voiceInBefore.Groups[1].Value;
+                        beforeContent = Regex.Replace(beforeContent, voiceTagPattern, string.Empty, RegexOptions.IgnoreCase);
+                    }
+                    
+                    beforeContent = beforeContent.Trim();
                     if (!string.IsNullOrWhiteSpace(beforeContent))
                     {
-                        blocks.Add((beforeContent, null, null));
+                        blocks.Add((beforeContent, null, null, currentVoiceId));
                     }
                 }
 
                 // Extract content inside <p> tags
                 var blockContent = match.Groups[1].Value;
 
+                // Check for voice tags inside the block
+                var voiceInBlock = voiceMatches.LastOrDefault(v => v.Index > match.Index && v.Index < match.Index + match.Length);
+                if (voiceInBlock != null)
+                {
+                    currentVoiceId = voiceInBlock.Groups[1].Value;
+                }
+
                 // Extract image prompt if exists (<ip> or <image-prompt>)
                 var imagePrompt = ExtractImagePrompt(ref blockContent);
                 
                 // Extract video prompt if exists (<vp> or <video-prompt>)
                 var videoPrompt = ExtractVideoPrompt(ref blockContent);
+                
+                // Remove voice tags from block content
+                blockContent = Regex.Replace(blockContent, voiceTagPattern, string.Empty, RegexOptions.IgnoreCase);
 
-                // Add the block with its image prompt and video prompt
+                // Add the block with its image prompt, video prompt, and voice ID
                 if (!string.IsNullOrWhiteSpace(blockContent))
                 {
-                    blocks.Add((blockContent.Trim(), imagePrompt, videoPrompt));
+                    blocks.Add((blockContent.Trim(), imagePrompt, videoPrompt, currentVoiceId));
                 }
 
                 lastIndex = match.Index + match.Length;
@@ -175,17 +227,34 @@ namespace TTSToVideo.Business.Implementations
             // Add remaining content after the last <p> tag
             if (lastIndex < input.Length)
             {
-                var remainingContent = input[lastIndex..].Trim();
+                var remainingContent = input[lastIndex..];
+                
+                // Check if there's a voice tag in the remaining content
+                var voiceInRemaining = voiceMatches.LastOrDefault(v => v.Index >= lastIndex);
+                if (voiceInRemaining != null)
+                {
+                    currentVoiceId = voiceInRemaining.Groups[1].Value;
+                    remainingContent = Regex.Replace(remainingContent, voiceTagPattern, string.Empty, RegexOptions.IgnoreCase);
+                }
+                
+                remainingContent = remainingContent.Trim();
                 if (!string.IsNullOrWhiteSpace(remainingContent))
                 {
-                    blocks.Add((remainingContent, null, null));
+                    blocks.Add((remainingContent, null, null, currentVoiceId));
                 }
             }
 
             // If no <p> tags found, treat the entire input as one block
             if (blocks.Count == 0 && !string.IsNullOrWhiteSpace(input))
             {
-                blocks.Add((input.Trim(), null, null));
+                var content = input;
+                var voiceMatch = voiceMatches.LastOrDefault();
+                if (voiceMatch != null)
+                {
+                    currentVoiceId = voiceMatch.Groups[1].Value;
+                    content = Regex.Replace(content, voiceTagPattern, string.Empty, RegexOptions.IgnoreCase);
+                }
+                blocks.Add((content.Trim(), null, null, currentVoiceId));
             }
 
             return blocks;
@@ -239,9 +308,9 @@ namespace TTSToVideo.Business.Implementations
 
         /// <summary>
         /// Processes a paragraph block by splitting it into individual paragraphs
-        /// and creating statements with the associated image prompt and video prompt.
+        /// and creating statements with the associated image prompt, video prompt, and voice ID.
         /// </summary>
-        private void ProcessParagraphBlock((string Content, string? ImagePrompt, string? VideoPrompt) block, string globalPrompt, List<Statement> statements)
+        private void ProcessParagraphBlock((string Content, string? ImagePrompt, string? VideoPrompt, string? VoiceId) block, string globalPrompt, List<Statement> statements)
         {
             // Get paragraph separators from dictionary
             var pattern = string.Join("|", PromptPatternDictionary.Patterns.Values
@@ -264,23 +333,24 @@ namespace TTSToVideo.Business.Implementations
 
                 if (silentVoicePattern != null && Regex.IsMatch(trimmedParagraph, silentVoicePattern.Pattern))
                 {
-                    ProcessSilentVoicePattern(trimmedParagraph, silentVoicePattern.Pattern, globalPrompt, block.ImagePrompt, block.VideoPrompt, statements);
+                    ProcessSilentVoicePattern(trimmedParagraph, silentVoicePattern.Pattern, globalPrompt, block.ImagePrompt, block.VideoPrompt, block.VoiceId, statements);
                 }
                 else
                 {
-                    // Create statement with image prompt and video prompt if available
+                    // Create statement with image prompt, video prompt, and voice ID if available
                     statements.Add(new Statement
                     {
                         Prompt = trimmedParagraph,
                         GlobalPrompt = globalPrompt,
                         ImagePrompt = block.ImagePrompt,
-                        VideoPrompt = block.VideoPrompt
+                        VideoPrompt = block.VideoPrompt,
+                        VoiceId = block.VoiceId
                     });
                 }
             }
         }
 
-        private void ProcessSilentVoicePattern(string paragraph, string pattern, string globalPrompt, string imagePrompt, string videoPrompt, List<Statement> statements)
+        private void ProcessSilentVoicePattern(string paragraph, string pattern, string globalPrompt, string imagePrompt, string videoPrompt, string voiceId, List<Statement> statements)
         {
             var matches = Regex.Split(paragraph, pattern).Where(ms => !string.IsNullOrWhiteSpace(ms));
 
@@ -307,6 +377,7 @@ namespace TTSToVideo.Business.Implementations
                         GlobalPrompt = globalPrompt,
                         ImagePrompt = imagePrompt,
                         VideoPrompt = videoPrompt,
+                        VoiceId = voiceId
                     });
                 }
                 else
@@ -317,6 +388,7 @@ namespace TTSToVideo.Business.Implementations
                         GlobalPrompt = globalPrompt,
                         ImagePrompt = imagePrompt,
                         VideoPrompt = videoPrompt,
+                        VoiceId = voiceId
                     });
                 }
             }
@@ -757,8 +829,76 @@ namespace TTSToVideo.Business.Implementations
 
         private async Task<string> ProcessVoices(List<Statement> statements, string projectPath, TtsVoice selectedVoice, TTSToVideoOptions options, CancellationToken token)
         {
+            // Validate and resolve voice IDs for all statements
+            await ValidateAndResolveVoiceIds(statements, selectedVoice, token);
+            
             await GenerateVoices(statements, projectPath, selectedVoice, token);
             return await ConcatenateVoices(statements, projectPath, options, token);
+        }
+        
+        /// <summary>
+        /// Validates voice tags and resolves voice IDs for all statements.
+        /// Caches the voice list for performance.
+        /// </summary>
+        private async Task ValidateAndResolveVoiceIds(List<Statement> statements, TtsVoice selectedVoice, CancellationToken token)
+        {
+            // Get all unique voice names from statements
+            var voiceNames = statements
+                .Where(s => !string.IsNullOrEmpty(s.VoiceId))
+                .Select(s => s.VoiceId)
+                .Distinct()
+                .ToList();
+            
+            if (voiceNames.Count == 0)
+            {
+                // No voice tags found, use the global voice for all statements
+                foreach (var statement in statements)
+                {
+                    statement.VoiceId = selectedVoice.Id;
+                }
+                return;
+            }
+            
+            // Cache voices if not already cached
+            if (cachedVoices == null)
+            {
+                progressBar.ShowMessage("Loading available voices...");
+                cachedVoices = await tts.GetTtsVoices(null, token);
+            }
+            
+            // Validate and resolve each voice name
+            foreach (var voiceName in voiceNames)
+            {
+                var matchingVoices = cachedVoices
+                    .Where(v => 
+                        (v.Name != null && v.Name.Contains(voiceName, StringComparison.OrdinalIgnoreCase)) ||
+                        (v.Id != null && v.Id.Contains(voiceName, StringComparison.OrdinalIgnoreCase)))
+                    .ToList();
+                
+                if (matchingVoices.Count == 0)
+                {
+                    throw new CustomApplicationException($"Voice tag validation failed: Voice '{voiceName}' not found in the available voices list.");
+                }
+                
+                if (matchingVoices.Count > 1)
+                {
+                    var voiceDetails = string.Join(", ", matchingVoices.Select(v => $"Name: '{v.Name}', Id: '{v.Id}'"));
+                    throw new CustomApplicationException($"Voice tag validation failed: Multiple voices match '{voiceName}'. Matching voices: [{voiceDetails}]. Please use a more specific identifier.");
+                }
+                
+                // Resolve voice name to voice ID
+                var resolvedVoiceId = matchingVoices[0].Id;
+                foreach (var statement in statements.Where(s => s.VoiceId == voiceName))
+                {
+                    statement.VoiceId = resolvedVoiceId;
+                }
+            }
+            
+            // Assign global voice to statements without a voice tag
+            foreach (var statement in statements.Where(s => string.IsNullOrEmpty(s.VoiceId)))
+            {
+                statement.VoiceId = selectedVoice.Id;
+            }
         }
 
         private async Task GenerateVoices(List<Statement> statements, string projectPath, TtsVoice selectedVoice, CancellationToken token)
@@ -786,7 +926,7 @@ namespace TTSToVideo.Business.Implementations
                     await GetVoice(new TtsVoice
                     {
                         ModelId = "eleven_multilingual_v2", //eleven_multilingual_v2, eleven_v3
-                        Id = selectedVoice.Id,
+                        Id = statement.VoiceId ?? selectedVoice.Id,
                     }, statement, token);
                 }
                 else
