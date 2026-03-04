@@ -9,6 +9,7 @@ using NetXP.IAs.ImageGeneratorAI;
 using NetXP.ImageGeneratorAI.LeonardoAI;
 using NetXP.Processes;
 using NetXP.Translators.AzureTranslator;
+using NetXP.Translators.OllamaTranslator;
 using NetXP.Tts;
 using NetXP.Tts.ElevenLabs;
 using System;
@@ -73,7 +74,19 @@ namespace TTSToVideo
             services.AddHttpClient<OllamaChatService>();
 
             services.AddOptions<AzureTranslatorOptions>().Configure((o) => configuration.GetSection("AzureTranslator").Bind(o));
-            services.AddSingleton<ITranslator, AzureTranslatorImplementation>();
+            services.AddOptions<OllamaTranslatorOptions>().Configure((o) => configuration.GetSection("OllamaTranslator").Bind(o));
+            
+            var selectedTranslator = configuration.GetSection("TranslatorConfig:SelectedTranslator").Value ?? "Azure";
+            
+            if (selectedTranslator.Equals("Ollama", StringComparison.OrdinalIgnoreCase))
+            {
+                services.AddHttpClient<OllamaTranslatorImplementation>();
+                services.AddSingleton<ITranslator, OllamaTranslatorImplementation>();
+            }
+            else
+            {
+                services.AddSingleton<ITranslator, AzureTranslatorImplementation>();
+            }
 
             var mapperConfig = new MapperConfiguration(cfg =>
             {
