@@ -6,6 +6,7 @@ using NetXP.Exceptions;
 using NetXP.IAs.Chat;
 using NetXP.IAs.Chats.Ollama;
 using NetXP.IAs.ImageGeneratorAI;
+using NetXP.ImageGeneratorAI.ComfyBridgeApi;
 using NetXP.ImageGeneratorAI.LeonardoAI;
 using NetXP.Processes;
 using NetXP.Translators.AzureTranslator;
@@ -69,6 +70,7 @@ namespace TTSToVideo
                 o.Token = configuration.GetSection("LeonardoAIToken").Value;
             });
             services.AddHttpClient<ImageGeneratorAILeonardoAI>();
+            services.AddComfyBridgeImageGenerator(configuration);
 
             services.AddOptions<AIChatConfig>().Configure((o) => configuration.GetSection("AIChatConfig").Bind(o));
             services.AddHttpClient<OllamaChatService>();
@@ -102,7 +104,6 @@ namespace TTSToVideo
             services.AddSingleton(mapper);
 
             //Framework NetXP
-            services.AddSingleton<IImageGeneratorAI, NetXP.ImageGeneratorAI.LeonardoAI.ImageGeneratorAILeonardoAI>();
             services.AddSingleton<ITts, TtsEvenLabs>();
             services.AddSingleton<IAIChatService, OllamaChatService>();
             services.AddSingleton<IIOTerminal, NetXP.Processes.Implementations.IOTerminal>();

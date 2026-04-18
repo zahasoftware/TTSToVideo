@@ -7,7 +7,7 @@
      xmlns:local="clr-namespace:TTSToVideo.WPF.Pages"
      xmlns:viewsmodels="clr-namespace:TTSToVideo.WPF.ViewsModels"
      mc:Ignorable="d"
-     Title="CategoryConfigurationView" Height="450" Width="800"
+     Title="CategoryConfigurationView" Height="600" Width="800"
      d:DataContext="{d:DesignInstance Type=viewsmodels:NewCategoryViewModel}">
     <Window.Resources>
         <Style TargetType="Label">
@@ -23,8 +23,11 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" ></RowDefinition>
             <RowDefinition Height="auto" ></RowDefinition>
-            <RowDefinition Height="70*" ></RowDefinition>
             <RowDefinition Height="30*" ></RowDefinition>
+            <RowDefinition Height="Auto" ></RowDefinition>
+            <RowDefinition Height="30*" ></RowDefinition>
+            <RowDefinition Height="auto" ></RowDefinition>
+            <RowDefinition Height="10*"></RowDefinition>
         </Grid.RowDefinitions>
 
         <StackPanel>
@@ -35,11 +38,16 @@
         <TextBox Grid.Row="2" Text="{Binding Model.IAChatInstructions}" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" 
                    HorizontalAlignment="Stretch" VerticalAlignment="Stretch" 
                    Width="Auto" Height="Auto" />
+            
+            <Label Grid.Row="3">Translation Instruction (Optional)</Label>
+            <TextBox Grid.Row="4" Text="{Binding Model.TranslationInstruction}" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto"
+                     ToolTip="Provide specific instructions for how the text should be translated (e.g., 'Keep technical terms in English', 'Use formal language', etc.)" />
 
-        <StackPanel Grid.Row="3">
-            <Label>Hash Tags</Label>
-            <TextBox Text="{Binding Model.HashTags}" Height="50" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" />
-        </StackPanel>
+        <Label Grid.Row="5">Hash Tags</Label>
+            <TextBox Grid.Row="6" Text="{Binding Model.HashTags}" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" 
+                     Margin="0,0,0,5" />
+
+
 
     </Grid>
 </Window>

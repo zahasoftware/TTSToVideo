@@ -10,7 +10,13 @@ namespace TTSToVideo.WPF.Models
         public string? DirectoryPath { get; set; }
         public string? IAChatInstructions { get; set; } 
         public string? HashTags { get; set; }
-        public ChatAIModel? ChatAIModelSelected { get; set; } 
+        public ChatAIModel? ChatAIModelSelected { get; set; }
+        
+        /// <summary>
+        /// Translation instruction for this category.
+        /// Optional instruction to guide how text should be translated.
+        /// </summary>
+        public string? TranslationInstruction { get; set; }
 
     }
 }

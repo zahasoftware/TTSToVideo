@@ -608,9 +608,23 @@ namespace TTSToVideo.WPF.ViewsModels
                 var defaultModel = JsonConvert.DeserializeObject<TtsToVideoModel>(
                     await File.ReadAllTextAsync(defaultConfigPath));
 
-                var translatedText = await translator.TranslateTextAsync(defaultModel.Prompt, toLanguage);
+                // Get translation instruction from category (optional)
+                var translationInstruction = CategoryViewModel?.Model?.TranslationInstruction;
+                
+                // Use the appropriate translation method based on whether instruction is provided
+                string translatedText;
+                if (!string.IsNullOrWhiteSpace(translationInstruction))
+                {
+                    translatedText = await translator.TranslateTextAsync(defaultModel.Prompt, toLanguage, translationInstruction);
+                    message.Info($"Translated to {toLanguage} with custom instruction.");
+                }
+                else
+                {
+                    translatedText = await translator.TranslateTextAsync(defaultModel.Prompt, toLanguage);
+                    message.Info($"Translated to {toLanguage}.");
+                }
+                
                 Model.Prompt = translatedText;
-                message.Info($"Translated to {toLanguage}.");
                 await SaveModel(translatedProjectPath);
             }
 
