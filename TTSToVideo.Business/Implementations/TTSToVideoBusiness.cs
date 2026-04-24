@@ -1,5 +1,6 @@
 ﻿using Microsoft.VisualBasic;
 using Microsoft.VisualBasic.FileIO;
+using Microsoft.Extensions.Options;
 using NAudio.Wave;
 using NetXP.Exceptions;
 using NetXP.IAs.ImageGeneratorAI;
@@ -16,6 +17,7 @@ namespace TTSToVideo.Business.Implementations
     public class TTSToVideoBusiness : ITTSToVideoBusiness
     {
         private readonly IImageGeneratorAI imageGeneratorAI;
+        private readonly ImageGeneratorAIOptions imageGeneratorOptions;
         private readonly IVideoGeneratorFactory videoFactory;
         private readonly ITts tts;
         private readonly IProgressBar progressBar;
@@ -25,12 +27,14 @@ namespace TTSToVideo.Business.Implementations
             IImageGeneratorAI imageGeneratorAI,
             IVideoGeneratorFactory videoFactory,
             ITts tts,
-            IProgressBar progressBar)
+            IProgressBar progressBar,
+            IOptions<ImageGeneratorAIOptions> imageGeneratorOptions)
         {
             this.imageGeneratorAI = imageGeneratorAI;
             this.videoFactory = videoFactory;
             this.tts = tts;
             this.progressBar = progressBar;
+            this.imageGeneratorOptions = imageGeneratorOptions?.Value ?? throw new ArgumentNullException(nameof(imageGeneratorOptions));
         }
 
         public async Task GeneratePortraitVideoCommandExecute(
@@ -764,7 +768,8 @@ namespace TTSToVideo.Business.Implementations
                 ModelId = selectedModelId,
                 NumImages = 1,
                 Prompt = prompt,
-                NegativePrompt = statement.NegativePrompt
+                NegativePrompt = statement.NegativePrompt,
+                ExtraOptions = imageGeneratorOptions.ExtraOptions
             });
 
             statement.ImageId = imageId.Id;
