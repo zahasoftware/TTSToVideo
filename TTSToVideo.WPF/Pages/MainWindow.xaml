@@ -161,6 +161,34 @@ CommandParameter="{Binding SelectedItem, RelativeSource={RelativeSource Ancestor
                               Width="220" 
                               >
                     </ComboBox>
+                    <RibbonButton Label="Play"
+                                  ToolTip="Play selected music"
+                                  Command="{Binding TtsToVideoViewModel.PlaySelectedMusicCommand}">
+                        <RibbonButton.Style>
+                            <Style TargetType="RibbonButton">
+                                <Setter Property="Visibility" Value="Visible"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding TtsToVideoViewModel.IsMusicPlaying}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </RibbonButton.Style>
+                    </RibbonButton>
+                    <RibbonButton Label="Stop"
+                                  ToolTip="Stop selected music"
+                                  Command="{Binding TtsToVideoViewModel.StopSelectedMusicCommand}">
+                        <RibbonButton.Style>
+                            <Style TargetType="RibbonButton">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding TtsToVideoViewModel.IsMusicPlaying}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </RibbonButton.Style>
+                    </RibbonButton>
                     <Slider Value="{Binding TtsToVideoViewModel.Model.MusicVolume, Mode=TwoWay}" 
                             Minimum             ="-60" Maximum="10" 
                             Width               ="150" 

@@ -83,6 +83,15 @@ namespace TTSToVideo.WPF
             return vm?.Model?.Prompt ?? string.Empty;
         }
 
+        private void SetPromptText(string text)
+        {
+            if (DataContext is ViewsModels.TTSToVideoViewModel vm && vm.Model != null)
+            {
+                vm.Model.Prompt = text;
+            }
+            PromptTextBox.Text = text;
+        }
+
         private void SelectMatch(int index, int length)
         {
             if (index < 0 || length <= 0) return;
@@ -100,6 +109,71 @@ namespace TTSToVideo.WPF
                 FindButton_Click(sender, e);
                 e.Handled = true;
             }
+        }
+
+        private void ReplaceButton_Click(object sender, RoutedEventArgs e)
+        {
+            string query = SearchTextBox.Text;
+            if (string.IsNullOrWhiteSpace(query)) return;
+
+            string replacement = ReplaceTextBox.Text ?? string.Empty;
+            string text = GetPromptText();
+
+            int idx = _lastMatchIndex;
+            bool hasValidLastMatch = idx >= 0
+                && _lastMatchLength == query.Length
+                && idx + _lastMatchLength <= text.Length
+                && string.Equals(text.Substring(idx, _lastMatchLength), query, StringComparison.OrdinalIgnoreCase);
+
+            if (!hasValidLastMatch)
+            {
+                idx = text.IndexOf(query, StringComparison.OrdinalIgnoreCase);
+                if (idx < 0)
+                {
+                    System.Media.SystemSounds.Beep.Play();
+                    return;
+                }
+            }
+
+            string newText = text.Remove(idx, query.Length).Insert(idx, replacement);
+            SetPromptText(newText);
+            SelectMatch(idx, replacement.Length);
+        }
+
+        private void ReplaceAllButton_Click(object sender, RoutedEventArgs e)
+        {
+            string query = SearchTextBox.Text;
+            if (string.IsNullOrWhiteSpace(query)) return;
+
+            string replacement = ReplaceTextBox.Text ?? string.Empty;
+            string text = GetPromptText();
+
+            var sb = new StringBuilder(text.Length);
+            int start = 0;
+            int count = 0;
+
+            while (true)
+            {
+                int idx = text.IndexOf(query, start, StringComparison.OrdinalIgnoreCase);
+                if (idx < 0) break;
+
+                sb.Append(text, start, idx - start);
+                sb.Append(replacement);
+                start = idx + query.Length;
+                count++;
+            }
+
+            if (count == 0)
+            {
+                System.Media.SystemSounds.Beep.Play();
+                return;
+            }
+
+            sb.Append(text, start, text.Length - start);
+            SetPromptText(sb.ToString());
+            _lastMatchIndex = -1;
+            _lastMatchLength = 0;
+            MessageBox.Show($"Replaced {count} occurrence(s).", "Replace", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         private void FindButton_Click(object sender, RoutedEventArgs e)

@@ -57,8 +57,13 @@
                 <TextBox x:Name="SearchTextBox" Width="180" VerticalAlignment="Center"
                          ToolTip="Type text to search inside Prompt"
                          KeyDown="SearchTextBox_KeyDown"/>
+                <Label Margin="10,0,5,0">Replace</Label>
+                <TextBox x:Name="ReplaceTextBox" Width="180" VerticalAlignment="Center"
+                         ToolTip="Type replacement text"/>
                 <Button Content="Find" Margin="5,0,0,0" Click="FindButton_Click"/>
                 <Button Content="Next" Margin="5,0,0,0" Click="FindNextButton_Click"/>
+                <Button Content="Replace" Margin="5,0,0,0" Click="ReplaceButton_Click"/>
+                <Button Content="Replace All" Margin="5,0,0,0" Click="ReplaceAllButton_Click"/>
             </StackPanel>
 
             <Label Margin="5,0,5,0">Prompt</Label>

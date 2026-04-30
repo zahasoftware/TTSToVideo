@@ -19,6 +19,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Windows.Media;
 using TTSToVideo.Business;
 using TTSToVideo.Business.Models;
 using TTSToVideo.Helpers;
@@ -41,6 +42,7 @@ namespace TTSToVideo.WPF.ViewsModels
         ITranslator translator) : ObservableRecipient
     {
         private static readonly Regex TagsRegex = new("<.*?>", RegexOptions.Compiled);
+        private readonly MediaPlayer musicPreviewPlayer = new();
 
         // Collections
         public ObservableCollection<ProjectModel>? ProjectsNames { get; set; } = [];
@@ -66,6 +68,8 @@ namespace TTSToVideo.WPF.ViewsModels
         public AsyncRelayCommand<StatementModel?>? OpenPictureCommand { get; set; }
         public AsyncRelayCommand<StatementModel?>? OpenVideoCommand { get; set; }
         public AsyncRelayCommand<object?>? OpenVoiceCommand { get; private set; }
+        public RelayCommand? PlaySelectedMusicCommand { get; set; }
+        public RelayCommand? StopSelectedMusicCommand { get; set; }
         public AsyncRelayCommand? ProcessCommand { get; set; }
         public AsyncRelayCommand<ProjectModel?>? ProjectSelectionChangedCommand { get; set; }
         public AsyncRelayCommand<StatementModel?>? RegeneratePictureCommand { get; set; }
@@ -82,10 +86,16 @@ namespace TTSToVideo.WPF.ViewsModels
         public string? FinalProjectVideoPathWithVoice { get; private set; }
         public CancellationTokenSource? CancellationTokenSource { get; private set; }
         public bool IsInitialized { get; internal set; }
+        public bool IsMusicPlaying
+        {
+            get => isMusicPlaying;
+            set => SetProperty(ref isMusicPlaying, value);
+        }
         public List<string>? Languages { get; set; }
         public string? SelectedLanguage { get; set; } = Constants.LANG_DEFAULT;
         public List<SocialPlatforms>? SocialPlatforms { get; set; }
         public SocialPlatforms? SelectedPlatform { get; set; } = WPF.SocialPlatforms.Tiktok;
+        private bool isMusicPlaying;
 
         // ViewModels
         public FontStyleViewModel FontStyleViewModel { get; } = fontStyleViewModel;
@@ -121,6 +131,8 @@ namespace TTSToVideo.WPF.ViewsModels
             OpenPictureCommand = new AsyncRelayCommand<StatementModel?>(OpenPictureCommandExecute);
             OpenVideoCommand = new AsyncRelayCommand<StatementModel?>(OpenVideoCommandExecute);
             OpenVoiceCommand = new AsyncRelayCommand<object?>(OpenVoiceCommandExecute);
+            PlaySelectedMusicCommand = new RelayCommand(PlaySelectedMusicCommandExecute);
+            StopSelectedMusicCommand = new RelayCommand(StopSelectedMusicCommandExecute);
             ProcessCommand = new AsyncRelayCommand(ProcessCommandExecute);
             ProjectSelectionChangedCommand = new AsyncRelayCommand<ProjectModel?>(ProjectSelectionChangedCommandExecute);
             RegeneratePictureCommand = new AsyncRelayCommand<StatementModel?>(RegeneratePictureCommandExecute);
@@ -179,6 +191,24 @@ namespace TTSToVideo.WPF.ViewsModels
             foreach (var file in musicFiles)
             {
                 MusicModels.Add(new MusicModel { FilePath = file });
+            }
+        }
+
+        private void StopSelectedMusicCommandExecute()
+        {
+            IsMusicPlaying = false;
+
+            try
+            {
+                musicPreviewPlayer.Stop();
+            }
+            catch (Exception ex)
+            {
+                message.Error($"Cannot stop selected music: {ex.Message}");
+            }
+            finally
+            {
+                IsMusicPlaying = false;
             }
         }
 
@@ -601,6 +631,32 @@ namespace TTSToVideo.WPF.ViewsModels
                 var path = $"{statementModel.AudioPath}.wav";
                 if (path != null && File.Exists(path))
                     await OpenFileAsync(path);
+            }
+        }
+
+        private void PlaySelectedMusicCommandExecute()
+        {
+            var selectedMusicPath = Model?.MusicModelSelected?.FilePath;
+
+            if (string.IsNullOrWhiteSpace(selectedMusicPath) || !File.Exists(selectedMusicPath))
+            {
+                IsMusicPlaying = false;
+                message.Warn("Select a valid music file first.");
+                return;
+            }
+
+            try
+            {
+                musicPreviewPlayer.Stop();
+                musicPreviewPlayer.Open(new Uri(selectedMusicPath, UriKind.Absolute));
+                musicPreviewPlayer.Position = TimeSpan.Zero;
+                musicPreviewPlayer.Play();
+                IsMusicPlaying = true;
+            }
+            catch (Exception ex)
+            {
+                IsMusicPlaying = false;
+                message.Error($"Cannot play selected music: {ex.Message}");
             }
         }
 
