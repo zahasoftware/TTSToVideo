@@ -70,6 +70,7 @@ namespace TTSToVideo.WPF.ViewsModels
         public AsyncRelayCommand<ProjectModel?>? ProjectSelectionChangedCommand { get; set; }
         public AsyncRelayCommand<StatementModel?>? RegeneratePictureCommand { get; set; }
         public AsyncRelayCommand<StatementModel?>? RegenerateVideoCommand { get; set; }
+        public AsyncRelayCommand? ReloadResourcesCommand { get; set; }
         public AsyncRelayCommand? SaveCommand { get; set; }
         public AsyncRelayCommand<string>? TranslateToChangedCommand { get; set; }
         public AsyncRelayCommand? UploadImageCommand { get; set; }
@@ -124,6 +125,7 @@ namespace TTSToVideo.WPF.ViewsModels
             ProjectSelectionChangedCommand = new AsyncRelayCommand<ProjectModel?>(ProjectSelectionChangedCommandExecute);
             RegeneratePictureCommand = new AsyncRelayCommand<StatementModel?>(RegeneratePictureCommandExecute);
             RegenerateVideoCommand = new AsyncRelayCommand<StatementModel?>(RegenerateVideoCommandExecute);
+            ReloadResourcesCommand = new AsyncRelayCommand(ReloadImageResourcesCommandExecute);
             SaveCommand = new AsyncRelayCommand(SaveCommandExecute);
             TranslateToChangedCommand = new AsyncRelayCommand<string>(TranslateToChangedCommandExecute);
         }
@@ -163,6 +165,9 @@ namespace TTSToVideo.WPF.ViewsModels
 
         private void LoadMusicFiles()
         {
+            MusicModels ??= [];
+            MusicModels.Clear();
+
             if (!Directory.Exists(configuration.Model.MusicDir)) return;
 
             var musicFiles = Directory
@@ -173,7 +178,7 @@ namespace TTSToVideo.WPF.ViewsModels
 
             foreach (var file in musicFiles)
             {
-                MusicModels?.Add(new MusicModel { FilePath = file });
+                MusicModels.Add(new MusicModel { FilePath = file });
             }
         }
 
@@ -182,7 +187,12 @@ namespace TTSToVideo.WPF.ViewsModels
             try
             {
                 var models = await imageGeneratorAI.GetModels();
-                ImagesModels = new ObservableCollection<ImageModel>(models);
+                ImagesModels ??= [];
+                ImagesModels.Clear();
+                foreach (var model in models)
+                {
+                    ImagesModels.Add(model);
+                }
             }
             catch (Exception ex)
             {
@@ -195,8 +205,9 @@ namespace TTSToVideo.WPF.ViewsModels
             try
             {
                 var voices = await tts.GetTtsVoices();
-                VoicesModels = new ObservableCollection<VoiceModel>(
-                    voices.Select(o => new VoiceModel
+                VoicesModels ??= [];
+                VoicesModels.Clear();
+                foreach (var voice in voices.Select(o => new VoiceModel
                     {
                         Gender = o.Gender,
                         Id = o.Id,
@@ -204,7 +215,10 @@ namespace TTSToVideo.WPF.ViewsModels
                         ModelId = o.ModelId,
                         Name = o.Name,
                         Tags = o.Tags
-                    }));
+                    }))
+                {
+                    VoicesModels.Add(voice);
+                }
             }
             catch (Exception ex)
             {
@@ -217,13 +231,17 @@ namespace TTSToVideo.WPF.ViewsModels
             try
             {
                 var models = await aIChatService.GetAvailableModelsAsync();
-                ChatAIModels = new ObservableCollection<ChatAIModel>(
-                    models.Select(o => new ChatAIModel
+                ChatAIModels ??= [];
+                ChatAIModels.Clear();
+                foreach (var chatModel in models.Select(o => new ChatAIModel
                     {
                         Id = o.Name,
                         Name = o.Name,
                         Description = $"{o.Name} ({o.Size / (1024.0 * 1024.0 * 1024.0):F2} GB)"
-                    }));
+                    }))
+                {
+                    ChatAIModels.Add(chatModel);
+                }
             }
             catch (Exception ex)
             {
@@ -256,6 +274,12 @@ namespace TTSToVideo.WPF.ViewsModels
             Directory.CreateDirectory(fullPath);
             await SaveModel(fullPath);
             message.Info("Project saved.");
+        }
+
+        private async Task ReloadImageResourcesCommandExecute()
+        {
+            await LoadImageModelsAsync();
+            message.Info("Image Resources reloaded.");
         }
 
         private async Task ProcessCommandExecute()

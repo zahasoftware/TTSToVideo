@@ -139,6 +139,10 @@ CommandParameter="{Binding SelectedItem, RelativeSource={RelativeSource Ancestor
                     <CheckBox IsChecked="{Binding TtsToVideoViewModel.Model.UseOnlyFirstImage}" Content="Use first image to all"></CheckBox>
                     <CheckBox IsChecked="{Binding TtsToVideoViewModel.Model.UseTextForPrompt}" Content="Use paragraph for prompt"></CheckBox>
                     <CheckBox IsChecked="{Binding TtsToVideoViewModel.Model.CreateVideo}" Content="Create a video"></CheckBox>
+                    <RibbonButton Command="{Binding TtsToVideoViewModel.ReloadResourcesCommand}"
+                                  Label="Reload"
+                                  ToolTip="Reload image models" />
+
                 </RibbonGroup>
 
                 <RibbonGroup Name="Voices" Header="Voice">
