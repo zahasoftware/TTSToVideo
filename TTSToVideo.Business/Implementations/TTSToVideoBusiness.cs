@@ -709,7 +709,7 @@ namespace TTSToVideo.Business.Implementations
             progressBar.ShowMessage("Processing Music.");
 
             var finalProjectVideoPath = Path.Combine(projectPath, $"final-{projectName}.mp4");
-            var audioFile = AudioHelper.OpenAudio(finalProjectVideoPath);
+            using var audioFile = AudioHelper.OpenAudio(concatenatedVoicesPath);
             var outputMusicFile = await ProcessBackgroundMusic(selectedMusicFile, statements, audioFile.TotalTime, options, projectPath, token);
 
             progressBar.ShowMessage("Merging Music to the Video.");
@@ -727,8 +727,6 @@ namespace TTSToVideo.Business.Implementations
 
             if (File.Exists(statement.AudioPath))
             {
-                using var file = AudioHelper.OpenAudio(statement.AudioPath);
-                statement.AudioDuration = file.TotalTime;
                 statement.IsNewAudio = false;
             }
             else
@@ -740,18 +738,53 @@ namespace TTSToVideo.Business.Implementations
                     NextText = statement.nextStatement?.Prompt ?? string.Empty
                 }, token);
 
-                File.WriteAllBytes(statement.AudioPath, audio.File.GetBuffer());
+                token.ThrowIfCancellationRequested();
 
-                using var audioFile = AudioHelper.OpenAudio(statement.AudioPath);
-                statement.AudioDuration = audioFile.TotalTime;
+                var audioBytes = audio?.File?.ToArray();
+                if (audioBytes == null || audioBytes.Length == 0)
+                {
+                    throw new CustomApplicationException("TTS provider returned empty audio.");
+                }
+
+                File.WriteAllBytes(statement.AudioPath, audioBytes);
                 statement.IsNewAudio = true;
             }
 
-            statement.AudioPathWave = $"{statement.AudioPath}.wav";
-            if (!File.Exists(statement.AudioPathWave) || statement.IsNewAudio)
+            var sourceFormat = AudioHelper.DetectAudioFormat(statement.AudioPath);
+            switch (sourceFormat)
             {
-                AudioHelper.ConvertMp3ToWav(statement.AudioPath, statement.AudioPathWave);
+                case AudioHelper.AudioFormat.WAV:
+                    statement.AudioPathWave = statement.AudioPath;
+                    break;
+                case AudioHelper.AudioFormat.MP3:
+                    var wavPath = statement.AudioPath.EndsWith(".wav", StringComparison.OrdinalIgnoreCase)
+                        ? $"{statement.AudioPath}.normalized.wav"
+                        : Path.ChangeExtension(statement.AudioPath, ".wav");
+
+                    if (!File.Exists(wavPath) || statement.IsNewAudio)
+                    {
+                        AudioHelper.ConvertMp3ToWav(statement.AudioPath, wavPath);
+                    }
+
+                    statement.AudioPathWave = wavPath;
+                    break;
+                default:
+                    throw new CustomApplicationException($"Unsupported audio format returned by TTS provider: {statement.AudioPath}");
             }
+
+            var normalizedWavePath = statement.AudioPathWave.EndsWith(".wav", StringComparison.OrdinalIgnoreCase)
+                ? Path.ChangeExtension(statement.AudioPathWave, ".44100.wav")
+                : $"{statement.AudioPathWave}.44100.wav";
+
+            if (!File.Exists(normalizedWavePath) || statement.IsNewAudio)
+            {
+                AudioHelper.ConvertToWavPcm(statement.AudioPathWave, normalizedWavePath, 44100, 1);
+            }
+
+            statement.AudioPathWave = normalizedWavePath;
+
+            using var audioFile = AudioHelper.OpenAudio(statement.AudioPathWave);
+            statement.AudioDuration = audioFile.TotalTime;
         }
 
         private async Task GenerateImage(string projectPath, string[] imageModelIds, int countImageMain, Statement statement, TTSToVideoOptions options, CancellationToken token)
@@ -930,7 +963,8 @@ namespace TTSToVideo.Business.Implementations
 
                     await GetVoice(new TtsVoice
                     {
-                        ModelId = "eleven_multilingual_v2", //eleven_multilingual_v2, eleven_v3
+                        ModelId = selectedVoice.ModelId,
+                        Language = selectedVoice.Language,
                         Id = statement.VoiceId ?? selectedVoice.Id,
                     }, statement, token);
                 }
@@ -947,8 +981,7 @@ namespace TTSToVideo.Business.Implementations
             AudioHelper.CreateSilentWavAudio(silencePath, statement.AudioDuration, token);
 
             statement.AudioPath = silencePath;
-            statement.AudioPathWave = $"{statement.AudioPath}.wav";
-            File.Copy(statement.AudioPath, statement.AudioPathWave, true);
+            statement.AudioPathWave = silencePath;
         }
 
         private static string GenerateAudioFileName(string prompt, string projectPath)

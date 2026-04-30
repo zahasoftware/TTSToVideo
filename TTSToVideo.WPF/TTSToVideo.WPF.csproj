@@ -36,7 +36,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="AutoMapper" Version="14.0.0" />
+    <PackageReference Include="AutoMapper" Version="16.1.1" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
     <PackageReference Include="Costura.Fody" Version="6.0.0">
       <PrivateAssets>all</PrivateAssets>
@@ -61,6 +61,7 @@
     <ProjectReference Include="..\..\..\NetXP\NetXP.ImageGeneratorAI.LeonardoAI\NetXP.ImageGeneratorAI.LeonardoAI.csproj" />
     <ProjectReference Include="..\..\..\NetXP\NetXP.Translators.AzureTranslator\NetXP.Translators.AzureTranslator.csproj" />
     <ProjectReference Include="..\..\..\NetXP\NetXP.Translators.OllamaTranslator\NetXP.Translators.OllamaTranslator.csproj" />
+    <ProjectReference Include="..\..\..\NetXP\NetXP.Tts.ChatterboxApi\NetXP.Tts.ChatterboxApi.csproj" />
     <ProjectReference Include="..\..\..\NetXP\NetXP.TTS.ElevenLabs\NetXP.Tts.ElevenLabs.csproj" />
     <ProjectReference Include="..\..\..\NetXP\NetXP\NetXP.csproj" />
     <ProjectReference Include="..\TTSToVideo.Business\TTSToVideo.Business.csproj" />

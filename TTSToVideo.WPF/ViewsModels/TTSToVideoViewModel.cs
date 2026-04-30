@@ -286,6 +286,7 @@ namespace TTSToVideo.WPF.ViewsModels
 
         private async Task<List<Statement>> ExecuteBusinessProcess(string projectPath, CancellationToken token)
         {
+
             return await ttsToVideoBusiness.ProcessCommandExecute(
                 projectPath,
                 ProjectSelected.ProjectName,
@@ -294,7 +295,12 @@ namespace TTSToVideo.WPF.ViewsModels
                 Model.AditionalPrompt ?? "",
                 Model.MusicModelSelected.FilePath,
                 [Model.ImageModelSelected.Id],
-                new TtsVoice { Id = Model.VoiceModelSelected.Id, ModelId = Model.VoiceModelSelected.ModelId },
+                new TtsVoice
+                {
+                    Id = Model.VoiceModelSelected.Id,
+                    ModelId = Model.VoiceModelSelected.ModelId,
+                    Language = SelectedLanguage == Constants.LANG_DEFAULT ? null : SelectedLanguage,
+                },
                 Model.PortraitEnabled,
                 CreateTTSToVideoOptions(),
                 token);

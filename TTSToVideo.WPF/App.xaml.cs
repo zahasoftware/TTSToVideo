@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 using NetXP;
 using NetXP.Exceptions;
 using NetXP.IAs.Chat;
@@ -12,6 +13,7 @@ using NetXP.Processes;
 using NetXP.Translators.AzureTranslator;
 using NetXP.Translators.OllamaTranslator;
 using NetXP.Tts;
+using NetXP.Tts.ChatterboxApi;
 using NetXP.Tts.ElevenLabs;
 using System;
 using System.Collections.Generic;
@@ -64,6 +66,12 @@ namespace TTSToVideo
             });
             services.AddHttpClient<TtsEvenLabs>();
 
+            services.AddOptions<TtsChatterboxApiOptions>().Configure((o) =>
+            {
+                configuration.GetSection("ChatterboxApiOptions").Bind(o);
+            });
+            services.AddHttpClient<TtsChatterboxApi>();
+
             services.AddOptions<ImageGeneratorAIOptions>().Configure((o) =>
             {
                 configuration.GetSection("ImageGeneratorAIOptions").Bind(o);
@@ -95,7 +103,7 @@ namespace TTSToVideo
                 cfg.CreateMap<TtsToVideoModel, TtsToVideoModel>();
                 cfg.CreateMap<StatementImageModel, StatementImage>();
                 cfg.CreateMap<StatementImage, StatementImageModel>();
-            });
+            }, NullLoggerFactory.Instance);
 
             mapperConfig.AssertConfigurationIsValid();
 
@@ -104,7 +112,15 @@ namespace TTSToVideo
             services.AddSingleton(mapper);
 
             //Framework NetXP
-            services.AddSingleton<ITts, TtsEvenLabs>();
+            var selectedTtsProvider = configuration.GetSection("TtsProvider:Selected").Value ?? "Chatterbox";
+            if (selectedTtsProvider.Equals("ElevenLabs", StringComparison.OrdinalIgnoreCase))
+            {
+                services.AddSingleton<ITts, TtsEvenLabs>();
+            }
+            else
+            {
+                services.AddSingleton<ITts, TtsChatterboxApi>();
+            }
             services.AddSingleton<IAIChatService, OllamaChatService>();
             services.AddSingleton<IIOTerminal, NetXP.Processes.Implementations.IOTerminal>();
 

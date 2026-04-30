@@ -150,27 +150,75 @@ var fadedProvider = new OffsetSampleProvider(reader)
 
         public static AudioFormat DetectAudioFormat(string filePath)
         {
-            if (File.Exists(filePath))
+            if (!File.Exists(filePath))
             {
-                using FileStream stream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
+                return AudioFormat.Unknown;
+            }
+
+            try
+            {
+                using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
                 byte[] headerBytes = new byte[12];
-                int bytesRead = stream.Read(headerBytes, 0, 12);
+                int bytesRead = stream.Read(headerBytes, 0, headerBytes.Length);
 
-                if (bytesRead == 12)
+                // WAV containers: RIFF (little-endian), RIFX (big-endian), RF64 (large WAV).
+                if (bytesRead >= 12)
                 {
-                    string headerHex = BitConverter.ToString(headerBytes).Replace("-", "");
+                    bool isWaveContainer =
+                        (headerBytes[0] == (byte)'R' && headerBytes[1] == (byte)'I' && headerBytes[2] == (byte)'F' && headerBytes[3] == (byte)'F') ||
+                        (headerBytes[0] == (byte)'R' && headerBytes[1] == (byte)'I' && headerBytes[2] == (byte)'F' && headerBytes[3] == (byte)'X') ||
+                        (headerBytes[0] == (byte)'R' && headerBytes[1] == (byte)'F' && headerBytes[2] == (byte)'6' && headerBytes[3] == (byte)'4');
 
-                    // Check for "RIFF" header and "WAVE" format identifier
-                    if (headerHex.StartsWith("52494646") && headerHex.Substring(16, 8) == "57415645")
+                    bool isWaveFormat =
+                        headerBytes[8] == (byte)'W' &&
+                        headerBytes[9] == (byte)'A' &&
+                        headerBytes[10] == (byte)'V' &&
+                        headerBytes[11] == (byte)'E';
+
+                    if (isWaveContainer && isWaveFormat)
                     {
                         return AudioFormat.WAV;
                     }
-                    // Check for "ID3" tag which indicates an MP3 file
-                    else if (headerHex.StartsWith("494333") || headerHex.StartsWith("FFFB"))
+
+                    bool hasId3 =
+                        headerBytes[0] == (byte)'I' &&
+                        headerBytes[1] == (byte)'D' &&
+                        headerBytes[2] == (byte)'3';
+
+                    bool hasMp3FrameSync =
+                        headerBytes[0] == 0xFF &&
+                        (headerBytes[1] & 0xE0) == 0xE0;
+
+                    if (hasId3 || hasMp3FrameSync)
                     {
                         return AudioFormat.MP3;
                     }
                 }
+            }
+            catch
+            {
+                // Fall back to parser-based detection below.
+            }
+
+            // Signature can be inconclusive for some files; use parser fallback.
+            try
+            {
+                using var _ = new WaveFileReader(filePath);
+                return AudioFormat.WAV;
+            }
+            catch
+            {
+                // Not WAV, continue.
+            }
+
+            try
+            {
+                using var _ = new Mp3FileReader(filePath);
+                return AudioFormat.MP3;
+            }
+            catch
+            {
+                // Not MP3, continue.
             }
 
             return AudioFormat.Unknown;
@@ -215,6 +263,36 @@ var fadedProvider = new OffsetSampleProvider(reader)
         {
             using var reader = new Mp3FileReader(mp3File);
             WaveFileWriter.CreateWaveFile(wavFile, reader);
+        }
+
+        public static void ConvertToWavPcm(string inputFile, string outputFile, int sampleRate = 44100, int channels = 1)
+        {
+            using var reader = new AudioFileReader(inputFile);
+
+            ISampleProvider provider = reader;
+
+            if (provider.WaveFormat.Channels != channels)
+            {
+                if (provider.WaveFormat.Channels == 2 && channels == 1)
+                {
+                    provider = new StereoToMonoSampleProvider(provider);
+                }
+                else if (provider.WaveFormat.Channels == 1 && channels == 2)
+                {
+                    provider = new MonoToStereoSampleProvider(provider);
+                }
+                else
+                {
+                    throw new InvalidOperationException($"Unsupported channel conversion: {provider.WaveFormat.Channels} -> {channels}");
+                }
+            }
+
+            if (provider.WaveFormat.SampleRate != sampleRate)
+            {
+                provider = new WdlResamplingSampleProvider(provider, sampleRate);
+            }
+
+            WaveFileWriter.CreateWaveFile16(outputFile, provider);
         }
 
         public static void CreateSilentWavAudio(string silenceAudioTemp, TimeSpan timeSpan, CancellationToken token)
