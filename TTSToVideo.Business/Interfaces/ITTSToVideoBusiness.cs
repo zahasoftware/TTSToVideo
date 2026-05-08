@@ -21,6 +21,12 @@ namespace TTSToVideo.Business
             TTSToVideoOptions options,
             CancellationToken token);
 
+        Task RegenerateVoiceCommandExecute(
+            Statement statement,
+            string projectPath,
+            TtsVoice selectedVoice,
+            CancellationToken token);
+
         Task<List<Statement>> ProcessCommandExecute(
             string projectPath,
             string projectName,

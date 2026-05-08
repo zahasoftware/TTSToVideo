@@ -66,6 +66,7 @@ namespace TTSToVideo.WPF.ViewsModels
         public AsyncRelayCommand? OpenExplorerCommand { get; set; }
         public AsyncRelayCommand? OpenFinalVideoCommand { get; set; }
         public AsyncRelayCommand<StatementModel?>? OpenPictureCommand { get; set; }
+        public AsyncRelayCommand<StatementModel?>? RegenerateVoiceCommand { get; set; }
         public AsyncRelayCommand<StatementModel?>? OpenVideoCommand { get; set; }
         public AsyncRelayCommand<object?>? OpenVoiceCommand { get; private set; }
         public RelayCommand? PlaySelectedMusicCommand { get; set; }
@@ -129,6 +130,7 @@ namespace TTSToVideo.WPF.ViewsModels
             OpenExplorerCommand = new AsyncRelayCommand(OpenExplorerCommandExecute);
             OpenFinalVideoCommand = new AsyncRelayCommand(OpenFinalVideoCommandExecute);
             OpenPictureCommand = new AsyncRelayCommand<StatementModel?>(OpenPictureCommandExecute);
+            RegenerateVoiceCommand = new AsyncRelayCommand<StatementModel?>(RegenerateVoiceCommandExecute);
             OpenVideoCommand = new AsyncRelayCommand<StatementModel?>(OpenVideoCommandExecute);
             OpenVoiceCommand = new AsyncRelayCommand<object?>(OpenVoiceCommandExecute);
             PlaySelectedMusicCommand = new RelayCommand(PlaySelectedMusicCommandExecute);
@@ -137,7 +139,7 @@ namespace TTSToVideo.WPF.ViewsModels
             ProjectSelectionChangedCommand = new AsyncRelayCommand<ProjectModel?>(ProjectSelectionChangedCommandExecute);
             RegeneratePictureCommand = new AsyncRelayCommand<StatementModel?>(RegeneratePictureCommandExecute);
             RegenerateVideoCommand = new AsyncRelayCommand<StatementModel?>(RegenerateVideoCommandExecute);
-            ReloadResourcesCommand = new AsyncRelayCommand(ReloadImageResourcesCommandExecute);
+            ReloadResourcesCommand = new AsyncRelayCommand(ReloadResourcesCommandExecute);
             SaveCommand = new AsyncRelayCommand(SaveCommandExecute);
             TranslateToChangedCommand = new AsyncRelayCommand<string>(TranslateToChangedCommandExecute);
         }
@@ -306,10 +308,10 @@ namespace TTSToVideo.WPF.ViewsModels
             message.Info("Project saved.");
         }
 
-        private async Task ReloadImageResourcesCommandExecute()
+        private async Task ReloadResourcesCommandExecute()
         {
-            await LoadImageModelsAsync();
-            message.Info("Image Resources reloaded.");
+            await LoadResourcesAsync();
+            message.Info("Resources reloaded.");
         }
 
         private async Task ProcessCommandExecute()
@@ -335,6 +337,8 @@ namespace TTSToVideo.WPF.ViewsModels
             finally
             {
                 CancellationTokenSource?.Dispose();
+                CancellationTokenSource = null;
+                //RegeneratePictureCommand?.NotifyCanExecuteChanged();
             }
         }
 
@@ -375,7 +379,8 @@ namespace TTSToVideo.WPF.ViewsModels
                 {
                     UseOnlyFirstImage = Model.UseOnlyFirstImage,
                     UseTextForPrompt = Model.UseTextForPrompt,
-                    CreateVideo = Model.CreateVideo
+                    CreateVideo = Model.CreateVideo,
+                    Seed = string.IsNullOrWhiteSpace(Model.ImageSeed) ? null : Model.ImageSeed.Trim()
                 },
                 SubtitleOptions = new TtsTVideoSubtitleOptions
                 {
@@ -436,7 +441,7 @@ namespace TTSToVideo.WPF.ViewsModels
                     statement,
                     [Model.ImageModelSelected.Id],
                     outputFolder,
-                    new TTSToVideoOptions { ImageOptions = new TtsToVideoImageOptions { UseTextForPrompt = true } },
+                    new TTSToVideoOptions { ImageOptions = new TtsToVideoImageOptions { UseTextForPrompt = true, Seed = Model.ImageSeed} },
                     CancellationTokenSource.Token);
 
                 statementModel.ImageId = statement.ImageId;
@@ -469,9 +474,9 @@ namespace TTSToVideo.WPF.ViewsModels
                 CancellationTokenSource = new CancellationTokenSource();
                 var statement = model.ToStatement();
                 var projectPath = GetProjectPath();
-                var prompt = !string.IsNullOrEmpty(statement.VideoPrompt) 
-                                ? statement.VideoPrompt : (!string.IsNullOrEmpty(statement.ImagePrompt) 
-                                ?  statement.ImagePrompt : statement.Prompt);
+
+
+                var prompt = !string.IsNullOrEmpty(statement.ImagePrompt) ?  statement.ImagePrompt : statement.Prompt; 
 
                 var imagePath = PathHelper.GenerateImagePath(projectPath, prompt);
 
@@ -628,9 +633,86 @@ namespace TTSToVideo.WPF.ViewsModels
         {
             if (statement is StatementModel statementModel)
             {
-                var path = $"{statementModel.AudioPath}.wav";
-                if (path != null && File.Exists(path))
-                    await OpenFileAsync(path);
+                var basePath = statementModel.AudioPath;
+                if (string.IsNullOrWhiteSpace(basePath))
+                {
+                    message.Warn("Voice path is empty.");
+                    return;
+                }
+
+                var candidatePaths = new[]
+                {
+                    basePath,
+                    $"{basePath}.wav",
+                    Path.ChangeExtension(basePath, ".wav"),
+                    Path.ChangeExtension(basePath, ".44100.wav")
+                }
+                .Where(p => !string.IsNullOrWhiteSpace(p))
+                .Distinct()
+                .ToList();
+
+                var existingPath = candidatePaths.FirstOrDefault(File.Exists);
+                if (existingPath == null)
+                {
+                    message.Warn("Voice file not found.");
+                    return;
+                }
+
+                await OpenFileAsync(existingPath);
+            }
+        }
+
+        private async Task RegenerateVoiceCommandExecute(StatementModel? statementModel)
+        {
+            if (statementModel == null)
+            {
+                message.Warn("No statement provided to regenerate voice.");
+                return;
+            }
+
+            if (Model?.VoiceModelSelected == null)
+            {
+                message.Warn("Voice model not selected.");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(statementModel.Text))
+            {
+                message.Warn("Cannot regenerate voice for empty text.");
+                return;
+            }
+
+            try
+            {
+                CancellationTokenSource = new CancellationTokenSource();
+                var statement = statementModel.ToStatement();
+
+                await ttsToVideoBusiness.RegenerateVoiceCommandExecute(
+                    statement,
+                    GetProjectPath(),
+                    new TtsVoice
+                    {
+                        Id = Model.VoiceModelSelected.Id,
+                        ModelId = Model.VoiceModelSelected.ModelId,
+                        Language = SelectedLanguage == Constants.LANG_DEFAULT ? null : SelectedLanguage,
+                    },
+                    CancellationTokenSource.Token);
+
+                statementModel.AudioPath = statement.AudioPath;
+                statementModel.AudioDuration = statement.AudioDuration;
+                message.Info("Voice regenerated successfully.");
+            }
+            catch (OperationCanceledException)
+            {
+                message.Warn("Voice regeneration was canceled.");
+            }
+            catch (Exception ex)
+            {
+                message.Error($"An error occurred while regenerating the voice: {ex.Message}");
+            }
+            finally
+            {
+                CancellationTokenSource?.Dispose();
             }
         }
 

@@ -5,5 +5,6 @@
         public bool UseOnlyFirstImage { get; set; }
         public bool UseTextForPrompt { get; set; }
         public bool CreateVideo { get; set; }
+        public string? Seed { get; set; }
     }
 }

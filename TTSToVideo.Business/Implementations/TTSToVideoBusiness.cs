@@ -5,6 +5,7 @@ using NAudio.Wave;
 using NetXP.Exceptions;
 using NetXP.IAs.ImageGeneratorAI;
 using NetXP.Tts;
+using System.Globalization;
 using System.Text.RegularExpressions;
 using TTSToVideo.Business.Models;
 using TTSToVideo.Helpers;
@@ -57,6 +58,48 @@ namespace TTSToVideo.Business.Implementations
         public async Task GeneratePortraitImageCommandExecute(Statement statement, string[] imageModelIds, string projectPath, TTSToVideoOptions options, CancellationToken token)
         {
             await GenerateImage(projectPath, imageModelIds, 1, statement, options, token);
+        }
+
+        public async Task RegenerateVoiceCommandExecute(Statement statement, string projectPath, TtsVoice selectedVoice, CancellationToken token)
+        {
+            ArgumentNullException.ThrowIfNull(statement);
+            ArgumentException.ThrowIfNullOrWhiteSpace(projectPath);
+            ArgumentNullException.ThrowIfNull(selectedVoice);
+
+            if (string.IsNullOrWhiteSpace(statement.Prompt))
+            {
+                throw new CustomApplicationException("Statement has no prompt to regenerate voice.");
+            }
+
+            var audioPath = string.IsNullOrWhiteSpace(statement.AudioPath)
+                ? GenerateAudioFileName(statement.Prompt, projectPath)
+                : statement.AudioPath;
+
+            statement.AudioPath = audioPath;
+
+            var normalizedWavePath = audioPath.EndsWith(".wav", StringComparison.OrdinalIgnoreCase)
+                ? Path.ChangeExtension(audioPath, ".44100.wav")
+                : $"{audioPath}.44100.wav";
+
+            var filesToDelete = new[]
+            {
+                audioPath,
+                $"{audioPath}.wav",
+                Path.ChangeExtension(audioPath, ".wav"),
+                normalizedWavePath
+            }
+            .Where(p => !string.IsNullOrWhiteSpace(p))
+            .Distinct();
+
+            foreach (var file in filesToDelete)
+            {
+                if (File.Exists(file))
+                {
+                    File.Delete(file);
+                }
+            }
+
+            await GetVoice(selectedVoice, statement, token);
         }
 
         public async Task<List<Statement>> ProcessCommandExecute(
@@ -461,7 +504,8 @@ namespace TTSToVideo.Business.Implementations
                 }
 
                 var imageFileName = PathHelper.GenerateImagePath(projectPath,
-                                                                !string.IsNullOrEmpty(statement.VideoPrompt) ? statement.VideoPrompt :  statement.Prompt);
+                                                                !string.IsNullOrEmpty(statement.ImagePrompt) ? statement.ImagePrompt : statement.Prompt);
+
                 var videoPath = $"{imageFileName}.mp4";
 
                 if (File.Exists(videoPath))
@@ -793,6 +837,20 @@ namespace TTSToVideo.Business.Implementations
             var selectedModelId = imageModelIds[random.Next(imageModelIds.Length)];
 
             var prompt = BuildImagePrompt(statement, options);
+            var extraOptions = new Dictionary<string, object?>(imageGeneratorOptions.ExtraOptions, StringComparer.OrdinalIgnoreCase);
+
+            if (!string.IsNullOrWhiteSpace(options.ImageOptions.Seed))
+            {
+                if (long.TryParse(options.ImageOptions.Seed, NumberStyles.Integer, CultureInfo.InvariantCulture, out var seedValue))
+                {
+                    if (seedValue == -1)
+                    {
+                        //Random 
+                        seedValue = new Random().Next();
+                    }
+                    extraOptions["seed"] = seedValue;
+                }
+            }
 
             var imageId = await imageGeneratorAI.Generate(new OptionsImageGenerator
             {
@@ -802,7 +860,7 @@ namespace TTSToVideo.Business.Implementations
                 NumImages = 1,
                 Prompt = prompt,
                 NegativePrompt = statement.NegativePrompt,
-                ExtraOptions = imageGeneratorOptions.ExtraOptions
+                ExtraOptions = extraOptions
             });
 
             statement.ImageId = imageId.Id;

@@ -172,5 +172,19 @@ namespace TTSToVideo
             }
         }
 
+        private void OpenImageSeedConfigurationWindow(object sender, RoutedEventArgs e)
+        {
+            if (ServiceProvider.GetService(typeof(ImageSeedConfigurationWindow)) is ImageSeedConfigurationWindow window)
+            {
+                window.Owner = this;
+                window.WindowStartupLocation = WindowStartupLocation.CenterOwner;
+                window.ShowDialog();
+            }
+            else
+            {
+                MessageBox.Show("Unable to open image configuration window. Service not available.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
     }
 }

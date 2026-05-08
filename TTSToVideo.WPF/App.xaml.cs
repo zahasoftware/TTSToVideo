@@ -126,7 +126,7 @@ namespace TTSToVideo
 
             services.AddSingleton<IProgressBar, ProgressBar>();
             services.AddSingleton<IMessage, Messages>();
-            services.AddSingleton<IVideoGeneratorFactory, LeonardoVideoGeneratorFactory>();
+            services.AddSingleton<IVideoGeneratorFactory, ComfyBridgeVideoGeneratorFactory>();
 
             //Business
             services.AddSingleton<ITTSToVideoBusiness, Business.Implementations.TTSToVideoBusiness>();
@@ -147,6 +147,7 @@ namespace TTSToVideo
             services.AddTransient<NewProjectWindow>();
             services.AddTransient<NewCategoryView>();
             services.AddTransient<CategoryConfigurationView>();
+            services.AddTransient<ImageSeedConfigurationWindow>();
 
 
             var serviceProvider = services.BuildServiceProvider();

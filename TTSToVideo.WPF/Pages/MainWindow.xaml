@@ -139,9 +139,12 @@ CommandParameter="{Binding SelectedItem, RelativeSource={RelativeSource Ancestor
                     <CheckBox IsChecked="{Binding TtsToVideoViewModel.Model.UseOnlyFirstImage}" Content="Use first image to all"></CheckBox>
                     <CheckBox IsChecked="{Binding TtsToVideoViewModel.Model.UseTextForPrompt}" Content="Use paragraph for prompt"></CheckBox>
                     <CheckBox IsChecked="{Binding TtsToVideoViewModel.Model.CreateVideo}" Content="Create a video"></CheckBox>
-                    <RibbonButton Command="{Binding TtsToVideoViewModel.ReloadResourcesCommand}"
-                                  Label="Reload"
-                                  ToolTip="Reload image models" />
+                    <RibbonButton Label="Config"
+                                  ToolTip="Image generation configuration"
+                                  Click="OpenImageSeedConfigurationWindow"
+                                  SmallImageSource="/Images/config.png" />
+
+
 
                 </RibbonGroup>
 
@@ -218,6 +221,11 @@ CommandParameter="{Binding SelectedItem, RelativeSource={RelativeSource Ancestor
                             AutoToolTipPlacement="BottomRight" 
                             AutoToolTipPrecision="0" 
                             Margin="10"/>-->
+                </RibbonGroup>
+                <RibbonGroup Header="General">
+                    <RibbonButton Command="{Binding TtsToVideoViewModel.ReloadResourcesCommand}"
+                                  Label="Reload"
+                                  ToolTip="Reload images, voices, music." />
                 </RibbonGroup>
             </RibbonTab>
             <!-- Ribbon Tab #2: -->

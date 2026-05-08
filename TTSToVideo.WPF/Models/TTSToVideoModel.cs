@@ -30,6 +30,7 @@ namespace TTSToVideo.WPF.Models
         public bool PortraitEnabled { get; set; }
 
         public double MusicVolume { get; set; }
+        public string? ImageSeed { get; set; }
 
         public ImageModel? ImageModelSelected { get; set; }
         public VoiceModel? VoiceModelSelected { get; set; }

@@ -106,7 +106,7 @@ namespace TTSToVideo.WPF
         {
             if (e.Key == Key.Enter)
             {
-                FindButton_Click(sender, e);
+                FindNextButton_Click(sender, e);
                 e.Handled = true;
             }
         }
@@ -176,24 +176,56 @@ namespace TTSToVideo.WPF
             MessageBox.Show($"Replaced {count} occurrence(s).", "Replace", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
-        private void FindButton_Click(object sender, RoutedEventArgs e)
+        private bool TrySelectInStatementsGrid(string query)
         {
-            string query = SearchTextBox.Text;
-            if (string.IsNullOrWhiteSpace(query)) return;
+            if (StatementsDataGrid?.ItemsSource is not IEnumerable<StatementModel> items)
+                return false;
 
-            string text = GetPromptText();
-            int idx = text.IndexOf(query, StringComparison.OrdinalIgnoreCase);
-            if (idx >= 0)
+            var list = items.ToList();
+            if (list.Count == 0)
+                return false;
+
+            var selected = StatementsDataGrid.SelectedItem as StatementModel;
+            int selectedIndex = selected != null ? list.IndexOf(selected) : -1;
+            int startIndex = selectedIndex >= 0 ? selectedIndex + 1 : 0;
+
+            StatementModel? match = null;
+            for (int i = 0; i < list.Count; i++)
             {
-                SelectMatch(idx, query.Length);
+                int idx = (startIndex + i) % list.Count;
+
+                // Avoid returning the same currently selected match.
+                if (idx == selectedIndex)
+                    continue;
+
+                if (StatementMatchesQuery(list[idx], query))
+                {
+                    match = list[idx];
+                    break;
+                }
             }
-            else
-            {
-                _lastMatchIndex = -1;
-                _lastMatchLength = 0;
-                System.Media.SystemSounds.Beep.Play();
-            }
+
+            if (match == null)
+                return false;
+
+            StatementsDataGrid.SelectedItem = match;
+            StatementsDataGrid.ScrollIntoView(match);
+            StatementsDataGrid.Focus();
+            return true;
         }
+
+        private static bool StatementMatchesQuery(StatementModel statement, string query)
+        {
+            return Contains(statement.Text, query)
+                || Contains(statement.ImagePrompt, query)
+                || Contains(statement.VideoPrompt, query)
+                || Contains(statement.ImageId, query)
+                || Contains(statement.AudioPath, query);
+        }
+
+        private static bool Contains(string? value, string query) =>
+            !string.IsNullOrWhiteSpace(value)
+            && value.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0;
 
         private void FindNextButton_Click(object sender, RoutedEventArgs e)
         {
@@ -203,6 +235,8 @@ namespace TTSToVideo.WPF
             string text = GetPromptText();
             int startPos = (_lastMatchIndex >= 0) ? _lastMatchIndex + _lastMatchLength : 0;
             if (startPos >= text.Length) startPos = 0;
+
+            TrySelectInStatementsGrid(query);
 
             int idx = text.IndexOf(query, startPos, StringComparison.OrdinalIgnoreCase);
             if (idx < 0 && startPos > 0)
@@ -215,7 +249,9 @@ namespace TTSToVideo.WPF
             {
                 SelectMatch(idx, query.Length);
             }
-            else
+
+
+            if (idx < 0)
             {
                 System.Media.SystemSounds.Beep.Play();
             }
