@@ -435,6 +435,7 @@ namespace TTSToVideo.WPF.ViewsModels
                 var statement = statementModel.ToStatement();
                 statement.GlobalPrompt = Model?.AditionalPrompt ?? "";
                 statement.Prompt = string.IsNullOrEmpty(statement.ImagePrompt) ? statement?.Prompt : statement.ImagePrompt;
+                statement.Prompt += " " + statement.GlobalPrompt;
                 statement.Images.Clear();
 
                 await ttsToVideoBusiness.GeneratePortraitImageCommandExecute(

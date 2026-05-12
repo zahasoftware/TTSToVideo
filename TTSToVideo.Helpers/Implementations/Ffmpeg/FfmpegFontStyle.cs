@@ -71,15 +71,15 @@
 
         // Border style (1 = outline+shadow, 3 = opaque box, 4 = outline+opaque box)
         // Default: 3 (opaque box)
-        public int? BorderStyle { get; set; } = 3;
+        public int? BorderStyle { get; set; } = 1;
 
         // Outline/border width in pixels (also used as box padding when BorderStyle=3)
         // Default: 4
-        public int? Outline { get; set; } = 4;
+        public int? Outline { get; set; } = 3;
 
         // Shadow depth in pixels
         // Default: 0 (no shadow)
-        public int? Shadow { get; set; } = 0;
+        public int? Shadow { get; set; } = 1;
 
         public override string ToString()
         {
