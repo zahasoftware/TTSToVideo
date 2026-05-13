@@ -148,6 +148,7 @@ namespace TTSToVideo
             services.AddTransient<NewCategoryView>();
             services.AddTransient<CategoryConfigurationView>();
             services.AddTransient<ImageSeedConfigurationWindow>();
+            services.AddTransient<VideoSeedConfigurationWindow>();
 
 
             var serviceProvider = services.BuildServiceProvider();

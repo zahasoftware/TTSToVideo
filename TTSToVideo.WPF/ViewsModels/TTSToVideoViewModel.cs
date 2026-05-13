@@ -14,8 +14,10 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Drawing;
+using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -169,7 +171,9 @@ namespace TTSToVideo.WPF.ViewsModels
             {
                 Prompt = "",
                 ImageWidth = FFMPEGDefinitions.WidthResolution,
-                ImageHeight = FFMPEGDefinitions.HeightResolution
+                ImageHeight = FFMPEGDefinitions.HeightResolution,
+                VideoWidth = FFMPEGDefinitions.WidthResolution,
+                VideoHeight = FFMPEGDefinitions.HeightResolution
             };
             configuration.Model.ProjectsNames = [];
         }
@@ -456,8 +460,8 @@ namespace TTSToVideo.WPF.ViewsModels
                         {
                             UseTextForPrompt = true,
                             Seed = Model.ImageSeed,
-                            Width = Model.ImageWidth,
-                            Height = Model.ImageHeight
+                            Width = (Model.ImageWidth/2),
+                            Height = (Model.ImageHeight/2)
                         }
                     },
                     CancellationTokenSource.Token);
@@ -505,7 +509,6 @@ namespace TTSToVideo.WPF.ViewsModels
                     model.ImageAnimatedPath = $"{imagePath}.mp4";
 
                     //Get Image Object 
-                    Image image = Image.FromFile(imagePath);
 
                     var request = new VideoGenerationRequest
                     {
@@ -515,9 +518,11 @@ namespace TTSToVideo.WPF.ViewsModels
                         Version = MotionVersion.Motion2,
                         MotionStrength = 5,
                         //Use the image width and height
-                        Width = image.Width,
-                        Height = image.Height
+                        Width = (Model?.VideoWidth is > 0 ? Model.VideoWidth : (Model?.ImageWidth is > 0 ? Model.ImageWidth : FFMPEGDefinitions.WidthResolution)/2) ?? FFMPEGDefinitions.WidthResolution/2,
+                        Height = (Model?.VideoHeight is > 0 ? Model.VideoHeight : (Model?.ImageHeight is > 0 ? Model.ImageHeight : FFMPEGDefinitions.HeightResolution)/2) ?? FFMPEGDefinitions.HeightResolution/2
                     };
+
+                    ApplyVideoSeed(request, Model?.VideoSeed);
 
                     await ttsToVideoBusiness.GeneratePortraitVideoCommandExecute(
                         request,
@@ -533,6 +538,26 @@ namespace TTSToVideo.WPF.ViewsModels
             {
                 CancellationTokenSource?.Dispose();
             }
+        }
+
+        private static void ApplyVideoSeed(VideoGenerationRequest request, string? seed)
+        {
+            if (string.IsNullOrWhiteSpace(seed))
+            {
+                return;
+            }
+
+            if (!long.TryParse(seed.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var seedValue))
+            {
+                return;
+            }
+
+            if (seedValue == -1)
+            {
+                seedValue = new Random().Next();
+            }
+
+            request.Seed = seedValue;
         }
 
         private async Task LoadVideoCommandExecute(StatementModel? model)

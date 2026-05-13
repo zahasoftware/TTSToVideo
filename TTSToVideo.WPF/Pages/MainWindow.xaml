@@ -210,6 +210,10 @@ CommandParameter="{Binding SelectedItem, RelativeSource={RelativeSource Ancestor
                                   IsEnabled="{Binding TtsToVideoViewModel.ProjectSelected, Converter={StaticResource IsNotNullConverter}}" />
                 </RibbonGroup>
                 <RibbonGroup Header="Video">
+                    <RibbonButton Label="Config"
+                                  ToolTip="Video generation configuration"
+                                  Click="OpenVideoSeedConfigurationWindow"
+                                  SmallImageSource="/Images/config.png" />
                     <!--<Slider x:Name="sliderDuration" 
                             Minimum="0" 
                             Maximum="{Binding TtsToVideoViewModel.MaxDuration}" 
