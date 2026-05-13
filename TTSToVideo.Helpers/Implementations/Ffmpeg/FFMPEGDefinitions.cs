@@ -11,7 +11,7 @@ namespace TTSToVideo.Helpers.Implementations.Ffmpeg
 {
     public static class FFMPEGDefinitions
     {
-        public static int WidthResolution { get; private set; } = 512;
-        public static int HeightResolution { get; private set; } = 904;
+        public static int WidthResolution { get; private set; } = 1080;
+        public static int HeightResolution { get; private set; } = 1920;
     }
 }

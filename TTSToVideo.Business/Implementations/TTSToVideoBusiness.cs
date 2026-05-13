@@ -854,8 +854,8 @@ namespace TTSToVideo.Business.Implementations
 
             var imageId = await imageGeneratorAI.Generate(new OptionsImageGenerator
             {
-                Width = FFMPEGDefinitions.WidthResolution,
-                Height = FFMPEGDefinitions.HeightResolution,
+                Width = options.ImageOptions.Width is > 0 ? options.ImageOptions.Width.Value : FFMPEGDefinitions.WidthResolution,
+                Height = options.ImageOptions.Height is > 0 ? options.ImageOptions.Height.Value : FFMPEGDefinitions.HeightResolution,
                 ModelId = selectedModelId,
                 NumImages = 1,
                 Prompt = prompt,

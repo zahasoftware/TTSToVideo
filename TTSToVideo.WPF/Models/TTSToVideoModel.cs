@@ -31,6 +31,8 @@ namespace TTSToVideo.WPF.Models
 
         public double MusicVolume { get; set; }
         public string? ImageSeed { get; set; }
+        public int? ImageWidth { get; set; }
+        public int? ImageHeight { get; set; }
 
         public ImageModel? ImageModelSelected { get; set; }
         public VoiceModel? VoiceModelSelected { get; set; }

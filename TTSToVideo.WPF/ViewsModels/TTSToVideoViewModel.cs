@@ -13,6 +13,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -164,7 +165,12 @@ namespace TTSToVideo.WPF.ViewsModels
 
         private void InitializeModel()
         {
-            Model = new TtsToVideoModel { Prompt = "" };
+            Model = new TtsToVideoModel
+            {
+                Prompt = "",
+                ImageWidth = FFMPEGDefinitions.WidthResolution,
+                ImageHeight = FFMPEGDefinitions.HeightResolution
+            };
             configuration.Model.ProjectsNames = [];
         }
 
@@ -380,7 +386,9 @@ namespace TTSToVideo.WPF.ViewsModels
                     UseOnlyFirstImage = Model.UseOnlyFirstImage,
                     UseTextForPrompt = Model.UseTextForPrompt,
                     CreateVideo = Model.CreateVideo,
-                    Seed = string.IsNullOrWhiteSpace(Model.ImageSeed) ? null : Model.ImageSeed.Trim()
+                    Seed = string.IsNullOrWhiteSpace(Model.ImageSeed) ? null : Model.ImageSeed.Trim(),
+                    Width = Model.ImageWidth,
+                    Height = Model.ImageHeight
                 },
                 SubtitleOptions = new TtsTVideoSubtitleOptions
                 {
@@ -442,7 +450,16 @@ namespace TTSToVideo.WPF.ViewsModels
                     statement,
                     [Model.ImageModelSelected.Id],
                     outputFolder,
-                    new TTSToVideoOptions { ImageOptions = new TtsToVideoImageOptions { UseTextForPrompt = true, Seed = Model.ImageSeed} },
+                    new TTSToVideoOptions
+                    {
+                        ImageOptions = new TtsToVideoImageOptions
+                        {
+                            UseTextForPrompt = true,
+                            Seed = Model.ImageSeed,
+                            Width = Model.ImageWidth,
+                            Height = Model.ImageHeight
+                        }
+                    },
                     CancellationTokenSource.Token);
 
                 statementModel.ImageId = statement.ImageId;
@@ -463,6 +480,8 @@ namespace TTSToVideo.WPF.ViewsModels
             finally
             {
                 CancellationTokenSource?.Dispose();
+                CancellationTokenSource = null;
+                RegeneratePictureCommand?.NotifyCanExecuteChanged();
             }
         }
 
@@ -485,13 +504,19 @@ namespace TTSToVideo.WPF.ViewsModels
                 {
                     model.ImageAnimatedPath = $"{imagePath}.mp4";
 
+                    //Get Image Object 
+                    Image image = Image.FromFile(imagePath);
+
                     var request = new VideoGenerationRequest
                     {
                         Prompt = statement.VideoPrompt + (string.IsNullOrEmpty(statement.GlobalPrompt)?"":statement.GlobalPrompt) ,
                         SourceImageId = model.Images.FirstOrDefault()?.Id,
                         SourceImagePath = imagePath,
                         Version = MotionVersion.Motion2,
-                        MotionStrength = 5
+                        MotionStrength = 5,
+                        //Use the image width and height
+                        Width = image.Width,
+                        Height = image.Height
                     };
 
                     await ttsToVideoBusiness.GeneratePortraitVideoCommandExecute(

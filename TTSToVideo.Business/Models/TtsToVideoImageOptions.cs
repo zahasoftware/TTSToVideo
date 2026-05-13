@@ -6,5 +6,7 @@
         public bool UseTextForPrompt { get; set; }
         public bool CreateVideo { get; set; }
         public string? Seed { get; set; }
+        public int? Width { get; set; }
+        public int? Height { get; set; }
     }
 }
