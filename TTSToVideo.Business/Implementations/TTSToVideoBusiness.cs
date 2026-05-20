@@ -208,11 +208,6 @@ namespace TTSToVideo.Business.Implementations
         private List<(string Content, string? ImagePrompt, string? VideoPrompt, string? VoiceId)> SplitIntoParagraphBlocks(string input)
         {
             var blocks = new List<(string Content, string? ImagePrompt, string? VideoPrompt, string? VoiceId)>();
-            string? currentVoiceId = null;
-
-            // First, extract all voice tags and track their positions
-            var voiceTagPattern = @"<(?:v|voice)\s+(?:n|name)=""([^""]+)"">";
-            var voiceMatches = Regex.Matches(input, voiceTagPattern, RegexOptions.IgnoreCase).Cast<Match>().ToList();
 
             // Pattern to match <p>...</p> blocks
             var pBlockPattern = @"<p>(.*?)</p>";
@@ -227,30 +222,15 @@ namespace TTSToVideo.Business.Implementations
                 {
                     var beforeContent = input[lastIndex..match.Index];
 
-                    // Check if there's a voice tag in this content
-                    var voiceInBefore = voiceMatches.LastOrDefault(v => v.Index < match.Index && v.Index >= lastIndex);
-                    if (voiceInBefore != null)
-                    {
-                        currentVoiceId = voiceInBefore.Groups[1].Value;
-                        beforeContent = Regex.Replace(beforeContent, voiceTagPattern, string.Empty, RegexOptions.IgnoreCase);
-                    }
-
                     beforeContent = beforeContent.Trim();
                     if (!string.IsNullOrWhiteSpace(beforeContent))
                     {
-                        blocks.Add((beforeContent, null, null, currentVoiceId));
+                        blocks.Add((beforeContent, null, null, null));
                     }
                 }
 
                 // Extract content inside <p> tags
                 var blockContent = match.Groups[1].Value;
-
-                // Check for voice tags inside the block
-                var voiceInBlock = voiceMatches.LastOrDefault(v => v.Index > match.Index && v.Index < match.Index + match.Length);
-                if (voiceInBlock != null)
-                {
-                    currentVoiceId = voiceInBlock.Groups[1].Value;
-                }
 
                 // Extract image prompt if exists (<ip> or <image-prompt>)
                 var imagePrompt = ExtractImagePrompt(ref blockContent);
@@ -258,13 +238,10 @@ namespace TTSToVideo.Business.Implementations
                 // Extract video prompt if exists (<vp> or <video-prompt>)
                 var videoPrompt = ExtractVideoPrompt(ref blockContent);
 
-                // Remove voice tags from block content
-                blockContent = Regex.Replace(blockContent, voiceTagPattern, string.Empty, RegexOptions.IgnoreCase);
-
                 // Add the block with its image prompt, video prompt, and voice ID
                 if (!string.IsNullOrWhiteSpace(blockContent))
                 {
-                    blocks.Add((blockContent.Trim(), imagePrompt, videoPrompt, currentVoiceId));
+                    blocks.Add((blockContent.Trim(), imagePrompt, videoPrompt, null));
                 }
 
                 lastIndex = match.Index + match.Length;
@@ -275,32 +252,17 @@ namespace TTSToVideo.Business.Implementations
             {
                 var remainingContent = input[lastIndex..];
 
-                // Check if there's a voice tag in the remaining content
-                var voiceInRemaining = voiceMatches.LastOrDefault(v => v.Index >= lastIndex);
-                if (voiceInRemaining != null)
-                {
-                    currentVoiceId = voiceInRemaining.Groups[1].Value;
-                    remainingContent = Regex.Replace(remainingContent, voiceTagPattern, string.Empty, RegexOptions.IgnoreCase);
-                }
-
                 remainingContent = remainingContent.Trim();
                 if (!string.IsNullOrWhiteSpace(remainingContent))
                 {
-                    blocks.Add((remainingContent, null, null, currentVoiceId));
+                    blocks.Add((remainingContent, null, null, null));
                 }
             }
 
             // If no <p> tags found, treat the entire input as one block
             if (blocks.Count == 0 && !string.IsNullOrWhiteSpace(input))
             {
-                var content = input;
-                var voiceMatch = voiceMatches.LastOrDefault();
-                if (voiceMatch != null)
-                {
-                    currentVoiceId = voiceMatch.Groups[1].Value;
-                    content = Regex.Replace(content, voiceTagPattern, string.Empty, RegexOptions.IgnoreCase);
-                }
-                blocks.Add((content.Trim(), null, null, currentVoiceId));
+                blocks.Add((input.Trim(), null, null, null));
             }
 
             return blocks;
@@ -363,40 +325,86 @@ namespace TTSToVideo.Business.Implementations
                 .Where(o => o.IsParagraphSeparator)
                 .Select(o => o.Pattern));
 
-            // Split block content by paragraph separators
-            var paragraphs = Regex.Split(block.Content, pattern, RegexOptions.None)
-                .Where(o => !string.IsNullOrWhiteSpace(o))
-                .ToArray();
-
-            // Process each paragraph
-            foreach (var paragraph in paragraphs)
+            var segments = SplitByVoiceTags(block.Content);
+            foreach (var segment in segments)
             {
-                var trimmedParagraph = paragraph.Trim();
+                var paragraphs = Regex.Split(segment.Content, pattern, RegexOptions.None)
+                    .Where(o => !string.IsNullOrWhiteSpace(o));
 
-                // Check for silent voice pattern
-                var silentVoicePattern = PromptPatternDictionary.Patterns.Values
-                    .FirstOrDefault(p => !p.IsParagraphSeparator && p.TypeRegex == PromptPatternsEnum.SilentVoice);
+                foreach (var paragraph in paragraphs)
+                {
+                    var trimmedParagraph = paragraph.Trim();
 
-                if (silentVoicePattern != null && Regex.IsMatch(trimmedParagraph, silentVoicePattern.Pattern))
-                {
-                    ProcessSilentVoicePattern(trimmedParagraph, silentVoicePattern.Pattern, globalPrompt, block.ImagePrompt, block.VideoPrompt, block.VoiceId, statements);
-                }
-                else
-                {
-                    // Create statement with image prompt, video prompt, and voice ID if available
-                    statements.Add(new Statement
+                    // Check for silent voice pattern
+                    var silentVoicePattern = PromptPatternDictionary.Patterns.Values
+                        .FirstOrDefault(p => !p.IsParagraphSeparator && p.TypeRegex == PromptPatternsEnum.SilentVoice);
+
+                    if (silentVoicePattern != null && Regex.IsMatch(trimmedParagraph, silentVoicePattern.Pattern))
                     {
-                        Prompt = trimmedParagraph,
-                        GlobalPrompt = globalPrompt,
-                        ImagePrompt = block.ImagePrompt,
-                        VideoPrompt = block.VideoPrompt,
-                        VoiceId = block.VoiceId
-                    });
+                        ProcessSilentVoicePattern(trimmedParagraph, silentVoicePattern.Pattern, globalPrompt, block.ImagePrompt, block.VideoPrompt, segment.VoiceId, statements);
+                    }
+                    else
+                    {
+                        // Create statement with image prompt, video prompt, and voice ID if available
+                        statements.Add(new Statement
+                        {
+                            Prompt = trimmedParagraph,
+                            GlobalPrompt = globalPrompt,
+                            ImagePrompt = block.ImagePrompt,
+                            VideoPrompt = block.VideoPrompt,
+                            VoiceId = segment.VoiceId
+                        });
+                    }
                 }
             }
         }
 
-        private void ProcessSilentVoicePattern(string paragraph, string pattern, string globalPrompt, string imagePrompt, string videoPrompt, string voiceId, List<Statement> statements)
+        private static List<(string Content, string? VoiceId)> SplitByVoiceTags(string content)
+        {
+            var segments = new List<(string Content, string? VoiceId)>();
+            var voiceBlockPattern = "<(?:v|voice)\\s+(?:n|name)\\s*=\\s*\"([^\"]+)\"\\s*>(.*?)</(?:v|voice)>";
+            var voiceBlocks = Regex.Matches(content, voiceBlockPattern, RegexOptions.Singleline | RegexOptions.IgnoreCase);
+
+            var lastIndex = 0;
+            foreach (Match voiceBlock in voiceBlocks)
+            {
+                if (voiceBlock.Index > lastIndex)
+                {
+                    var before = content[lastIndex..voiceBlock.Index];
+                    if (!string.IsNullOrWhiteSpace(before))
+                    {
+                        segments.Add((before, null));
+                    }
+                }
+
+                var voiceId = voiceBlock.Groups[1].Value?.Trim();
+                var voiceContent = voiceBlock.Groups[2].Value;
+                if (!string.IsNullOrWhiteSpace(voiceContent))
+                {
+                    segments.Add((voiceContent, string.IsNullOrWhiteSpace(voiceId) ? null : voiceId));
+                }
+
+                lastIndex = voiceBlock.Index + voiceBlock.Length;
+            }
+
+            if (lastIndex < content.Length)
+            {
+                var after = content[lastIndex..];
+                if (!string.IsNullOrWhiteSpace(after))
+                {
+                    segments.Add((after, null));
+                }
+            }
+
+            if (segments.Count == 0 && !string.IsNullOrWhiteSpace(content))
+            {
+                segments.Add((content, null));
+            }
+
+            return segments;
+        }
+
+        private void ProcessSilentVoicePattern(string paragraph, string pattern, string globalPrompt, string? imagePrompt, string? videoPrompt, string? voiceId, List<Statement> statements)
         {
             var matches = Regex.Split(paragraph, pattern).Where(ms => !string.IsNullOrWhiteSpace(ms));
 

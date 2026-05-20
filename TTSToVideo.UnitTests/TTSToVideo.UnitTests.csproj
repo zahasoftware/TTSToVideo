@@ -28,4 +28,8 @@
     </None>
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\TTSToVideo.Business\TTSToVideo.Business.csproj" />
+  </ItemGroup>
+
 </Project>
