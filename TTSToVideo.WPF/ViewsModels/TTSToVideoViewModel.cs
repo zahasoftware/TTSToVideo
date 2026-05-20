@@ -181,11 +181,33 @@ namespace TTSToVideo.WPF.ViewsModels
 
         private async Task LoadResourcesAsync()
         {
+            var selectedImageId = Model?.ImageModelSelected?.Id;
+            var selectedVoiceId = Model?.VoiceModelSelected?.Id;
+            var selectedMusicPath = Model?.MusicModelSelected?.FilePath;
+
             LoadMusicFiles();
             await LoadImageModelsAsync();
             await LoadVoiceModelsAsync();
             await LoadChatModelsAsync();
             EnsureProjectDirectoryExists();
+
+            if (Model != null)
+            {
+                if (!string.IsNullOrWhiteSpace(selectedImageId) && ImagesModels != null)
+                {
+                    Model.ImageModelSelected = ImagesModels.FirstOrDefault(i => i.Id == selectedImageId);
+                }
+
+                if (!string.IsNullOrWhiteSpace(selectedVoiceId) && VoicesModels != null)
+                {
+                    Model.VoiceModelSelected = VoicesModels.FirstOrDefault(v => v.Id == selectedVoiceId);
+                }
+
+                if (!string.IsNullOrWhiteSpace(selectedMusicPath) && MusicModels != null)
+                {
+                    Model.MusicModelSelected = MusicModels.FirstOrDefault(m => m.FilePath == selectedMusicPath);
+                }
+            }
         }
 
         private void LoadMusicFiles()
