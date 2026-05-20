@@ -22,7 +22,6 @@ namespace TTSToVideo.Business.Implementations
         private readonly IVideoGeneratorFactory videoFactory;
         private readonly ITts tts;
         private readonly IProgressBar progressBar;
-        private List<TtsVoice>? cachedVoices;
 
         public TTSToVideoBusiness(
             IImageGeneratorAI imageGeneratorAI,
@@ -178,7 +177,7 @@ namespace TTSToVideo.Business.Implementations
 
             return statements;
         }
-        
+
         /// <summary>
         /// Validates that all voice tags have the required name or n attribute.
         /// </summary>
@@ -187,14 +186,14 @@ namespace TTSToVideo.Business.Implementations
             // Pattern to match all voice tags (both valid and invalid)
             var allVoiceTagsPattern = @"<(?:v|voice)(\s+[^>]*)?>";
             var allMatches = Regex.Matches(prompt, allVoiceTagsPattern, RegexOptions.IgnoreCase);
-            
+
             foreach (Match match in allMatches)
             {
                 var attributes = match.Groups[1].Value;
-                
+
                 // Check if the tag has name or n attribute with a value
                 var hasValidAttribute = Regex.IsMatch(attributes, @"(?:name|n)\s*=\s*""[^""]+""", RegexOptions.IgnoreCase);
-                
+
                 if (!hasValidAttribute)
                 {
                     throw new CustomApplicationException($"Voice tag validation failed: Voice tag '{match.Value}' must have a 'name' or 'n' attribute with a value. Example: <v name=\"VoiceName\">, <v n=\"VoiceName\">, or <voice name=\"VoiceName\">");
@@ -227,7 +226,7 @@ namespace TTSToVideo.Business.Implementations
                 if (match.Index > lastIndex)
                 {
                     var beforeContent = input[lastIndex..match.Index];
-                    
+
                     // Check if there's a voice tag in this content
                     var voiceInBefore = voiceMatches.LastOrDefault(v => v.Index < match.Index && v.Index >= lastIndex);
                     if (voiceInBefore != null)
@@ -235,7 +234,7 @@ namespace TTSToVideo.Business.Implementations
                         currentVoiceId = voiceInBefore.Groups[1].Value;
                         beforeContent = Regex.Replace(beforeContent, voiceTagPattern, string.Empty, RegexOptions.IgnoreCase);
                     }
-                    
+
                     beforeContent = beforeContent.Trim();
                     if (!string.IsNullOrWhiteSpace(beforeContent))
                     {
@@ -255,10 +254,10 @@ namespace TTSToVideo.Business.Implementations
 
                 // Extract image prompt if exists (<ip> or <image-prompt>)
                 var imagePrompt = ExtractImagePrompt(ref blockContent);
-                
+
                 // Extract video prompt if exists (<vp> or <video-prompt>)
                 var videoPrompt = ExtractVideoPrompt(ref blockContent);
-                
+
                 // Remove voice tags from block content
                 blockContent = Regex.Replace(blockContent, voiceTagPattern, string.Empty, RegexOptions.IgnoreCase);
 
@@ -275,7 +274,7 @@ namespace TTSToVideo.Business.Implementations
             if (lastIndex < input.Length)
             {
                 var remainingContent = input[lastIndex..];
-                
+
                 // Check if there's a voice tag in the remaining content
                 var voiceInRemaining = voiceMatches.LastOrDefault(v => v.Index >= lastIndex);
                 if (voiceInRemaining != null)
@@ -283,7 +282,7 @@ namespace TTSToVideo.Business.Implementations
                     currentVoiceId = voiceInRemaining.Groups[1].Value;
                     remainingContent = Regex.Replace(remainingContent, voiceTagPattern, string.Empty, RegexOptions.IgnoreCase);
                 }
-                
+
                 remainingContent = remainingContent.Trim();
                 if (!string.IsNullOrWhiteSpace(remainingContent))
                 {
@@ -884,12 +883,13 @@ namespace TTSToVideo.Business.Implementations
 
         private static string BuildImagePrompt(Statement statement, TTSToVideoOptions options)
         {
+            var prompt = statement.GlobalPrompt;
+
             if (!string.IsNullOrEmpty(statement.ImagePrompt))
             {
-                return statement.ImagePrompt;
+                return prompt + "," + statement.ImagePrompt;
             }
 
-            var prompt = statement.GlobalPrompt;
 
             if (!string.IsNullOrEmpty(prompt) && options.ImageOptions.UseTextForPrompt)
             {
@@ -927,11 +927,11 @@ namespace TTSToVideo.Business.Implementations
         {
             // Validate and resolve voice IDs for all statements
             await ValidateAndResolveVoiceIds(statements, selectedVoice, token);
-            
+
             await GenerateVoices(statements, projectPath, selectedVoice, token);
             return await ConcatenateVoices(statements, projectPath, options, token);
         }
-        
+
         /// <summary>
         /// Validates voice tags and resolves voice IDs for all statements.
         /// Caches the voice list for performance.
@@ -944,7 +944,7 @@ namespace TTSToVideo.Business.Implementations
                 .Select(s => s.VoiceId)
                 .Distinct()
                 .ToList();
-            
+
             if (voiceNames.Count == 0)
             {
                 // No voice tags found, use the global voice for all statements
@@ -954,34 +954,31 @@ namespace TTSToVideo.Business.Implementations
                 }
                 return;
             }
-            
+
             // Cache voices if not already cached
-            if (cachedVoices == null)
-            {
-                progressBar.ShowMessage("Loading available voices...");
-                cachedVoices = await tts.GetTtsVoices(null, token);
-            }
-            
+            progressBar.ShowMessage("Loading available voices...");
+            var voices = await tts.GetTtsVoices(null, token);
+
             // Validate and resolve each voice name
             foreach (var voiceName in voiceNames)
             {
-                var matchingVoices = cachedVoices
-                    .Where(v => 
+                var matchingVoices = voices 
+                    .Where(v =>
                         (v.Name != null && v.Name.Contains(voiceName, StringComparison.OrdinalIgnoreCase)) ||
                         (v.Id != null && v.Id.Contains(voiceName, StringComparison.OrdinalIgnoreCase)))
                     .ToList();
-                
+
                 if (matchingVoices.Count == 0)
                 {
                     throw new CustomApplicationException($"Voice tag validation failed: Voice '{voiceName}' not found in the available voices list.");
                 }
-                
+
                 if (matchingVoices.Count > 1)
                 {
                     var voiceDetails = string.Join(", ", matchingVoices.Select(v => $"Name: '{v.Name}', Id: '{v.Id}'"));
                     throw new CustomApplicationException($"Voice tag validation failed: Multiple voices match '{voiceName}'. Matching voices: [{voiceDetails}]. Please use a more specific identifier.");
                 }
-                
+
                 // Resolve voice name to voice ID
                 var resolvedVoiceId = matchingVoices[0].Id;
                 foreach (var statement in statements.Where(s => s.VoiceId == voiceName))
@@ -989,7 +986,7 @@ namespace TTSToVideo.Business.Implementations
                     statement.VoiceId = resolvedVoiceId;
                 }
             }
-            
+
             // Assign global voice to statements without a voice tag
             foreach (var statement in statements.Where(s => string.IsNullOrEmpty(s.VoiceId)))
             {

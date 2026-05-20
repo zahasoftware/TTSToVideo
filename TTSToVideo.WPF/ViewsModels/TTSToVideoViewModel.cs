@@ -28,6 +28,7 @@ using TTSToVideo.Business.Models;
 using TTSToVideo.Helpers;
 using TTSToVideo.Helpers.Implementations.Ffmpeg;
 using TTSToVideo.WPF.Models;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace TTSToVideo.WPF.ViewsModels
 {
@@ -435,6 +436,12 @@ namespace TTSToVideo.WPF.ViewsModels
             {
                 message.Warn("No statement provided to regenerate the picture.");
                 return;
+            }
+
+            //Validate if there ois a image model selected
+            if (Model.ImageModelSelected == null)
+            { 
+                throw new CustomApplicationException("No image model selected.");
             }
 
             try
@@ -1108,6 +1115,8 @@ namespace TTSToVideo.WPF.ViewsModels
             if (!File.Exists(path))
                 throw new CustomApplicationException("Video not created.");
 
+            await OpenFileAsync(path);
+            return;
             try
             {
                 // Try to find VLC installation
@@ -1130,7 +1139,7 @@ namespace TTSToVideo.WPF.ViewsModels
             }
 
             // Fallback to default player
-            await OpenFileAsync(path);
+
         }
 
         private static string? FindVlcInstallation()
